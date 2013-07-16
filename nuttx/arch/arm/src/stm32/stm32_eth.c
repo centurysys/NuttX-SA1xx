@@ -67,6 +67,17 @@
 
 #include <arch/board/board.h>
 
+#define CONFIG_PHY_INTERRUPT
+
+#ifdef CONFIG_PHY_INTERRUPT
+#include <nuttx/wqueue.h>
+
+#define info(fmt, arg...) do {sched_lock(); lowsyslog(fmt, ##arg); sched_unlock();} while (0)
+
+static void phy_interrupt_enable(void);
+static void phy_interrupt_disable(void);
+#endif
+
 /* STM32_NETHERNET determines the number of physical interfaces
  * that will be supported.
  */
@@ -255,7 +266,11 @@
 
 /* TX timeout = 1 minute */
 
+#ifdef CONFIG_ARCH_BOARD_SA1XX_JMA
+#define STM32_TXTIMEOUT   (5*CLK_TCK)
+#else
 #define STM32_TXTIMEOUT   (60*CLK_TCK)
+#endif
 
 /* PHY reset/configuration delays in milliseconds */ 
 
@@ -264,9 +279,15 @@
 
 /* PHY read/write delays in loop counts */
 
+#ifdef CONFIG_ARCH_BOARD_SA1XX_JMA
+#define PHY_READ_TIMEOUT  (0x0001ffff)
+#define PHY_WRITE_TIMEOUT (0x0001ffff)
+#define PHY_RETRY_TIMEOUT (0x0001ffff)
+#else
 #define PHY_READ_TIMEOUT  (0x0004ffff)
 #define PHY_WRITE_TIMEOUT (0x0004ffff)
 #define PHY_RETRY_TIMEOUT (0x0004ffff)
+#endif
 
 /* Register values **********************************************************/
 
@@ -2036,6 +2057,7 @@ static int stm32_ifup(struct uip_driver_s *dev)
       return ret;
     }
 
+#ifndef CONFIG_PHY_INTERRUPT
   /* Set and activate a timer process */
 
   (void)wd_start(priv->txpoll, STM32_WDDELAY, stm32_polltimer, 1, (uint32_t)priv);
@@ -2044,6 +2066,7 @@ static int stm32_ifup(struct uip_driver_s *dev)
 
   priv->ifup = true;
   up_enable_irq(STM32_IRQ_ETH);
+#endif
 
   stm32_checksetup();
   return OK;
@@ -2088,6 +2111,10 @@ static int stm32_ifdown(struct uip_driver_s *dev)
    */
 
   stm32_ethreset(priv);
+
+#ifdef CONFIG_PHY_INTERRUPT
+  phy_interrupt_disable();
+#endif
 
   /* Mark the device "down" */
 
@@ -2642,7 +2669,11 @@ static int stm32_phyinit(FAR struct stm32_ethmac_s *priv)
 
   /* Enable auto-gegotiation */
 
+#ifdef CONFIG_ARCH_BOARD_SA1XX_JMA
+  ret = stm32_phywrite(CONFIG_STM32_PHYADDR, MII_MCR, (MII_MCR_ANENABLE | MII_MCR_ANRESTART));
+#else
   ret = stm32_phywrite(CONFIG_STM32_PHYADDR, MII_MCR, MII_MCR_ANENABLE);
+#endif
   if (ret < 0)
     {
       ndbg("Failed to enable auto-negotiation: %d\n", ret);
@@ -3288,7 +3319,18 @@ static int stm32_ethconfig(FAR struct stm32_ethmac_s *priv)
   ret = stm32_phyinit(priv);
   if (ret < 0)
     {
+#ifdef CONFIG_PHY_INTERRUPT
+      if (ret == -ETIMEDOUT)
+        {
+          info("PHY link down\n");
+        }
+      else
+        {
+          return ret;
+        }
+#else
       return ret;
+#endif
     }
 
   /* Initialize the MAC and DMA */
@@ -3315,8 +3357,242 @@ static int stm32_ethconfig(FAR struct stm32_ethmac_s *priv)
   /* Enable normal MAC operation */
 
   nllvdbg("Enable normal operation\n");
+#ifdef CONFIG_PHY_INTERRUPT
+  ret = stm32_macenable(priv);
+  phy_interrupt_enable();
+  return ret;
+#else
   return stm32_macenable(priv);
+#endif
 }
+
+#ifdef CONFIG_PHY_INTERRUPT
+#define JABBER_INTERRUPT_ENABLE                    (1 << 15)
+#define RECEIVE_ERROR_INTERRUPT_ENABLE             (1 << 14)
+#define PAGE_RECEIVE_INTERRUPT_ENABLE              (1 << 13)
+#define PARALLEL_DETECT_FAULT_INTERRUPT_ENABLE     (1 << 12)
+#define LINK_PARTNER_ACKNOWLEDGE_INTERRUPT_ENABLE  (1 << 11)
+#define LINK_DOWN_INTERRUPT_ENABLE                 (1 << 10)
+#define REMOTE_FAULT_INTERRUPT_ENABLE              (1 << 9)
+#define LINK_UP_INTERRUPT_ENABLE                   (1 << 8)
+#define JABBER_INTERRUPT                           (1 << 7)
+#define RECEIVE_ERROR_INTERRUPT                    (1 << 6)
+#define PAGE_RECEIVE_INTERRUPT                     (1 << 5)
+#define PARALLEL_DETECT_FAULT_INTERRUPT            (1 << 4)
+#define LINK_PARTNER_ACKNOWLEDGE_INTERRUPT         (1 << 3) 
+#define LINK_DOWN_INTERRUPT                        (1 << 2)
+#define REMOTE_FAULT_INTERRUPT                     (1 << 1)
+#define LINK_UP_INTERRUPT                          (1 << 0)
+
+#define PHY_INTERRUPT_ENABLE  (LINK_DOWN_INTERRUPT_ENABLE | LINK_UP_INTERRUPT_ENABLE)
+#define PHY_INTERRUPT_STATUS  (LINK_DOWN_INTERRUPT | LINK_UP_INTERRUPT)
+
+struct work_s g_phy_work;
+
+static bool
+phy_interrupt_status(void)
+{
+    uint16_t phyval;
+    int ret;
+
+    ret = stm32_phyread(CONFIG_STM32_PHYADDR, 0x1B, &phyval);
+    if (ret < 0) {
+        ndbg("Failed to read the interrupt control status register: %d\n", ret);
+        return false;
+    }
+
+    return (phyval & PHY_INTERRUPT_STATUS) ? true : false;
+}
+
+static void
+phy_interrupt_enable(void)
+{
+    int ret;
+
+    ret = stm32_phywrite(CONFIG_STM32_PHYADDR, 0x1B, PHY_INTERRUPT_ENABLE);
+    if (ret < 0) {
+        ndbg("Failed to write the interrupt control status register: %d\n", ret);
+    }
+}
+
+static void
+phy_interrupt_disable(void)
+{
+    int ret;
+
+    ret = stm32_phywrite(CONFIG_STM32_PHYADDR, 0x1B, 0);
+    if (ret < 0) {
+        ndbg("Failed to write the interrupt control status register: %d\n", ret);
+    }
+}
+
+static bool
+phy_update_link(FAR struct stm32_ethmac_s * priv)
+{
+    volatile uint32_t timeout;
+    uint16_t phyval;
+    int ret;
+    bool link;
+
+    /* Assume 10MBps and half duplex */
+    priv->mbps100 = 0;
+    priv->fduplex = 0;
+
+    /* Wait for link status */
+    ret = stm32_phyread(CONFIG_STM32_PHYADDR, MII_MSR, &phyval);
+    if (ret < 0) {
+        ndbg("Failed to read the PHY MSR: %d\n", ret);
+        return false;
+    }
+
+    if (phyval & MII_MSR_LINKSTATUS) {
+        link = true;
+    } else {
+        link = false;
+    }
+
+    if (link) {
+#ifdef CONFIG_STM32_AUTONEG
+        /* Wait until auto-negotiation completes */
+        for (timeout = 0; timeout < PHY_RETRY_TIMEOUT; timeout++) {
+            ret = stm32_phyread(CONFIG_STM32_PHYADDR, MII_MSR, &phyval);
+            if (ret < 0) {
+                ndbg("Failed to read the PHY MSR: %d\n", ret);
+                return false;
+            } else if (phyval & MII_MSR_ANEGCOMPLETE) {
+                break;
+            }
+        }
+
+        if (timeout >= PHY_RETRY_TIMEOUT) {
+            ndbg("Timed out waiting for auto-negotiation\n");
+            return false;
+        }
+ 
+        /* Read the result of the auto-negotiation from the PHY-specific register */
+        ret = stm32_phyread(CONFIG_STM32_PHYADDR, CONFIG_STM32_PHYSR, &phyval);
+        if (ret < 0) {
+            ndbg("Failed to read PHY status register\n");
+            return false;
+        }
+
+        /* Remember the selected speed and duplex modes */
+        nvdbg("PHYSR[%d]: 0x%04x\n", CONFIG_STM32_PHYSR, phyval);
+
+#ifdef CONFIG_STM32_PHYSR_ALTCONFIG
+        switch (phyval & CONFIG_STM32_PHYSR_ALTMODE) {
+        default:
+        case CONFIG_STM32_PHYSR_10HD:
+            priv->fduplex = 0;
+            priv->mbps100 = 0;
+            break;
+        case CONFIG_STM32_PHYSR_100HD:
+            priv->fduplex = 0;
+            priv->mbps100 = 1;
+            break;
+        case CONFIG_STM32_PHYSR_10FD:
+            priv->fduplex = 1;
+            priv->mbps100 = 0;
+            break;
+        case CONFIG_STM32_PHYSR_100FD:
+            priv->fduplex = 1;
+            priv->mbps100 = 1;
+            break;
+        }
+#else
+        if ((phyval & CONFIG_STM32_PHYSR_MODE) == CONFIG_STM32_PHYSR_FULLDUPLEX) {
+            priv->fduplex = 1;
+        }
+
+        if ((phyval & CONFIG_STM32_PHYSR_SPEED) == CONFIG_STM32_PHYSR_100MBPS) {
+            priv->mbps100 = 1;
+        }
+#endif
+
+#else /* Auto-negotion not selected */
+
+        phyval = 0;
+#ifdef CONFIG_STM32_ETHFD
+        phyval |= MII_MCR_FULLDPLX;
+#endif
+#ifdef CONFIG_STM32_ETH100MBPS
+        phyval |= MII_MCR_SPEED100;
+#endif
+
+        ret = stm32_phywrite(CONFIG_STM32_PHYADDR, MII_MCR, phyval);
+        if (ret < 0) {
+            ndbg("Failed to write the PHY MCR: %d\n", ret);
+            return false;
+        }
+        up_mdelay(PHY_CONFIG_DELAY);
+
+        /* Remember the selected speed and duplex modes */
+#ifdef CONFIG_STM32_ETHFD
+        priv->fduplex = 1;
+#endif
+#ifdef CONFIG_STM32_ETH100MBPS
+        priv->mbps100 = 1;
+#endif
+
+#endif /* Auto-negotion not selected */
+
+        ret = stm32_macconfig(priv);
+        if (ret < 0) {
+            return false;
+        }
+
+        stm32_initbuffer(priv);
+        stm32_txdescinit(priv);
+        stm32_rxdescinit(priv);
+        stm32_macenable(priv);
+    }
+
+    return link;
+}
+
+static void
+phy_csr(FAR void * arg)
+{
+    register FAR struct stm32_ethmac_s * priv = arg;
+    bool link = phy_update_link(priv);
+
+    if (link) {
+        if (!priv->ifup) {
+            (void)wd_start(priv->txpoll, STM32_WDDELAY, stm32_polltimer, 1, (uint32_t)priv);
+            up_enable_irq(STM32_IRQ_ETH);
+            priv->ifup = true;
+            info("PHY link up\n");
+            info("Duplex: %s Speed: %d MBps\n", priv->fduplex ? "FULL" : "HALF", priv->mbps100 ? 100 : 10);
+        }
+    } else {
+        if (priv->ifup) {
+            up_disable_irq(STM32_IRQ_ETH);
+            wd_cancel(priv->txpoll);
+            wd_cancel(priv->txtimeout);
+            priv->ifup = false;
+            info("PHY link down\n");
+        }
+    }
+}
+
+static int
+phy_isr(int irq, FAR void * context)
+{
+    register FAR struct stm32_ethmac_s * priv = &g_stm32ethmac[0];
+
+    if (phy_interrupt_status())
+        (void)work_queue(HPWORK, &g_phy_work, phy_csr, priv, 0);
+
+    return OK;
+}
+
+static void
+phy_interrupt_init(struct stm32_ethmac_s * priv)
+{
+    stm32_gpiosetevent(GPIO_ETH_PHY_INTRP_N, false, true, true, phy_isr);
+
+}
+#endif
 
 /****************************************************************************
  * Public Functions
@@ -3390,6 +3666,10 @@ int stm32_ethinitialize(int intf)
   /* Put the interface in the down state. */
 
   stm32_ifdown(&priv->dev);
+
+#ifdef CONFIG_PHY_INTERRUPT
+  phy_interrupt_init(priv);
+#endif
 
   /* Register the device with the OS so that socket IOCTLs can be performed */
 
