@@ -64,9 +64,11 @@
 #define ASCII_SI         0x0f /* Shift In (^O) */
 
 #define ASCII_DLE        0x10 /* Data link escape (^P) */
-#define ASCII_DC1        0x11 /* XON (^Q) */
+#define ASCII_DC1        0x11 /* Device control 1, XON (^Q) */
+#define ASCII_XON        ASCII_DC1
 #define ASCII_DC2        0x12 /* Device control 2, block-mode flow control (^R) */
-#define ASCII_DC3        0x13 /* XOFF (^S) */
+#define ASCII_DC3        0x13 /* Device control 3, XOFF (^S) */
+#define ASCII_XOFF       ASCII_DC3
 #define ASCII_DC4        0x14 /* Device control 4  (^T) */
 #define ASCII_NAK        0x15 /* Negative acknowledge (^U) */
 #define ASCII_SYN        0x16 /* Synchronous idle (^V) */
@@ -150,8 +152,8 @@
 #define ASCII_LBRACKET   0x5b /* Left bracket ([) */
 #define ASCII_BACKSLASH  0x5c /* Back slash (\) */
 #define ASCII_RBRACKET   0x5d /* Right bracket (]) */
-#define ASCII_CARET      0x5c /* Caret (^) */
-#define ASCII_CIRCUMFLEX 0x5c /* Circumflex (^) */
+#define ASCII_CARET      0x5e /* Caret (^) */
+#define ASCII_CIRCUMFLEX 0x5e /* Circumflex (^) */
 #define ASCII_UNDERSCORE 0x5f /* Underscore (_) */
 
 #define ASCII_RSQUOT     0x60 /* Closing single quote */

@@ -1,7 +1,7 @@
 /****************************************************************************
  * drivers/usbdev/pl2303.c
  *
- *   Copyright (C) 2008-2012 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2008-2013 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * This logic emulates the Prolific PL2303 serial/USB converter
@@ -101,7 +101,15 @@
 #  define CONFIG_PL2303_EP0MAXPACKET 64
 #endif
 
-#undef CONFIG_PL2303_BULKREQLEN
+/* Ideally, the BULKOUT request size should *not* be the same size as the
+ * maxpacket size.  That is because IN transfers of exactly the maxpacket
+ * size will be followed by a NULL packet.  The BULKOUT request buffer
+ * size, on the other hand, is always the same as the maxpacket size.
+ */
+
+#ifndef CONFIG_PL2303_BULKIN_REQLEN
+#  define CONFIG_PL2303_BULKIN_REQLEN 96
+#endif
 
 /* Vendor and product IDs and strings */
 
@@ -464,7 +472,7 @@ static const struct usb_epdesc_s g_epbulkoutdesc =
   USB_DESC_TYPE_ENDPOINT,                       /* type */
   PL2303_EPOUTBULK_ADDR,                        /* addr */
   PL2303_EPOUTBULK_ATTR,                        /* attr */
-  { LSBYTE(64), MSBYTE(64) },                   /* maxpacket -- might change to 512*/
+  { LSBYTE(64), MSBYTE(64) },                   /* maxpacket -- might change to 512 */
   0                                             /* interval */
 };
 
@@ -474,7 +482,7 @@ static const struct usb_epdesc_s g_epbulkindesc =
   USB_DESC_TYPE_ENDPOINT,                       /* type */
   PL2303_EPINBULK_ADDR,                         /* addr */
   PL2303_EPINBULK_ATTR,                         /* attr */
-  { LSBYTE(64), MSBYTE(64) },                   /* maxpacket -- might change to 512*/
+  { LSBYTE(64), MSBYTE(64) },                   /* maxpacket -- might change to 512 */
   0                                             /* interval */
 };
 
@@ -608,11 +616,7 @@ static int usbclass_sndpacket(FAR struct pl2303_dev_s *priv)
 
   /* Get the maximum number of bytes that will fit into one bulk IN request */
 
-#ifdef CONFIG_PL2303_BULKREQLEN
-  reqlen = MAX(CONFIG_PL2303_BULKREQLEN, ep->maxpacket);
-#else
-  reqlen = ep->maxpacket;
-#endif
+  reqlen = max(CONFIG_PL2303_BULKIN_REQLEN, ep->maxpacket);
 
   while (!sq_empty(&priv->reqlist))
     {
@@ -1222,12 +1226,7 @@ static void usbclass_rdcomplete(FAR struct usbdev_ep_s *ep,
 
   /* Requeue the read request */
 
-#ifdef CONFIG_PL2303_BULKREQLEN
-  req->len = max(CONFIG_PL2303_BULKREQLEN, ep->maxpacket);
-#else
   req->len = ep->maxpacket;
-#endif
-
   ret      = EP_SUBMIT(ep, req);
   if (ret != OK)
     {
@@ -1382,12 +1381,12 @@ static int usbclass_bind(FAR struct usbdevclass_driver_s *driver,
     }
   priv->epbulkout->priv = priv;
 
-  /* Pre-allocate read requests */
+  /* Pre-allocate read requests.  The buffer size is one full packet. */
 
-#ifdef CONFIG_PL2303_BULKREQLEN
-  reqlen = max(CONFIG_PL2303_BULKREQLEN, priv->epbulkout->maxpacket);
+#ifdef CONFIG_USBDEV_DUALSPEED
+  reqlen = 512;
 #else
-  reqlen = priv->epbulkout->maxpacket;
+  reqlen = 64;
 #endif
 
   for (i = 0; i < CONFIG_PL2303_NRDREQS; i++)
@@ -1400,17 +1399,29 @@ static int usbclass_bind(FAR struct usbdevclass_driver_s *driver,
           ret = -ENOMEM;
           goto errout;
         }
+
       reqcontainer->req->priv     = reqcontainer;
       reqcontainer->req->callback = usbclass_rdcomplete;
     }
 
-  /* Pre-allocate write request containers and put in a free list */
+  /* Pre-allocate write request containers and put in a free list.
+   * The buffer size should be larger than a full packet.  Otherwise,
+   * we will send a bogus null packet at the end of each packet.
+   *
+   * Pick the larger of the max packet size and the configured request
+   * size.
+   */
 
-#ifdef CONFIG_PL2303_BULKREQLEN
-  reqlen = max(CONFIG_PL2303_BULKREQLEN, priv->epbulkin->maxpacket);
+#ifdef CONFIG_USBDEV_DUALSPEED
+  reqlen = 512;
 #else
-  reqlen = priv->epbulkin->maxpacket;
+  reqlen = 64;
 #endif
+
+  if (CONFIG_PL2303_BULKIN_REQLEN > reqlen)
+    {
+      reqlen = CONFIG_CDCACM_BULKIN_REQLEN;
+    }
 
   for (i = 0; i < CONFIG_PL2303_NWRREQS; i++)
     {
@@ -1422,6 +1433,7 @@ static int usbclass_bind(FAR struct usbdevclass_driver_s *driver,
           ret = -ENOMEM;
           goto errout;
         }
+
       reqcontainer->req->priv     = reqcontainer;
       reqcontainer->req->callback = usbclass_wrcomplete;
 
@@ -1911,7 +1923,7 @@ static void usbclass_disconnect(FAR struct usbdevclass_driver_s *driver,
 static void usbclass_suspend(FAR struct usbdevclass_driver_s *driver,
                  FAR struct usbdev_s *dev)
 {
-  FAR struct cdcacm_dev_s *priv;
+  FAR struct pl2303_dev_s *priv;
 
   usbtrace(TRACE_CLASSSUSPEND, 0);
 
@@ -1925,7 +1937,7 @@ static void usbclass_suspend(FAR struct usbdevclass_driver_s *driver,
 
   /* Extract reference to private data */
 
-  priv = ((FAR struct cdcacm_driver_s*)driver)->dev;
+  priv = ((FAR struct pl2303_driver_s*)driver)->dev;
 
   /* And let the "upper half" driver now that we are suspended */
 
@@ -1945,7 +1957,7 @@ static void usbclass_suspend(FAR struct usbdevclass_driver_s *driver,
 static void usbclass_resume(FAR struct usbdevclass_driver_s *driver,
                        FAR struct usbdev_s *dev)
 {
-  FAR struct cdcacm_dev_s *priv;
+  FAR struct pl2303_dev_s *priv;
 
   usbtrace(TRACE_CLASSRESUME, 0);
 
@@ -1959,7 +1971,7 @@ static void usbclass_resume(FAR struct usbdevclass_driver_s *driver,
 
   /* Extract reference to private data */
 
-  priv = ((FAR struct cdcacm_driver_s*)driver)->dev;
+  priv = ((FAR struct pl2303_driver_s*)driver)->dev;
 
   /* Are we still configured? */
 

@@ -392,15 +392,15 @@ PIC32MX Configuration Options
     CONFIG_ENDIAN_BIG - define if big endian (default is little
        endian)
 
-    CONFIG_DRAM_SIZE - Describes the installed DRAM (CPU SRAM in this case):
+    CONFIG_RAM_SIZE - Describes the installed DRAM (CPU SRAM in this case):
 
-       CONFIG_DRAM_SIZE=(32*1024) (32Kb)
+       CONFIG_RAM_SIZE=(32*1024) (32Kb)
 
        There is an additional 32Kb of SRAM in AHB SRAM banks 0 and 1.
 
-    CONFIG_DRAM_START - The start address of installed DRAM
+    CONFIG_RAM_START - The start address of installed DRAM
 
-       CONFIG_DRAM_START=0xa0000000
+       CONFIG_RAM_START=0xa0000000
 
     CONFIG_ARCH_IRQPRIO - The PIC32MXx supports interrupt prioritization
 
@@ -670,7 +670,7 @@ Where <subdir> is one of the following:
     NOTE: The SD card should *not* be mounted under NSH *and* exported
     by the mass storage device!!! That can result in corruption of the
     SD card format.  This is the sequence of commands that you should
-    used to work the the SD card safely:
+    use to work with the SD card safely:
 
       mount -t vfat /dev/mmcsd0 /mnt/sdcard : Mount the SD card initially
       ...
@@ -776,10 +776,10 @@ Where <subdir> is one of the following:
 
   2. Changes to nuttx/.config.
 
-    a) Enable building of the examples/usbstorage:
+    a) Enable building of the examples/usbmsc:
 
-      -# CONFIGURED_APPS += examples/usbstorage
-      +  CONFIGURED_APPS += examples/usbstorage
+      -# CONFIGURED_APPS += examples/usbmsc
+      +  CONFIGURED_APPS += examples/usbmsc
 
   3. When NSH first comes up, you must manually create the RAM disk
      before exporting it:

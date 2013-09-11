@@ -94,30 +94,29 @@
 #define SYS_task_delete                (CONFIG_SYS_RESERVED+22)
 #define SYS_task_restart               (CONFIG_SYS_RESERVED+23)
 #define SYS_up_assert                  (CONFIG_SYS_RESERVED+24)
-#define SYS_up_assert_code             (CONFIG_SYS_RESERVED+25)
-#define __SYS_vfork                    (CONFIG_SYS_RESERVED+26)
+#define __SYS_vfork                    (CONFIG_SYS_RESERVED+25)
 
 /* The following can be individually enabled */
 
 #ifdef CONFIG_ARCH_HAVE_VFORK
 #  define SYS_vfork                    __SYS_vfork
-#  define __SYS_atexit                (__SYS_vfork+1)
+#  define __SYS_atexit                 (__SYS_vfork+1)
 #else
-#  define __SYS_atexit                __SYS_vfork
+#  define __SYS_atexit                 __SYS_vfork
 #endif
 
 #ifdef CONFIG_SCHED_ATEXIT
 #  define SYS_atexit                   __SYS_atexit
-#  define __SYS_onexit                (__SYS_atexit+1)
+#  define __SYS_on_exit                (__SYS_atexit+1)
 #else
-#  define __SYS_onexit                __SYS_atexit
+#  define __SYS_on_exit                __SYS_atexit
 #endif
 
 #ifdef CONFIG_SCHED_ONEXIT
-#  define SYS_onexit                   __SYS_onexit
-#  define __SYS_waitpid                (__SYS_onexit+1)
+#  define SYS_on_exit                  __SYS_on_exit
+#  define __SYS_waitpid                (__SYS_on_exit+1)
 #else
-#  define __SYS_waitpid                __SYS_onexit
+#  define __SYS_waitpid                __SYS_on_exit
 #endif
 
 #ifdef CONFIG_SCHED_WAITPID

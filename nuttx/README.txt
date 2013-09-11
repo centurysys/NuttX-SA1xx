@@ -139,16 +139,6 @@ Downloading from Repositories
 
   https://sourceforge.net/p/nuttx/git
 
-  Older versions of NuttX are still available in the old SVN repository.
-  The GIT repository is, however, the current 'master' and the SVN
-  repository is no longer maintained.  An honest attempt was made to keep
-  current so as to not disrupt people are used to using the SVN repository.
-  However, too many authorization-related restrictions were encountered and
-  the SVN repository has been abandoned.  Download instructions for the old
-  SVN repository are available here:
-
-  https://sourceforge.net/p/nuttx/git
-
 Notes about Header Files
 ------------------------
 
@@ -487,7 +477,7 @@ NuttX Configuration Tool under DOS
      And of course, after you use the configuration tool you need to
      restore CONFIG_WINDOWS_NATIVE=y and the correct CONFIG_APPS_DIR.
 
-  2) You can, with some effort, run the the Cygwin kconfig-mconf tool
+  2) You can, with some effort, run the Cygwin kconfig-mconf tool
      directly in the Windows console window.  In this case, you do not
      have to modify the .config file, but there are other complexities:
 
@@ -801,7 +791,7 @@ Installing GNUWin32
   5. After running GetGNUWin32-0.x.x.exe, you will have a new directory
      <this-directory>/GetGNUWin32
 
-  Note the the GNUWin32 installer didn't install GNUWin32.  Instead, it
+  Note that the GNUWin32 installer didn't install GNUWin32.  Instead, it
   installed another, smarter downloader.  That downloader is the GNUWin32
   package management tool developed by the Open SSL project.
 
@@ -969,17 +959,10 @@ nuttx
  |   |- arm/
  |   |   `- src
  |   |       `- lpc214x/README.txt
- |   |- avr/
- |   |   `- README.txt
  |   |- sh/
  |   |   |- include/
- |   |   |   |-m16c/README.txt
- |   |   |   |-sh1/README.txt
  |   |   |   `-README.txt
  |   |   |- src/
- |   |   |   |-common/README.txt
- |   |   |   |-m16c/README.txt
- |   |   |   |-sh1/README.txt
  |   |   |   `-README.txt
  |   |- x86/
  |   |   |- include/
@@ -994,11 +977,11 @@ nuttx
  |- configs/
  |   |- amber/
  |   |   `- README.txt
+ |   |- arduino-due/
+ |   |   `- README.txt
  |   |- avr32dev1/
  |   |   `- README.txt
  |   |- c5471evm/
- |   |   |- include/README.txt
- |   |   |- src/README.txt
  |   |   `- README.txt
  |   |- cloudctrl
  |   |   `- README.txt
@@ -1013,8 +996,6 @@ nuttx
  |   |- ea3152/
  |   |   `- README.txt
  |   |- eagle100/
- |   |   |- include/README.txt
- |   |   |- src/README.txt
  |   |   `- README.txt
  |   |- ekk-lm3s9b96/
  |   |   `- README.txt
@@ -1031,53 +1012,40 @@ nuttx
  |   |   `- README.txt
  |   |-  fire-stm32v2/
  |   |   `- README.txt
+ |   |-  freedom-kl25z/
+ |   |   `- README.txt
  |   |-  hymini-stm32v/
- |   |   |- include/README.txt
- |   |   |- src/README.txt
  |   |   `- README.txt
  |   |- kwikstik-k40/
  |   |   `- README.txt
  |   |- lincoln60/
  |   |   `- README.txt
  |   |- lm3s6432-s2e/
- |   |   |- include/README.txt
- |   |   |- src/README.txt
  |   |   `- README.txt
  |   |- lm3s6965-ek/
- |   |   |- include/README.txt
- |   |   |- src/README.txt
  |   |   `- README.txt
  |   |- lm3s8962-ek/
- |   |   |- include/README.txt
- |   |   |- src/README.txt
  |   |   `- README.txt
  |   |- lpc4330-xplorer/
  |   |   `- README.txt
  |   |- lpcxpresso-lpc1768/
  |   |   `- README.txt
- |   |- m68332evb/
- |   |   |- include/README.txt
- |   |   `- src/README.txt
  |   |- mbed/
  |   |   `- README.txt
  |   |- mcu123-lpc214x/
- |   |   |- include/README.txt
- |   |   |- src/README.txt
  |   |   `- README.txt
  |   |- micropendous3/
+ |   |   `- README.txt
+ |   |- mikroe-stm32f/
  |   |   `- README.txt
  |   |- mirtoo/
  |   |   `- README.txt
  |   |- mx1ads/
- |   |   |- include/README.txt
- |   |   |- src/README.txt
  |   |   `- README.txt
  |   |- ne63badge/
  |   |   `- README.txt
  |   |- ntosd-dm320/
  |   |   |- doc/README.txt
- |   |   |- include/README.txt
- |   |   |- src/README.txt
  |   |   `- README.txt
  |   |- nucleus2g/
  |   |   `- README.txt
@@ -1086,11 +1054,8 @@ nuttx
  |   |- olimex-lpc1766stk/
  |   |   `- README.txt
  |   |- olimex-lpc2378/
- |   |   |- include/README.txt
  |   |   `- README.txt
  |   |- olimex-strp711/
- |   |   |- include/README.txt
- |   |   |- src/README.txt
  |   |   `- README.txt
  |   |- open1788/
  |   |   `- README.txt
@@ -1102,44 +1067,44 @@ nuttx
  |   |   `- README.txt
  |   |- pic32mx7mmb/
  |   |   `- README.txt
+ |   |- pirelli_dpl10/
+ |   |   `- README.txt
  |   |- pjrc-8051/
- |   |   |- include/README.txt
- |   |   |- src/README.txt
  |   |   `- README.txt
  |   |- qemu-i486/
- |   |   |- include/README.txt
- |   |   |- src/README.txt
  |   |   `- README.txt
  |   |- rgmp/
- |   |   |- include/README.txt
- |   |   |- src/README.txt
+ |   |   `- README.txt
+ |   |- sama5d3x-ek/
  |   |   `- README.txt
  |   |- sam3u-ek/
  |   |   `- README.txt
+ |   |- sam4l-xplained/
+ |   |   `- README.txt
+ |   |- sam4s-xplained/
+ |   |   `- README.txt
  |   |- sim/
- |   |   |- include/README.txt
- |   |   |- src/README.txt
  |   |   `- README.txt
  |   |- shenzhou/
  |   |   `- README.txt
  |   |- skp16c26/
- |   |   |- include/README.txt
- |   |   |- src/README.txt
  |   |   `- README.txt
  |   |- stm3210e-eval/
- |   |   |- include/README.txt
  |   |   |- RIDE/README.txt
- |   |   |- src/README.txt
  |   |   `- README.txt
  |   |- stm3220g-eval/
  |   |   `- README.txt
  |   |- stm3240g-eval/
+ |   |   `- README.txt
+ |   |- stm32_tiny/
  |   |   `- README.txt
  |   |- stm32f100rc_generic/
  |   |   `- README.txt
  |   |- stm32f3discovery/
  |   |   `- README.txt
  |   |- stm32f4discovery/
+ |   |   `- README.txt
+ |   |- stm32ldiscovery/
  |   |   `- README.txt
  |   |- sure-pic32mx/
  |   |   `- README.txt
@@ -1150,24 +1115,17 @@ nuttx
  |   |- ubw32/
  |   |   `- README.txt
  |   |- us7032evb1/
- |   |   |- bin/README.txt
- |   |   |- include/README.txt
- |   |   |- src/README.txt
  |   |   `- README.txt
  |   |- vsn/
  |   |   |- src/README.txt
  |   |   `- README.txt
  |   |- xtrs/
- |   |   |- include/README.txt
- |   |   |- src/README.txt
  |   |   `- README.txt
  |   |- z16f2800100zcog/
  |   |   |- ostest/README.txt
  |   |   |- pashello/README.txt
  |   |   `- README.txt
  |   |- z80sim/
- |   |   |- include/README.txt
- |   |   |- src/README.txt
  |   |   `- README.txt
  |   |- z8encore000zco/
  |   |   |- ostest/README.txt
@@ -1238,7 +1196,9 @@ apps
  |- system/
  |   |- i2c
  |   |  `- README.txt
- |   `- install
+ |   |- install
+ |   |  `- README.txt
+ |   `- zmodem
  |      `- README.txt
  `- README.txt
 

@@ -53,10 +53,17 @@ config MM_SMALL
 		have smaller overhead than devices that support 32-bit addressability.
 		However, there are many MCUs that support 32-bit addressability *but*
 		have internal SRAM of size less than or equal to 64Kb.  In this case,
-		CONFIG_MM_SMALL can be defined so that those MCUs will also benefit
+		MM_SMALL can be defined so that those MCUs will also benefit
 		from the smaller, 16-bit-based allocation overhead.
 
-		NOTE: If MM_MULTIHEAP is selected, then this applies to all heaps.
+		WARNING:  This selection will also change the alignment of allocated
+		memory.  For example, on ARM memory will have 8-byte alignment by
+		default.  If MM_SMALL is selected, then allocated memory will have
+		only 4-byte alignment.  This may be important on some platforms where
+		64-bit data is in allocated structures and 8-byte alignment is required.
+
+		NOTE: If MM_MULTIHEAP is selected, then this selection applies to all
+		heaps.
 
 config MM_REGIONS
 	int "Number of memory regions"
@@ -126,5 +133,5 @@ config DEBUG_GRAN
 	default n
 	depends on GRAN && DEBUG
 	---help---
-		Just like CONFIG_DEBUG_MM, but only generates ouput from the gran
+		Just like DEBUG_MM, but only generates ouput from the gran
 		allocation logic.

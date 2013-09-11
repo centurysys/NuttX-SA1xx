@@ -3,7 +3,7 @@
  * Driver for SPI-based RAMTRON NVRAM Devices FM25V10 and others (not tested)
  *
  *   Copyright (C) 2011 Uros Platise. All rights reserved.
- *   Copyright (C) 2009-2010, 2012 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2009-2010, 2012-2013 Gregory Nutt. All rights reserved.
  *   Author: Uros Platise <uros.platise@isotel.eu>
  *           Gregory Nutt <gnutt@nuttx.org>
  *
@@ -68,7 +68,7 @@
 
 #include <nuttx/kmalloc.h>
 #include <nuttx/fs/ioctl.h>
-#include <nuttx/spi.h>
+#include <nuttx/spi/spi.h>
 #include <nuttx/mtd.h>
 
 /************************************************************************************
@@ -161,6 +161,14 @@ struct ramtron_dev_s
 
 static struct ramtron_parts_s ramtron_parts[] =
 {
+  {
+    "FM25V01",                    /* name */
+    0x21,                         /* id1 */
+    0x00,                         /* id2 */
+    16L*1024L,                    /* size */
+    2,                            /* addr_len */
+    40000000                      /* speed */
+  },
   {
     "FM25V02",                    /* name */
     0x22,                         /* id1 */
@@ -652,10 +660,12 @@ FAR struct mtd_dev_s *ramtron_initialize(FAR struct spi_dev_s *dev)
    * to be extended to handle multiple FLASH parts on the same SPI bus.
    */
 
-  priv = (FAR struct ramtron_dev_s *)kmalloc(sizeof(struct ramtron_dev_s));
+  priv = (FAR struct ramtron_dev_s *)kzalloc(sizeof(struct ramtron_dev_s));
   if (priv)
     {
-      /* Initialize the allocated structure */
+      /* Initialize the allocated structure. (unsupported methods were
+       * nullified by kzalloc).
+       */
 
       priv->mtd.erase  = ramtron_erase;
       priv->mtd.bread  = ramtron_bread;

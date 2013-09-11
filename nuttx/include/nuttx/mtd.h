@@ -2,7 +2,7 @@
  * include/nuttx/mtd.h
  * Memory Technology Device (MTD) interface
  *
- *   Copyright (C) 2009-2012 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2009-2013 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -52,11 +52,20 @@
 
 /* Macros to hide implementation */
 
-#define MTD_ERASE(d,s,n)   ((d)->erase  ? (d)->erase(d,s,n)    : (-ENOSYS))
-#define MTD_BREAD(d,s,n,b) ((d)->bread  ? (d)->bread(d,s,n,b)  : (-ENOSYS))
-#define MTD_READ(d,s,n,b)  ((d)->read   ? (d)->read(d,s,n,b)   : (-ENOSYS))
-#define MTD_BWRITE(d,s,n,b)((d)->bwrite ? (d)->bwrite(d,s,n,b) : (-ENOSYS))
-#define MTD_IOCTL(d,c,a)   ((d)->ioctl  ? (d)->ioctl(d,c,a)    : (-ENOSYS))
+#define MTD_ERASE(d,s,n)   ((d)->erase   ? (d)->erase(d,s,n)    : (-ENOSYS))
+#define MTD_BREAD(d,s,n,b) ((d)->bread   ? (d)->bread(d,s,n,b)  : (-ENOSYS))
+#define MTD_BWRITE(d,s,n,b)((d)->bwrite  ? (d)->bwrite(d,s,n,b) : (-ENOSYS))
+#define MTD_READ(d,s,n,b)  ((d)->read    ? (d)->read(d,s,n,b)   : (-ENOSYS))
+#define MTD_WRITE(d,s,n,b) ((d)->write   ? (d)->write(d,s,n,b)  : (-ENOSYS))
+#define MTD_IOCTL(d,c,a)   ((d)->ioctl   ? (d)->ioctl(d,c,a)    : (-ENOSYS))
+
+/* If any of the low-level device drivers declare they want sub-sector erase
+ * support, then define MTD_SUBSECTOR_ERASE.
+ */
+
+#if defined(CONFIG_M25P_SUBSECTOR_ERASE)
+#  define CONFIG_MTD_SUBSECTOR_ERASE 1
+#endif
 
 /****************************************************************************
  * Public Types
@@ -70,10 +79,21 @@
 
 struct mtd_geometry_s
 {
-  uint16_t blocksize;   /* Size of one read/write block */
-  uint16_t erasesize;   /* Size of one erase blocks -- must be a multiple
-                         * of blocksize. */
-  size_t neraseblocks;  /* Number of erase blocks */
+  uint16_t blocksize;     /* Size of one read/write block */
+  uint16_t erasesize;     /* Size of one erase blocks -- must be a multiple
+                           * of blocksize. */
+  size_t neraseblocks;    /* Number of erase blocks */
+};
+
+/* The following defines the information for writing bytes to a sector
+ * that are not a full page write (bytewrite).
+ */
+
+struct mtd_byte_write_s
+{
+  uint32_t offset;        /* Offset within the device to write to */
+  uint16_t count;         /* Number of bytes to write */
+  const uint8_t *buffer;  /* Pointer to the data to write */
 };
 
 /* This structure defines the interface to a simple memory technology device.
@@ -85,7 +105,12 @@ struct mtd_dev_s
 {
   /* The following methods operate on the MTD: */
 
-  /* Erase the specified erase blocks (units are erase blocks) */
+  /* Erase the specified erase blocks (units are erase blocks).  Semantic
+   * Clarification:  Here, we are not referring to the erase block according
+   * to the FLASH data sheet.  Rather, we are referring to the *smallest*
+   * eraseable part of the FLASH which may have a name like a page or sector
+   * or subsector.
+   */
 
   int (*erase)(FAR struct mtd_dev_s *dev, off_t startblock, size_t nblocks);
 
@@ -104,12 +129,16 @@ struct mtd_dev_s
 
   ssize_t (*read)(FAR struct mtd_dev_s *dev, off_t offset, size_t nbytes,
                   FAR uint8_t *buffer);
+#ifdef CONFIG_MTD_BYTE_WRITE
+  ssize_t (*write)(FAR struct mtd_dev_s *dev, off_t offset, size_t nbytes,
+                   FAR const uint8_t *buffer);
+#endif
 
   /* Support other, less frequently used commands:
    *  - MTDIOC_GEOMETRY:  Get MTD geometry
    *  - MTDIOC_XIPBASE:   Convert block to physical address for eXecute-In-Place
    *  - MTDIOC_BULKERASE: Erase the entire device
-   * (see include/nuttx/fs/ioctl.h) 
+   * (see include/nuttx/fs/ioctl.h)
    */
 
   int (*ioctl)(FAR struct mtd_dev_s *dev, int cmd, unsigned long arg);
@@ -132,6 +161,29 @@ extern "C"
 /****************************************************************************
  * Public Function Prototypes
  ****************************************************************************/
+
+/* MTD Support **************************************************************/
+
+/****************************************************************************
+ * Name: mtd_partition
+ *
+ * Description:
+ *   Given an instance of an MTD driver, create a flash partition, ie.,
+ *   another MTD driver instance that only operates with a sub-region of
+ *   FLASH media.  That sub-region is defined by a sector offsetset and a
+ *   sector count (where the size of a sector is provided the by parent MTD
+ *   driver).
+ *
+ *   NOTE: Since there may be a number of MTD partition drivers operating on
+ *   the same, underlying FLASH driver, that FLASH driver must be capable
+ *   of enforcing mutually exclusive access to the FLASH device.  Without
+ *   partitions, that mutual exclusion would be provided by the file system
+ *   above the FLASH driver.
+ *
+ ****************************************************************************/
+
+FAR struct mtd_dev_s *mtd_partition(FAR struct mtd_dev_s *mtd,
+                                    off_t firstblock, off_t nblocks);
 
 /****************************************************************************
  * Name: ftl_initialize
@@ -160,6 +212,74 @@ int ftl_initialize(int minor, FAR struct mtd_dev_s *mtd);
 int flash_eraseall(FAR const char *driver);
 
 /****************************************************************************
+ * Name: smart_initialize
+ *
+ * Description:
+ *   Initialize to provide a Sector Mapped Allocation for Really Tiny (SMART)
+ *   Flash block driver wrapper around an MTD interface
+ *
+ * Input Parameters:
+ *   minor - The minor device number.  The MTD block device will be
+ *      registered as as /dev/mtdsmartN where N is the minor number.
+ *   mtd - The MTD device that supports the FLASH interface.
+ *   partname - Optional partition name to append to dev entry, NULL if
+ *              not supplied.
+ *
+ ****************************************************************************/
+
+int smart_initialize(int minor, FAR struct mtd_dev_s *mtd,
+                     FAR const char *partname);
+
+/* MTD Driver Initialization ************************************************/
+/* Create an initialized MTD device instance for a particular memory device.
+ * MTD devices are not registered in the file system as are other device
+ * driver but, but are created as instances that can be bound to other
+ * functions (such as a block or character driver front end).
+ */
+
+/****************************************************************************
+ * Name: at45db_initialize
+ *
+ * Description:
+ *   Initializes the driver for SPI-based AT45DB161D (16Mbit).
+ *
+ ****************************************************************************/
+
+FAR struct mtd_dev_s *at45db_initialize(FAR struct spi_dev_s *dev);
+
+/****************************************************************************
+ * Name: at24c_initialize
+ *
+ * Description:
+ *   Initializes the driver for I2C-based at24cxx EEPROM(AT24C32, AT24C64,
+ *   AT24C128, AT24C256)
+ *
+ ****************************************************************************/
+
+FAR struct mtd_dev_s *at24c_initialize(FAR struct i2c_dev_s *dev);
+
+/****************************************************************************
+ * Name: at25_initialize
+ *
+ * Description:
+ *   Initializes the driver for SPI-based AT25DF321 (32Mbit) flash.
+ *
+ ****************************************************************************/
+
+FAR struct mtd_dev_s *at25_initialize(FAR struct spi_dev_s *dev);
+
+/****************************************************************************
+ * Name: m25p_initialize
+ *
+ * Description:
+ *   Initializes the for SPI-based M25P1 (128Kbit),  M25P64 (32Mbit), M25P64
+ *   (64Mbit), and M25P128 (128Mbit) FLASH (and compatible).
+ *
+ ****************************************************************************/
+
+FAR struct mtd_dev_s *m25p_initialize(FAR struct spi_dev_s *dev);
+
+/****************************************************************************
  * Name: rammtd_initialize
  *
  * Description:
@@ -174,48 +294,13 @@ int flash_eraseall(FAR const char *driver);
 FAR struct mtd_dev_s *rammtd_initialize(FAR uint8_t *start, size_t size);
 
 /****************************************************************************
- * Name: m25p_initialize
- *
- * Description:
- *   Create an initialized MTD device instance.  MTD devices are not registered
- *   in the file system, but are created as instances that can be bound to
- *   other functions (such as a block or character driver front end).
- *
- ****************************************************************************/
-
-FAR struct mtd_dev_s *m25p_initialize(FAR struct spi_dev_s *dev);
-
-/****************************************************************************
- * Name: at45db_initialize
- *
- * Description:
- *   Create an initialized MTD device instance.  MTD devices are not registered
- *   in the file system, but are created as instances that can be bound to
- *   other functions (such as a block or character driver front end).
- *
- ****************************************************************************/
-
-FAR struct mtd_dev_s *at45db_initialize(FAR struct spi_dev_s *dev);
-
-/****************************************************************************
- * Name: at24c_initialize
- *
- * Description:
- *   Create an initialized MTD device instance.  MTD devices are not registered
- *   in the file system, but are created as instances that can be bound to
- *   other functions (such as a block or character driver front end).
- *
- ****************************************************************************/
-
-FAR struct mtd_dev_s *at24c_initialize(FAR struct i2c_dev_s *dev);
-
-/****************************************************************************
  * Name: sst25_initialize
  *
  * Description:
- *   Create an initialized MTD device instance.  MTD devices are not registered
- *   in the file system, but are created as instances that can be bound to
- *   other functions (such as a block or character driver front end).
+ *   Initializes the drvier for SPI-based SST25 FLASH
+ *
+ *   Supports SST25VF512, SST25VF010, SST25VF520, SST25VF540, SST25VF080,
+ *   and SST25VF016
  *
  ****************************************************************************/
 
@@ -226,10 +311,9 @@ FAR struct mtd_dev_s *sst25_initialize(FAR struct spi_dev_s *dev);
  *
  * Description:
  *   Create and initialize an MTD device instance assuming an SST39VF NOR
- *   FLASH device at the configured address in memory.  MTD devices are not
- *   registered in the file system, but are created as instances that can
- *   be bound to other functions (such as a block or character driver front
- *   end).
+ *   FLASH device at the configured address in memory.
+ *
+ *   Supports SST39VF1601, SST39VF1602, SST39VF3201, SST39VF3202.
  *
  ****************************************************************************/
 
@@ -239,15 +323,22 @@ FAR struct mtd_dev_s *sst39vf_initialize(void);
  * Name: w25_initialize
  *
  * Description:
- *   Create an initialized MTD device instance.  MTD devices are not registered
- *   in the file system, but are created as instances that can be bound to
- *   other functions (such as a block or character driver front end).
+ *   Initializes the driver for SPI-based W25x16, x32, and x64 and W25q16,
+ *   q32, q64, and q128 FLASH
  *
  ****************************************************************************/
 
 FAR struct mtd_dev_s *w25_initialize(FAR struct spi_dev_s *dev);
 
-FAR struct mtd_dev_s *at25_initialize(FAR struct spi_dev_s *dev);
+/****************************************************************************
+ * Name: up_flashinitialize
+ *
+ * Description:
+ *   Create an initialized MTD device instance for internal flash.
+ *
+ ****************************************************************************/
+
+FAR struct mtd_dev_s *up_flashinitialize(void);
 
 #undef EXTERN
 #ifdef __cplusplus

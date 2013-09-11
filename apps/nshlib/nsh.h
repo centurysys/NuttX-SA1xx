@@ -50,6 +50,10 @@
 #include <unistd.h>
 #include <errno.h>
 
+#ifdef CONFIG_NSH_STRERROR
+#  include <string.h>
+#endif
+
 #include <nuttx/usb/usbdev_trace.h>
 
 /****************************************************************************
@@ -122,7 +126,7 @@
 
 #  ifndef CONFIG_USBDEV_TRACE
 #    undef CONFIG_NSH_USBDEV_TRACE
-#  endif 
+#  endif
 
 #  ifdef CONFIG_NSH_USBDEV_TRACE
 #    ifdef CONFIG_NSH_USBDEV_TRACEINIT
@@ -380,7 +384,7 @@
 /* Stubs used when working directory is not supported */
 
 #if CONFIG_NFILE_DESCRIPTORS <= 0 || defined(CONFIG_DISABLE_ENVIRON)
-#  define nsh_getfullpath(v,p) ((char*)(p))
+#  define nsh_getfullpath(v,p) ((FAR char*)(p))
 #  define nsh_freefullpath(p)
 #endif
 
@@ -552,8 +556,9 @@ int nsh_fileapp(FAR struct nsh_vtbl_s *vtbl, FAR const char *cmd,
 
 #if CONFIG_NFILE_DESCRIPTORS > 0 && !defined(CONFIG_DISABLE_ENVIRON)
 FAR const char *nsh_getcwd(void);
-char *nsh_getfullpath(FAR struct nsh_vtbl_s *vtbl, const char *relpath);
-void nsh_freefullpath(char *relpath);
+FAR char *nsh_getfullpath(FAR struct nsh_vtbl_s *vtbl,
+                          FAR const char *relpath);
+void nsh_freefullpath(FAR char *fullpath);
 #endif
 
 /* Debug */
@@ -593,7 +598,7 @@ void nsh_usbtrace(void);
 #ifndef CONFIG_NSH_DISABLE_XD
   int cmd_xd(FAR struct nsh_vtbl_s *vtbl, int argc, char **argv);
 #endif
-  
+
 #if !defined(CONFIG_NSH_DISABLESCRIPT) && !defined(CONFIG_NSH_DISABLE_TEST)
   int cmd_test(FAR struct nsh_vtbl_s *vtbl, int argc, char **argv);
   int cmd_lbracket(FAR struct nsh_vtbl_s *vtbl, int argc, char **argv);
@@ -611,6 +616,9 @@ void nsh_usbtrace(void);
 #  endif
 #  ifndef CONFIG_NSH_DISABLE_CP
       int cmd_cp(FAR struct nsh_vtbl_s *vtbl, int argc, char **argv);
+#  endif
+#  ifndef CONFIG_NSH_DISABLE_CMP
+      int cmd_cmp(FAR struct nsh_vtbl_s *vtbl, int argc, char **argv);
 #  endif
 #  ifndef CONFIG_NSH_DISABLE_DD
       int cmd_dd(FAR struct nsh_vtbl_s *vtbl, int argc, char **argv);
@@ -669,6 +677,11 @@ void nsh_usbtrace(void);
          int cmd_mkfatfs(FAR struct nsh_vtbl_s *vtbl, int argc, char **argv);
 #     endif
 #   endif /* CONFIG_FS_FAT */
+#   ifdef CONFIG_FS_SMARTFS
+#     ifndef CONFIG_NSH_DISABLE_MKSMARTFS
+         int cmd_mksmartfs(FAR struct nsh_vtbl_s *vtbl, int argc, char **argv);
+#     endif
+#   endif /* CONFIG_FS_SMARTFS */
 # endif /* !CONFIG_DISABLE_MOUNTPOINT */
 # if !defined(CONFIG_DISABLE_ENVIRON)
 #   ifndef CONFIG_NSH_DISABLE_CD

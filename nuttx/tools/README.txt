@@ -4,7 +4,7 @@ tools/README.txt
 This README file addresses the contents of the NuttX tools/ directory.
 
 The tools/ directory contains miscellaneous scripts and host C programs
-that are necessary parts of the the NuttX build system.  These files
+that are necessary parts of the NuttX build system.  These files
 include:
 
 README.txt
@@ -81,6 +81,50 @@ cmdconfig.c
 
   This C file can be used to build a utility for comparing two NuttX
   configuration files.
+
+kconfig2html.c
+--------------
+
+  This is a C file that can be used build a utility for converting the
+  NuttX configuration in the Kconfig files to an HTML document.  This
+  auto-generated documentation will, eventually, replace the manually
+  updated configuratin documentation that is fallling woefully behind.
+
+  $ tools/kconfig2html.exe -h
+  USAGE: tools/kconfig2html [-d] [-a <apps directory>] {-o <out file>] [<Kconfig root>]
+         tools/kconfig2html [-h]
+
+  Where:
+
+    -a : Select relative path to the apps/ directory. Theis path is relative
+         to the <Kconfig directory>.  Default: ../apps
+    -o : Send output to <out file>.  Default: Output goes to stdout
+    -d : Enable debug output
+    -h : Prints this message and exits
+    <Kconfig root> is the directory containing the root Kconfig file.
+         Default <Kconfig directory>: .
+
+mkconfigvars.sh
+---------------
+
+  The HTML documentation expects to have a copy of the auto-generated
+  configuration variabled documentation Documentation/NuttXConfigVariables.html.
+  The script mkconfigvars.sh is a simple script that can be used to
+  re-generated that file as needed.
+
+  $ tools/mkconfigvars.sh -h
+  tools/mkconfigvars.sh is a tool for generation of configuration variable documentation
+
+  USAGE: tools/mkconfigvars.sh [-d|h] [-v <major.minor>]
+
+  Where:
+    -v <major.minor>
+       The NuttX version number expressed as a major and minor number separated
+       by a period
+    -d
+       Enable script debug
+    -h
+       show this help message and exit
 
 mkexport.sh and Makefile.export
 -------------------------------
@@ -383,7 +427,7 @@ incdir.bat
 ---------
 
   Different compilers have different conventions for specifying lists
-  of include file paths on the the compiler command line.  This incdir.sh
+  of include file paths on the compiler command line.  This incdir.sh
   bash script allows the build system to create include file paths without
   concern for the particular compiler in use.
 
@@ -445,7 +489,7 @@ kconfig.bat
   only a few options for the Windows user (see the top-level README.txt
   file).
 
-  You can, with some effort, run the the Cygwin kconfig-mconf tool directly
+  You can, with some effort, run the Cygwin kconfig-mconf tool directly
   in the CMD.exe shell.  In this case, you do not have to modify the
   .config file, but there are other complexities:  You need to
   temporarily set the Cgywin directories in the PATH variable and

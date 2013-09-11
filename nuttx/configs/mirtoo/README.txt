@@ -575,7 +575,7 @@ Analog Input
   19  PGED3/VREF+/CVREF+/AN0/C3INC/RPA0/CTED1/PMD7/RA0 AIN PGA117 Vout
   --- ------------------------------------------------ ----------------------------
 
-  The PGA117 driver can be enabled by setting the following the the nsh
+  The PGA117 driver can be enabled by setting the following the nsh
   configuration:
 
     CONFIG_ADC=y         : Enable support for analog input devices
@@ -588,7 +588,7 @@ Analog Input
   To intialize and use the PGA117, you to add logic something like the
   following in your application code:
 
-  #include <nuttx/spi.h>
+  #include <nuttx/spi/spi.h>
   #include <nuttx/analog/pga11x.h>
 
   FAR struct spi_dev_s *spi;
@@ -690,15 +690,15 @@ PIC32MX Configuration Options
     CONFIG_ENDIAN_BIG - define if big endian (default is little
        endian)
 
-    CONFIG_DRAM_SIZE - Describes the installed DRAM (CPU SRAM in this case):
+    CONFIG_RAM_SIZE - Describes the installed DRAM (CPU SRAM in this case):
 
-       CONFIG_DRAM_SIZE=(32*1024) (32Kb)
+       CONFIG_RAM_SIZE=(32*1024) (32Kb)
 
        There is an additional 32Kb of SRAM in AHB SRAM banks 0 and 1.
 
-    CONFIG_DRAM_START - The start address of installed DRAM
+    CONFIG_RAM_START - The start address of installed DRAM
 
-       CONFIG_DRAM_START=0xa0000000
+       CONFIG_RAM_START=0xa0000000
 
     CONFIG_ARCH_IRQPRIO - The PIC32MXx supports interrupt prioritization
 

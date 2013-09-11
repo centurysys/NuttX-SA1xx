@@ -563,7 +563,7 @@
 	  types.
 
 0.3.19 2008-11-26 Gregory Nutt <gnutt@nuttx.org>
-	* Add poll() and select() APIs (in the initial check-in, these work only with character devices) 
+	* Add poll() and select() APIs (in the initial check-in, these work only with character devices)
 	* Add poll() methods to /dev/null, /dev/zero, pipes, fifos, and serial drivers.
 	* Add examples/poll for testing poll() and select()
 	* Fix hostile behavior of getc, fgetc, getchar, etc.: the serial driver was waiting for a
@@ -612,8 +612,8 @@
 
 0.4.2 2009-02-28 Gregory Nutt <gnutt@nuttx.org>
 
-	* M16C: Add support for the Renesas M16C MCU and the SKP16C26 StarterKit. However, 
-	  the target cannot be built because the GNU m16c-elf-ld link fails with 
+	* M16C: Add support for the Renesas M16C MCU and the SKP16C26 StarterKit. However,
+	  the target cannot be built because the GNU m16c-elf-ld link fails with
 	  the following message:
 
 		m32c-elf-ld: BFD (GNU Binutils) 2.19 assertion fail /home/Owner/projects/nuttx/buildroot/toolchain_build_m32c/binutils-2.19/bfd/elf32-m32c.c:482
@@ -711,7 +711,7 @@
 	  -R .note.gnu.build-id -R .comment"  This has been fixed in arch/arm/src/Makefile,
 	  but other architectures may have the same problem.  Thanks to Dave Marples
 	  for verifying this.
-	* configs/eagle100/ostest: Added support for the MicroMint Eagle100 board. 
+	* configs/eagle100/ostest: Added support for the MicroMint Eagle100 board.
 	  This board has a Luminary LM3S6918 Cortex-M3. Added a configuration to build
 	  examples/ostest.
 	* arch/arm/src/lpc214x: Add configuration option to enable fast GPIO (vs.
@@ -1045,7 +1045,7 @@
 	* configs/sam3u-3k/ostest: Completed verification of the basic NuttX
 	  OS test for the SAM3U.
 	* arch/arm/src/common/up_createstack: stack was always been cleared
-	  when it was allocated.  This is a good feature for monitoring the 
+	  when it was allocated.  This is a good feature for monitoring the
 	  stack during debug, but really hurts thread start-up performance.
 	  Clearing is now done if CONFIG_DEBUG=y only.  Changes was only made
 	  for arm, but really should be made for all architectures.
@@ -1186,7 +1186,7 @@
 	* examples/nsh/nsh_telnetd.c: Fix compilation errors that happen
 	  when both DHCPC and TELNETD are enabled in the Nuttshell.
 	* graphics/nxglib/fb/nxglib_moverectangle.c: Fix a logic error
-	  that caused an uninitialized variable warning.  I still don't 
+	  that caused an uninitialized variable warning.  I still don't
 	  have a test to prove that the changes are correct.
 	* configs/olimex-lpc2378: Add support for the CodeSourcery toolchain
 	  under Linux (contributed by Alan Carvalho de Assis).
@@ -1632,7 +1632,7 @@
 	  from sched/ to lib/pthread where they more appropriately belong.
 	* sched/ and lib/semaphore/:  Move some semaphore-related interfaces
 	  from sched/ to lib/pthread where they more appropriately belong.
-	* syscall/: The beginnings of an optional syscall kernal interface.
+	* syscall/: The beginnings of an optional syscall Kernel interface.
 	* tools/mksyscall.c:  Add a tool that will auto-generate syscall proxies
 	  and stubs from a comma-separated-value (CSV) data file.
 	* arch/arm/src/cortexm3/mpu.h: Add a header file describing the Cortex-M3
@@ -1669,14 +1669,14 @@
 	* arch/arm/src/lpc17xx/lpc17_gpioint.c: Correct errors in logic that maps
 	  and IRQ number into a register bit number.
 	* Makefile: Fix an error introduced in the top-level Makefile in NuttX-6.1.
-	  This error only shows up if you have a /tftpboot directory.  Then the 
+	  This error only shows up if you have a /tftpboot directory.  Then the
 	  make will fail with an obscure error about not being able to stat pass2.
 	* configs/lpcxpresso-lpc1768/nsh: Add an NSH configuration for the
 	  LPCXpresso board.
 	* configs/*/ld.script: Removed 'sh_link not set for section .ARM.edix' for
 	  a few of the builds.  In you have this warning, it can be removed with the
 	  following change to the ld.script file:
-	  
+	
 		+ __exidx_start = ABSOLUTE(.);
 		.ARM.exidx : {
 		-     __exidx_start = ABSOLUTE(.);
@@ -1802,7 +1802,7 @@
 	  already disconnected and the buffered data is stranded.  Now, recvfrom
 	  will continue to return success after the socket is disconnected until
 	  the readahead buffer is drained.
-	* olimex-lp1766stk/ftpc/defconfig: Many configurations have the MTU 
+	* olimex-lp1766stk/ftpc/defconfig: Many configurations have the MTU
 	  (CONFIG_NET_BUFSIZE) set to very small numbers, less then the minimum
 	  MTU size that must be supported -- 576. This can cause problems in
 	  some networks:  CONFIG_NET_BUFSIZE should be set to at least 576 in
@@ -1915,7 +1915,7 @@
 	  new file; Implement VFAT long file name support.
 	* fs/fat/fat_fat32dirent.c:  The configuration CONFIG_FAT_LCNAMES has
 	  been around for some time but never tested until now.  This setting
-	  will mimic the NT 8.3 file name behavior:  File names or extensions 
+	  will mimic the NT 8.3 file name behavior:  File names or extensions
 	  may be all upper or all lower case (but not mixed).  If
 	  CONFIG_FAT_LCNAMES is not selected, all filenames are strictly upper
 	  case.
@@ -1943,7 +1943,7 @@
 	  program.  The bdf-converter program be used to convert fonts in Bitmap
 	  Distribution Format (BDF) into fonts that can be used in the NX graphics
 	  system.
-	* include/nuttx/nx:  Move all NX header files from include/nuttx to 
+	* include/nuttx/nx:  Move all NX header files from include/nuttx to
 	  include/nuttx/nx.
 	* drivers/usbdev/usbdev_usbstorage.c and arch/arm/src/stm32/stm32_usbdev.c:
 	  Correct a memory leak when the USB mass storage driver is connected and
@@ -2051,7 +2051,7 @@
 	* arch/*/src/Makefile:  Use of -print-libgcc-file-name to get path to
 	  libgcc.a may select the wrong libgcc.a if a multilib toolchain (like
 	  CodeSourcery) is used. This can be a serious problem and can cause
-	  crashes on Cortex-M3 if the ARM libgcc is used, for example.  The fix 
+	  crashes on Cortex-M3 if the ARM libgcc is used, for example.  The fix
 	  is to include ARCHCPUFLAGS on the gcc command line when asking it to
 	  -print-libgcc-file-name.
 	* lib/time/lib_gmtimer.c:  Correct several calculations that could lead
@@ -2280,7 +2280,7 @@
 	  the particular condition that revealed the bug occurred.  My impression is
 	  that this latter bugfix also fixes some STM32 USB performance problems.
 	* configs/hymini-stm32v: A configuration for the HY-Mini STM32v board contributed
-	  by Laurent Latil.  These changes also include support for the STM32F103VCT6. 
+	  by Laurent Latil.  These changes also include support for the STM32F103VCT6.
 	* arch/configs/stm3240g-eval/src/up_pwm.c:  Add hooks needed to use the new
 	  apps/examples/pwm test of the STM32 PWM  driver.
 	* drivers/mtd/mp25x.c:  Add ability to use different SPI modes and different
@@ -2394,7 +2394,7 @@
 	  common upper half battery driver.
 	* drivers/power/max1704x.c:  Add a driver for MAX17040x battery "fuel gauge"
 	* arch/arm/src/stm32/stm32_i2c.c: Add support for I2C3
-	* drivers/usbdev/: Lots of name changes: cdc_serial->cdcacm, usbstrg->usbmsc, 
+	* drivers/usbdev/: Lots of name changes: cdc_serial->cdcacm, usbstrg->usbmsc,
 	  usbser->pl2303
 	* drivers/usbdev/composite: Fleshed out support for a composite USB device.
 	* drivers/stm3210e-eval/composite and drivers/stm3210e-eval/src/up_composite.c:
@@ -2576,7 +2576,7 @@
 	* arch/arm/src/stm32/stm32f*0xx_rcc.c:  In order to use CAN2, both CAN1 and
 	  CAN2 clocking must be enabled.
 	* arch/mips/src/pic32mx/picm32mx-usbdev.c:  Several stall-related fixes so that
-	  the USB device driver can used the the mass storage class (which does a LOT
+	  the USB device driver can used the mass storage class (which does a LOT
 	  of stalling as part of its normal protocol).  The PIC32 USB Mass Storage
 	  device is, however, still non-functional when debug is OFF.
 	* include/nuttx/fs: Move all file-system related files from include/nuttx to
@@ -2704,7 +2704,7 @@
 	  platform did not make into all of the Make.defs files.
 	* graphics/nxmu/nx_move.c:  Wrong opcode was being used in the server message;
 	  Also there was an error in the offset calculation.
-	* graphics/nxglib/fb/nxglib_moverectangle.c:  Offset argument is really a 
+	* graphics/nxglib/fb/nxglib_moverectangle.c:  Offset argument is really a
 	  position, not an offset.
 	* graphics/nxtk/nxtk_drawframe.c:  Framed windows are now drawn in three
 	  colors (instead of just two).
@@ -2938,7 +2938,7 @@
 	  is slowly evolving in these directories.
 	* configs/stm3210e-eval/pm:  Add a new configuration for testing STM32 power
 	  management.
-	* configs/stm3210e-eval/scripts:  Moved all of the duplicate ST3210-EVAL 
+	* configs/stm3210e-eval/scripts:  Moved all of the duplicate ST3210-EVAL
 	  linker scripts into one set of linker scripts at this location.
 	* configs/stm3210e-eval/src/up_buttons.c, up_lcd.c, and up_pm.c:  New logic
 	  for testing STM32 power management.
@@ -3139,7 +3139,7 @@
 	  customize the behavior of NSH.
 	* arch/arm/src/stm32/chip/stm32f1*_pinmap.h: STM32 CAN TX/RX pins reversed;
 	  inconsistent conditional compilation.  Reported by Max Holtzberg.
-	* arch/arm/*/stm32:  Add support for STM32 F107 "Connectivity Line" 
+	* arch/arm/*/stm32:  Add support for STM32 F107 "Connectivity Line"
 	  Ethernet (contributed by Max Holtzberg).
 	* configs/olimex-stm32-p107:  Add board support for the Olimiex STM32-P107
 	   board (contributed by Max Holtzberg).
@@ -3288,7 +3288,7 @@
 	* arch/*/src/Makefile:  Remove some old logic that was kicked off
 	  when CONFIG_BOOT_RUNFROMFLASH=y.  The old logic used to use
 	  objcopy to move sections.  Newer logic changes the load position
-	  of sections in the the linker script.  As far as I can tell, there
+	  of sections in the linker script.  As far as I can tell, there
 	  is nothing in the source tree now that depends on the old way of
 	  doing things (if I am wrong, they will need a change to the linker
 	  script).
@@ -3317,7 +3317,7 @@
 	  to allocate the block driver I/O buffers.
 	* CONFIG_NET_ENC28J60 renamed CONFIG_ENC28J60 to be consistent
 	  in all places.
-	* drivers/enc28j60.c, include/nuttx/net/enc28j60.h, and 
+	* drivers/enc28j60.c, include/nuttx/net/enc28j60.h, and
 	  olimex-strp711/src/up_enc28j60.c:  No longer passes IRQ number
 	  as a parameter.  Instead now passes a call table to manage
 	  ENC28J60 GPIO interrupts.  That is because GPIO interrupts are
@@ -3406,7 +3406,7 @@
 	  touchscreen driver).
 	* configs/shenzhou/src/up_touchscreen.c:  Add ADS7843E touchscreen
 	  support for the Shenzhou board.  The initial check-in is untested
-	  and basically a clone of the the touchscreen support for the SAM-3U.
+	  and basically a clone of the touchscreen support for the SAM-3U.
 	* tools/cfgparser.c: There are some NxWidget configuration
 	  settings that must be de-quoted.
 	* arch/arm/src/stm32/Kconfig: There is no SPI4.  Some platforms
@@ -3567,7 +3567,7 @@
 	* net/netdev_ioctl.c:  Add interface state flags and ioctl calls
 	  to bring network interfaces up and down (from Darcy Gong).
 	* config/stm32f4discovery: Enable C++ exceptions.  Now the entire
-	  apps/examples/cxxtest works -- meaning the the uClibc++ is
+	  apps/examples/cxxtest works -- meaning that the uClibc++ is
 	  complete and verified for the STM32 platform.
 
 6.24 2012-12-20 Gregory Nutt <gnutt@nuttx.org>
@@ -3630,13 +3630,13 @@
 	  just needs re-implemented.
 	* configs/mirtoo: Update Mirtoo pin definitions for Release 2.  Provided
 	  by Konstantin Dimitrov.
-	* Fixed an uninitialized variable in the file system that can cause 
+	* Fixed an uninitialized variable in the file system that can cause
 	  assertions if DEBUG on (contributed by Lorenz Meier).
 	* Config.mk:  Defined DELIM to be either / or \, depending upon
 	  CONFIG_WINDOWS_NATIVE.  This will allow me to eliminate a lot of
 	  conditional logic elsewhere.
 	* nuttx/graphics: One a mouse button is pressed, continue to report all
-	  mouse button events to the first window that received the the initial
+	  mouse button events to the first window that received the initial
 	  button down event, even if the mouse attempts to drag outside the
 	  window. From Petteri Aimonen.
 	* nuttx/graphics/nxmu/nx_block.c:  One more fix to the NX block message
@@ -3753,7 +3753,7 @@
 	  Also from Petteri Aimonen.
 	* include/stdbool.h: Can now be disabled for C++ files if CONFIG_C99_BOOL8 is
 	  defined.  CONFIG_C99_BOOL8 indicates (1) that the sizeof(_Bool) is one in both
-	  C and C++, and (2) the the C compiler is C99 and supports the _Bool intrinsic
+	  C and C++, and (2) the C compiler is C99 and supports the _Bool intrinsic
 	  type. Requested by Freddie Chopin.
 	* include/stdlib/lib_rand.c:  Various additional changes so that the integer
 	  value zero can be returned.  Requested by Freddie Chopin.
@@ -3819,8 +3819,8 @@
 	  there is a issue of ARM9 systems with low vectors and large memories
 	  that will have to be addressed in the future.
 	* libc/misc/lib_kbdencode.c and lib_kbddecode.c:  Add logic to marshal
-	  and serialized "out-of-band" keyboard commands intermixed with normal
-	  ASCII data (not yet hooked into anything).
+	  and serialize speical keyboard commands intermixed with normal ASCII
+	  data (not yet hooked into anything).
 	* drivers/usbhost/usbhost_hidkbd.c:  If CONFIG_HIDKBD_ENCODED is
 	  defined, this driver will now use libc/misc/lib_kbdencode.c to
 	  encode special function keys.
@@ -3848,7 +3848,7 @@
 	* configs/olimex-lpc1766stk/wlan:  Remove non-functional
 	  configuration.
 	* configs/stm32f4discovery/src and nuttx/drivers/lcd/ug-2864hsweg01.c:
-	  Updates and correctinos for the UG-2864HSWEG01 from Darcy Gong.
+	  Updates and corrections for the UG-2864HSWEG01 from Darcy Gong.
 	* configs/lm326965-ek:  All configurations converted to use the
 	  kconfig-frontends configuration tool.
 	* configs/Kconfig: NSH_MMCSDSPIPORTNO should depend on MMCSD_SPI,
@@ -4088,7 +4088,7 @@
 	  switched to SPI mode for first time.  Having a pull-up resistor on
 	  MISO may avoid this problem, but this patch makes it work also
 	  without pull-up.  From Petteri Aimonen.
-	* fs/fat/fs_fat32.c: Fix a compilation error when FAT_DMAMEMORY=y. 
+	* fs/fat/fs_fat32.c: Fix a compilation error when FAT_DMAMEMORY=y.
 	  From Petteri Aimonen.
 	* arch/arm/src/stm32/chip/stm32_spi.h: STM32F4 max SPI clock freq is
 	  37.5 MHz.  Patch from Petteri Aimonen.
@@ -4331,7 +4331,7 @@
 	* libc/stdlib/lib_itoa.c:  Implementation of itoa() contributed by
 	  Ryan Sundberg. (2013-03-14).
 
-6.27 2013-xx-xx Gregory Nutt <gnutt@nuttx.org>
+6.27 2013-04-28 Gregory Nutt <gnutt@nuttx.org>
 
 	* arch/arm/src/armv7-m/up_mpu.c:  Correct MPU sub-region settings for
 	  unaligned regions (2013-03-15).
@@ -4339,7 +4339,7 @@
 	  ARMv7-M version (2013-03-15).
 	* configs/lm4f120-launchpad/tools:  Add scripts and instructions to
 	  simplify use of OpenOCD with ICDI (from JP Carballo, 2013-03-15).
-	* tools/mkconfig.c:  Logic that attempts to suppressed buffered I/O
+	* tools/mkconfig.c:  Logic that attempts to suppress buffered I/O
 	  within the kernel is wrong.  sizeof(struct file_struct) must be
 	  the same in both kernel- and user-spaces (2013-03-16).
 	* arch/arm/src/common/up_pthread_start.c, libc/pthread/pthread_startup.c,
@@ -4377,18 +4377,18 @@
       (2013-03-18).
 	* arch/arm/src/armv7-m/up_exception.S, sam3u/sam3u_vectors.S, and
 	  lpc17xx/lpc17_vectors.S: In exception handling with CONFIG_NUTTX_KERNEL,
-	  need to explicity set and cleare the privilege bit in the CONTROL
+	  need to explicity set and clear the privilege bit in the CONTROL
 	  register on return.  I assumed this would be handled automatically
 	  by the EXC_RETURN.  Silly me (2013-03-18).
 	* arch/arm/src/lpc17_adc.c:  Add a work-around for an ADC errata.  From
-	  Chris Taglia (2013-93-19).
+	  Chris Taglia (2013-3-19).
 	* arch/arm/src/armv7-m/up_hardfault.c:  If the PRIMASK is used to disable
 	  interrupts, then additional logic is required in the hard fault handler
-	  (2013-93-19).
+	  (2013-3-19).
 	* libc/ and mm/: Directories where the same sources files are used to
 	  build different objects in the first and second pass kernel builds need
 	  to keep those objects in separate directories so that they are not
-	  constantly rebuilt (2013-93-19).
+	  constantly rebuilt (2013-3-19).
 	* fs/fat:  Create an error in FAT file creation.  The FAT logic was
 	  not making a distinction between directory non-existence and file
 	  non-existence so when it you try to create a file in a non-existent
@@ -4421,10 +4421,10 @@
 	* configs/stme32f4discovery/kernel and scripts:  Add support for
 	  the kernel mode build on the STM32F4Discovery  (2013-03-21).
 	* drivers/st7567.c/h and include/nuttx/lcd/st7567.h:  Driver for
-	  the the ST7567 LCD Display Module from Univision Technology Inc.
+	  the ST7567 LCD Display Module from Univision Technology Inc.
 	  contributed by Manikandan.S (2013-03-22).
 	* configs/zkit-arm-1769:  Now supports the ST7567 LCD display
-	  module.  Added an nxhello configurtion for testing (Manikandan.S,
+	  module.  Added an nxhello configuration for testing (Manikandan.S,
 	  2013-03-22).
 	* configs/stm32f4discovery/kostest:  Add a kernel mode version
 	  of the OS test for the STM32F4Discovery board (2013-03-22).
@@ -4435,7 +4435,7 @@
 	  and simpler.  However, the C code intermixed with SVC calls was
 	  not properly preserving registers.  The more complex, assembly
 	  language version does not suffer from these issues.  I believe
-	  the the kernel build can not be called "feature complete"
+	  the kernel build can now be called "feature complete"
 	  (2013-03-23).
 	* binfmt/binfmt_execmodule.c:  Here is a place where I forget
 	  to update the call to sched_releasetcb() to pass the thread
@@ -4457,7 +4457,7 @@
 	  konfig-frontends tool (2013-03-25).
 	* configs/twr-k60n512:  Converted configurations to use the
 	  konfig-frontends tool (2013-03-25).
-	* arch/arm/src/lpc17xx/lpc17_lcd.c:  Add an LCD framebuffer drier
+	* arch/arm/src/lpc17xx/lpc17_lcd.c:  Add an LCD framebuffer driver
 	  for the LPC177x/8x family (2103-3-26).
 	* arch/arm/src/lpc17xx/lpc17_emc.c and
 	  configs/open1788/src/lpc17_sdraminitialize.c:  Began testing the
@@ -4491,7 +4491,7 @@
 	  lpcxpresso-lpc1768:  The initialization function for both the LPC17xx
 	  SPI and SSP blocks was called up_spinitialize() which is the common API
 	  definition of include/nuttx/spi.h.  But this raises a problem when the
-	  MCU has multiple blocks for differ SPI implementatins as does the
+	  MCU has multiple blocks for differ SPI implementations as does the
 	  LPC17xx (and also as does other architectures like STM32 that have
 	  USARTs that can serve as SPI interfaces as well).  These were renamed
 	  to lpc17_spiinitialize() and lpc17_sspinitialize() in this case.
@@ -4509,7 +4509,7 @@
 	  support for the touschscreen on the WaveShare LCD (2013-4-01).
 	* configs/several:  There were already some functions called
 	  lpc17_sspinitialize().  So they had to be renamed (2013-4-01).
-	* arch/arm/src/lpc17xx/lpc17_ssp.c:  Adapted to work the the LPC178x
+	* arch/arm/src/lpc17xx/lpc17_ssp.c:  Adapted to work with the LPC178x
 	  family (2013-4-01).
 	* arch/arm/src/lpc17xx/lpc17_gpio.c/.h:  Separate LPC176x and LPC178x
 	  logic into separate files.  The logic is diverging to much to
@@ -4530,3 +4530,1004 @@
 	  lpc17_setintedge().  This logic must be atomic because it can be
 	  re-entered before it completes enabled interrupts, sometimes
 	  leaving the interrupts in a strange state (2013-4-7).
+	* arch/arm/src/lpc17_lcd.c:  Rommel Marcelo got the LPC1788
+	  framebuffer-based LCD working.  Very nice! (2013-4-08).
+	* arch/arm/src/lm/lm_clockconfig.c and configs/lm4f120-launchpad:
+	  Fix handling of the RCC SYSDIV2 field whent the PLL output is
+	  400MHz.  Don't forget to set the USERCC2 bit in the register or
+	  all is for naught (2013-4-09).
+	* configs/zkit-arm-1769/src/up_lcd.c, up_ssp.c, and up_spi.c:
+	  Use SSP0 to LCD and SPI to SD-Card on the Zkit-arm-1769 board.
+	  From Manikandan. S (2013-4-10)
+	* configs/olimex-lpc1766stk/usbserial:  Converted to use the
+	  kconfig-config frontends tools (2013-4-12).
+	* drivers/usbdev/pl2303.c: Fix some compilation errors that
+	  crept in when fixes to the CDC/ACM driver where blindly
+	  incorporated in the PL2303 driver (2013-4-12).
+	* configs/stm3210e-eval/usbserial:  Converted to use the
+	  kconfig-config frontends tools (2013-4-12).
+	* configs/nucleus2g/usbserial:  Converted to use the
+	  kconfig-config frontends tools (2013-4-12).
+	* arch/arm/src/kl and arch/arm/include/kl:  Add support for the
+	  Kinetis L family of Cortex-M0+ MCUs.  Contributed by Alan
+	  Carvalho de Assis.  NOTE:  This is still very much a work in
+	  progress as of this initial commit (2013-04-16).
+	* configs/freedom-kl25z:  Support for the Freedom KL25Z board
+	  contributed by Alan Carvalho de Assis.  NOTE:  This is still
+	  very much a work inprogress as of this initial commit
+	  (2013-04-16).
+	* arm/arm/src/armv6-m and arch/arm/include/armv6-m:  Ooops.  Fix
+	  a major screw-up:  The Cortex-M0 has no BASEPRI register but
+	  the current logic was using it to manage interrupts.  Switch
+	  to using the PRIMASK.  This means that hardfaults will (again)
+	  occur when SVC instructions are executed (2013-4-16).
+	* configs/stm3240g-eval/ostest:  Converted to use the kconfig-frontends
+	  tools (2013-4-17).
+	* sched/task_exithook.c:  Don't flush the streams until the
+	  final thread of the group exits.  Flushing may cause the
+	  thread to get suspended at a bad time and other threads in the
+	  group may run while the exiting thread is in an unhealthy state.
+	  This can cause crashes under certain circumstance.  This is a
+	  critical bugfix (2013-4-18).
+	* drivers/mtd/ramtron.c:  Extended to support the FM25V01 device.
+	  Contributed by Lorenz Meier (2013-4-18).
+	* sched/task_deletecurrent.c and task_exit.c, arch/*/up_exit.c:
+	  Renamed task_deletecurrent() and task_exit() since it really
+	  handles the architecture independent part of _exit().  _exit()
+	  is used internally, but if it is called from the user, it should
+	  unregister any atexit() or on_exit() functions (2013-4-18).
+	* tools/kconfig2html.c: This is the beginning of a tool to
+	  replace the hand-generated documentation of the NuttX configuration
+	  variables with auto-generated documentation.  The initial checkin
+	  is an incomplete, poorly structured prototype that I hope to
+	  evolve into a useful tool (2014-4-20).
+	* libc/string/lib_strchr.c:  strchr(str, '\0') should return a
+	  pointer to the end of the string, not NULL.  From Petteri
+	  Aimonen (2014-4-22).
+	* fs/fat/fs_writefat.c: mkfatfs was writing the boot code to the
+	  wrong location.  From Petteri Aimonen (2014-4-22).
+	* Documentation:  The NuttX documentation now expects to find an
+	  auto-generated version of the configuration variable documentation
+	  at Documentation/NuttXConfigVariables.html (2014-4-22).
+	* arch/arm/src/lpc17xx/lpc17_adc.c:  Only one ADC pin was configured.
+	  Need to configure all that are in the ADC0 set.  From MKannan
+	  (2014-4-23).
+	* configs/zkit-arm-1769/src:  ADC and SPI/USB MSC updates from
+	  MKannan (2014-4-23).
+	* arm/src/armv7-m/ram_vectors.h and arm/src/armv7-m/up_ramvec_initialize.c:
+	  Fixes to RAM vector logic from Paul Y. Zhang (2014-4-23)
+	* tools/kconfig2html.c:  Improve behavior of Expand/Collapse
+	  Table of Contents; Handle errors in parsing of strings and in
+	  some uninitialized variables.  Add an option to use jQuery.
+	* tools/mkconfigvar.sh: Fix make target (2014-4-23).
+	* sched/exit.c, pthread_exit.c, task_exit.c, task_delete,c and
+	  task_exithook.c:  For pthread_exit(), move some logic to an early
+	  point in the exit sequence where the task may need to block.  Add
+	  conditional logic in the lower end of the eixt logic kicked off by
+	  _exit() to prohibit blocking after the task has been torn down and is
+	  no longer cabable of blocking (2014-4-23).
+	* arch/arm/src/common/up_initialize.c: Add missing registration
+	  of /dev/zero.  Registration of /dev/null should depend upon
+	  conditional compilation.  From Ken Pettit (2014-4-24).
+	* arch/*/src/common/up_initialize.c:  Same change required to other
+	  architectures (2014-4-24).
+	* arch/arm/src/kl/kl_clockconfig.c and configs/freedom-kl25z/include/board.h:
+	  Modify out PLL configuration so that it uses the values in
+	  board.h;  Fix PLL settings in board.h so that the correct core
+	  and bus clock frequencies are generated. (2014-4-24).
+	* arm/src/kl/chip/kl_memorymap.h, kl_sim.h, andkl_uart.h:  Correct some
+	  register definitions (2014-4-25).
+	* arch/arm/src/kl/Kconfig, kl_lowputc.c, kl_serial.c, and kl_config.h:
+	  No UART3-5 (2014-4-25).
+	* arch/arm/src/kl/kl_serial.c:  Various fixes to various files in the
+	  KL architecture directory as need to get the interrupt-driven
+	  serial driver to work.  The Freedom KL25Z NSH configuration now
+	  works (2014-4-25).
+	* include/nuttx/assert.h, arch/*/src/*/up_assert.c, and other file:
+	  Remove up_assert_code().  While asserting with an encoded value
+	  could be a good feature, the codes have not be well utilized nor
+	  documented.  Give that situation it is better to remove the API
+	  and reduce the footprint a little (2014-4-25).
+	* drivers/serial/Kconfig and arch/*/src/*/*_serial.c:  Add
+	  compilation so that the useless TIOCSERGSTRUCT ioctl logic
+	  is not build unless CONFIG_DEBUG and CONFIG_SERIAL_TIOCSERGSTRUCT
+	  are defined.
+	* sched/task_delete.c and task_terminate.c:  Most task_terminate()
+	  out of task_delete.c into its own C file.  This should prevent
+	  dragging task_delete() into the link when it is never called.
+
+6.28 2013-06-14 Gregory Nutt <gnutt@nuttx.org>
+
+	* arch/arm/src/lpc17xx/lpc17_i2c.c:  Interrupts were not being
+	  re-enabled in the I2C intialization function (2013-4-30).
+	* net/sendto.c:  Added skeleton of implementation of send timeouts
+	  for UDP.  However, this functionality really does not make
+	  sense, so it is disabled in the code (2013-4-30).
+	* drivers/mtd/mtd_partition.c:  Support capability to clone one
+	  MTD driver into several, MTD partition drivers, each of which
+	  can manage a sub-region of the FLASH (2013-4-30).
+	* configs/sim/nxffs:  Converted to use the kconfig-frontends
+	  tools (20130-4-30).
+	* configs/sim/mtdpart:  A new configuration to test MTD
+	  partitions (2013-4-30).
+	* configs/sim/mkroe-stm32f4:  Support for the MikroElektronika
+	  Mikromedia for STM32F4 development board (from Ken Pettit, 2013-4-30).
+	* fs/smartfs:  Add Ken Pettit SMART FS (2013-4-30).
+	* include/nuttx/mtd.h and most MTD drivers:  Add support for
+	  (optional) method to perform byte oriented writes if so configured
+	  (2013-5-1).
+	* arch/arm/src/kl/chip/kl25z128_pinmux.h:  Corrections fo the
+	  pin multiplexing definitions from Alan Carvalho de Assis
+	  (2013-5-2).
+	* drivers/mtd/mtd_partition.c:  Fix a few bugs and add support for the
+	  (option) byte write method (2013-5-3).
+	* arch/arm/src/kl:  Repartitioning of definitions in header files
+	  from Alan Carvalho de Assis (2013-5-3).
+	* drivers/mtd/smart.c, fs/smart, and other files:  SMART file system
+	  now makes use of the MTD byte write capabilities when present (from
+	  Ken Pettit, 2013-5-3).
+	* drivers/mtd/m25px.c:  Some rearchitecting to use the byte write
+	  capability (when possible) and to use 4KB sectors for the erase block
+	  size when the part supports it (Ken Pettit, 2013-5-3).
+	* configs/pirelli_dpl10: Adds a configuration for the pirelli phone
+	  (from Craig Comstock via Alan Alan Carvalho de Assis, 2013-5-3).
+	* arch/arm/src/calypso:  Fix some compilation warnings (2013-5-5).
+	* configs/pirelli_dpl10/nsh_highram:  Converted to use the
+	  kconfig-frontends tools (2013-5-5).
+	* drivers/lcd/mio283qt2.c:  LCD was not being selected in setpower
+	  method (also not being deselected in hwinitialize function)
+	  (2013-5-6).
+	* arch/arm/src/kl/kl_gpio.c and .h, configs/freedom-kl25z/src/freedom-kl25z.h,
+	  and configs/freedom-kl25z/src/kl_led.c:  Fixes LEDs on the Freedom KL25Z
+	  board (2013-5-6).
+	* arch/arm/src/kinetis/kinetis_pin.c and arch/arm/src/kinetis/kinetis_internal.h:
+	  The Kinetis GPIO logic had some of the same issues as did the
+	  Kinetis L (2013-5-6).
+	* arch/arm/src/stm32/stm32_idle.c: Add an option to conditionally disable
+	  the "wfi" sleep mode.  This is needed with certain JTAG debuggers to
+	  to prevent the debug session from begin disconnected.  From Ken Pettit
+	  (2013-5-7).
+	* configs/mikroe-stm32f4/fulldemo/, nx/, nxlines/, nxtext/:  Add more
+	  configurations for the Mikroelektronika Multimedia STM32-M4 board.
+	  From Ken Pettit (2013-5-7).
+	* configs/mikroe-stm32f4/src/up_mio283qt2.c and other files:  Integrate the
+	  MIO283QT2 display on the Mikroelektronika Multimedia STM32-M4 board.
+	  From Ken Pettit (2013-5-7).
+	* arch/arm/src/lpc17xx/lpc17_i2c.c:  Fix for lpc17xx i2c single byte read
+	  timeout error problem from M.Kannan (2013-5-8).
+	* arch/arm/src/stm32/stm32_adc.c:  Typo in F2/F4 specific logic:  ACD_
+	  instead of ADC_.  From Ken Pettit (2014-5-8).
+	* configs/olimex-lpc1766stk/tools:  Tweaks to support OpenOCD-0.70
+	  (2013-5-10).
+	* configs/mikroe-stm32f4:  Changes to get the Mikroelektronika MultiMedia
+	  STM32 F4 touchsceen working.  From Ken Pettit (2013-5-11).
+	* configs/*/nxwm:  Default priorities for NxWidget and NxWM threads
+	  should be 100, not 50, to be consistent with other default priorities.
+	* configs/hymini-stm32v/buttons, nsh, and nsh2:  Configurations converted
+	  to use the kconfig-frontends tools (Laurent Latil, 2013-5-14)
+	* configs/hymini-stm32v/src:  Converted to use the common SSD1289 driver
+	  (Laurent Latil, 2013-5-14)
+	* configs/hymini-stm32v/ostest and usbnsh:  Add OS test and USB/NSH
+	  configurations (Laurent Latil, 2013-5-14).
+	* configs/hymini-stm32v/src/up_nsh.c:  Add support for the card detect
+	  (CD) interrupt (Laurent Latil, 2013-5-14).
+	* configs/hymini-stm32v/src/nx and nxlines:  Removed these configurations
+	  (Laurent Latil, 2013-5-14).
+	* arch/arm/src/stm32/chip/stm32f10xx_dma.h:  Fix some bad DMA register
+	  definitions.  From Laurent Latil (2013-5-15).
+	* configs/hymini-stm32v:  Enable SDIO in nsh2 configuration; remove
+	  warning from src/up_ssd1289.c.  From Laurent Latil (2013-5-15).
+	* configs/hymini-stm32v/src/up_r61505u.c:   Support for the R65105-
+	  based LCD that comes with some HY-Mini STM32v board.  From Christian
+	  Faure (2013-5-16).
+	* syscall/syscall_lookup.h:  Missing underscore character in SYS_onexit.
+	  Reported by Ken Pettit (2013-5-17).
+	* nuttx/syscall/syscall.csv:  Type of first parameter of on_exit() is
+	  wrong. Reported by Ken Pettit (2013-5-17).
+	* configs/mikroe-stm32f4/kernel/, kostest/ and scripts/:  Add kernel build
+	  support and kernel mode OS test example for the MikroElektronkia
+	  MultiMedia STM32 M4 board.  From Ken Pettit (2013-5-17).
+	* arch/arm/include/stm32/chip.h and arch/arm/src/stme32/chip/stm32l15xxx_pinmap.h:
+	  Beginning of support for the STM32L15X family (2013-5-18).
+	* arch/arm/include/stm32/stm32l15xxx_irq.h and arch/arm/src/stm32/chip/stm32l15xxx_vectors.h:
+	  Support for STM32L15X interrupt vectors (2013-5-18).
+	* arch/arm/src/stm32/chip/stm32l15xxx_gpio.h and related STM32 GPIO files:
+	  Add GPIO support for the STM32L215X (2013-5-18).
+	* arch/arm/src/stm32/chip/stm32l15xxx_memorymap.h: STM32L215X memory map
+	 (2013-5-18).
+	* arch/arm/src/stm32/chip/stm32_pwr.h, stm32fl15xxx_rcc.h, and stm32l15xxx_syscfg.h:
+	  More updates for the STM32L152 (2013-5-19).
+	* configs/stm32ldiscovey: Configuration for the STM32L-Discovery board.
+	  Still does not build on initial check-in (2013-5-19)
+	* STM32L15X:  Add DMA and UART start.  Correctly initialize the heap
+	  (2013-5-19).
+	* arch/arm/src/stm32/stm32l15xxx_rcc.c chip/stm32_flash.h:  Add RCC PLL
+	  and FLASH configuration logic for the STM32L152X (2013-5-19).
+	* include/nuttx/usb/audio.h:  Typo- and bug-fixes from Ken Pettit
+	  (2013-5-19)
+	* audio/, drivers/audio, include/nuttx/audio.h:  Add a new audio subsystem
+	  and VS1053 driver to NuttX.  Contributed by Ken Pettit (2013-5-19).
+	* configs/miroe-stm32f4/:  Add audio logic to NSH configuration.  From Ken
+	  Petty (2013-5-19).
+	* nuttx/arch/arm/src/lm/chip/lm_flash.h and nuttx/arch/arm/src/lm/lm_flash.c:
+	  Add support for TI/Stellaris internal FLASH MTD driver.  From Max
+	  Holtzberg (2013-5-20).
+	* arm/src/stm32/chip/stm32l15xxx_vectors.h:  After correcting errors in the
+	  vector definition file, the STM32L-Discovery NSH port now seems to be
+	  fully functional.  Also fixed an error that was causing the LEDs to be
+	  controlled incorrectly (2013-5-21).
+	* arch/arm/src/stm32/chip/stm32_lcd.h: Add definitions for STM32L15X
+	  segment LCD (2013-5-21).
+	* configs/lm3s6965-ek/discover: Add an example configuration for UDP
+	  discovery tool on the lm3s6965-ek board.  From Max Holtzberg
+	  (2013-5-21).
+	* audio/, drivers/audio, include/nuttx/audio:  Added a callback interface
+	  to the Audio upperhalf driver for dequeueing, reporting async events,
+	  etc. Also included is some initial work for the VS1053 driver.  From
+	  Ken Pettit (2013-5-21).
+	* include/nuttx/audio/audio.h:  Moved from include/nuttx/ to include/nuttx/audio.
+	  (2013-5-21).
+	* configs/lm3s6965-ek/tcpecho: This configuration builds the simple TCP
+	  echo example based on W.Richard Steven UNIX Programming book to ensure
+	  correct usage of the socket API. Contributed by Max Holtzberg (2013-5-22).
+	* configs/stm32ldiscovery/src/stm32_lcd.c:  Framework for support of the
+	  STM32L-Discovery's segment LCD (2013-5-22).
+	* fs/fs_poll.c:  Poll setup/teardown logic should ignore invalid (i.e.,
+	  negative) file descriptors.  Max Holtzberg (2013-5-23).
+	* net/net_poll.c: When readahead data is available, the network poll
+	  logic should set POLLIN (or POLLRDNORM), not POLLOUT.  Max Holtzberg
+	  (2013-5-23)
+	* fs/fs_poll.c:  Actually, it should also set revents == 0. (2013-5-23).
+	* libc/misc/lib_slcdencode.c and lib_slcddecode.c:  Add logic to marshal
+	  and serialize special SLCD intermixed with normal ASCII data (2013-5-23)
+	* configs/stm32ldiscovery/src/stm32_lcd.c:  STM32L-Discovery's segment LCD
+	  is code complete but completely untested (2013-5-23).
+	* include/nuttx/fs/ioctl.h, include/nuttx/lcd/slcd_codec.h, and
+	  configs/stm32ldiscovery/src/stm32_lcd.c:  Add SLCD ioctl commands to get
+	  SLCD geometry, set bars, and manage contrast (2013-5-23).
+	* configs/stm32ldiscovery/src/stm32_usb.c:  This file and all references
+	  to USB removed for the STM32L-Discovery.  While the chip supports a
+	  USB device, the board does not (2013-5-24).
+	* arch/arm/src/stm32/stm32_lse.c:  Add support for the STM32L CSR register
+	  and for the LSE LCD clock source (2013-5-24).
+	* The STM32L-Discovery segment LCD is now functional and the README file
+	  includes instructions for adding the apps/examples/slcd segment LCD
+	  test as an NSH "built-in" command (2013-5-24).
+	* configs/pcblogic-pic32mx:  Converted all configurations to use the
+	  kconfig-frontends tool (2013-5-25).
+	* configs/pcblogic-pic32mx/src:  Renamed files using pic32mx_ vs up_
+	  prefix.  Enable building of LCD1602 LCD (2013-5-25).
+	* configs/pcblogic-pic32mx/src/pic32mx_lcd1602.c: Now uses SLCD CODEC
+	  (2013-5-25)
+	* configs/stm32ldiscovery/src/stm32_lcd.c: Now supports ioctl to get
+	  cursor position (2013-5-25).
+	* include/nuttx/lcd/slcd_ioctl.h:  Moved ioctls commands and structures
+	  from slcd_codec.h (2013-5-25)
+	* libc/misc/lib_slcdencode.c and lib_slcddecode.c:  Several encoding
+	  and decoding bug fixes (2013-5-26)
+	* configs/sure-pic32mx:  Converted all configurations to use the
+	  kconfig-frontends tools, cleaned up the directory structure and
+	  naming to match some of the more recent configurations, and added
+	  a segment LCD driver for the board.  The initial checkin of the
+	  LCD driver is just a clone of configs/pcblogic-pic32mx/src/pic32mx_lcd1602
+	  and it not yet expected to be functional (2013-5-26).
+	* include/nuttx/lcd/slcd_ioctl.h and all SLCD drivers:  Rename geometry
+	  structure to attributes;  Move MAX contrast to attributes.  Add
+	  attribute and ioctl commands to get and set LCD brightness (2013-5-27).
+	* configs/sure-pic32mx/pic32mx_lcd1602.c:  This driver appears to
+	  fully functional (at least to the extent that it has been tested)
+	  (2013-5-27).
+	* arch/mips/src/pic32mx/pic32mx-usbdev.c:  Fix NULL packet handling in
+	  the PIC32 USB device driver.  Without this fix the CDC/ACM driver
+	  cannot be used reliably with the PIC32 USB.  With this change the
+	  configs/sure-pic32mx/usbnsh configuration works great (2013-5-28).
+	* configs/sure-pic32mx/src/pic32mx_nsh.c:  The NSH configurations will
+	  support the USB monitor applications (2013-5-28).
+	 nuttx/arch/arm/include/stm32/chip.h, src/stm32/Kconfig, src/stm32/chip.h,
+	  and src/stm32/chip/stm32f103c_pinmap.h: STM32F103C4 and F103C8 chip
+	  support from Laurent Latil (2013-5-28)
+	* configs/stm32_tiny: Add support for the STM32 Tiny development board
+	  based on the STM32 F103C8T6 MCU (2013-5-28).
+	* arch/arm/src/stm32/stm32_usbdev.c:  Fix an error in NULL packet
+	  handling:  If the NULL-packet needed flag ever gets set, then
+	  it is not cleared and inifinite NULL packets result.  This only
+	  effects the CDC/ACM class and was the cause of the failure of
+	  configs/stm32f3discovery/usbnsh configureation which works great
+	  after this change (2013-5-29).
+	* drivers/usbdev/cdcacm.c and pl2303.c and include/nuttx/usb/cdcacm.h:
+	  Change the default IN request buffer size from 64 to 96.  This will
+	  avoid requests of exactly MAXPACKET size and, hence, avoid so many
+	  NULL packets.  Also, fix the OUT request buffers size to exactly
+	  the max packet size.  It cannot be any other size (2013-5-29).
+	* .gitignore:  Clean-up of most all .gitignore files:  Make scope of
+	  ignore to be only the current directory; Ignore .dSYM files in
+	  directories where .exe's may be build.  Also, in Makefiles,
+	  clean .dSYM files in directories where .exe may be built (2013-5-30).
+	* drivers/wireless/nrf24101.c/.h and include/nuttx/wireless/nrf24101.h:
+	  Add new driver for the wireless nRF24L01+ transceiver.  From Laurent
+	  Latil (2013-6-1).
+	* drivers/wireless/cc1101:  Move files in the cc1101 up one directory.
+	  From Laurent Latil (2013-6-1).
+	* configs/stm32_tiny: Fix nRF24L01+ driver integration for the STM32
+	  Tiny.  From Laurent Latil (2013-6-01).
+	* configs/sam3u-ek:  All remaining configurations changed to use
+	  the kconfig-frontends tools (2013-6-2).
+	* arch/arm/src/sam3u/chip:  All SAM3U register definition files moved
+	  to this subdirectory.  Naming of registers changed from SAM3U_ to
+	  just SAM_.  This is in preparation for a SAM4L port (2013-6-2).
+	* arch/arm/src/sam3u:  Renamed files to sam_* vs. sam3u_*.
+	  Eliminated sam3u_internal.h; instead uses individual header
+	  files for each SAM interface block (2013-6-2).
+	* arch/arm/src/stm32/stm32f20xxx_rcc.c and stm32f40xxx_rcc.c, and
+	  configs/mikroe-stm32f4/src/up_clockconfig.c.  Correct some bad
+	  conditional compilation (CONFIG_ missing from setting name).  This
+	  affects some STM32 FLASH pre-fetch settings.  From Lorenz Meier
+	  (2013-6-2).
+	* arch/arm/include/sam34 and arch/arm/src/sam34:  The old sam3u/
+	  directories were renamed sam34/ to make room in the namespace for
+	  the SAM4L (2013-6-2).
+	* libc/stdio/lib_dprintd.c and lib_vdprintf.c:  Add dprintf() and
+	  vdprintf() (the latter from Andrew Tridgell, 2013-6-2).
+	* sched/sem_holder.c:  Modify assertion that is reported to cause
+	  false alarm assertions (2013-6-2).
+	* arch/arm/include/sam34/sam4l_irq.h and
+	  arch/arm/src/sam34/chip/sam4l_memorymap.h: Add interrupt and memory
+	  map definitions for the AT91SAM4L (2013-6-3).
+	* arch/arm/src/sam34/chip/sam4l_vectors.h and arm/src/sam34/sam_vectors.S:
+	  Add interrupt vector support for the SAM4L family (2013-6-3).
+	* arch/include/sam34/chip.h:  Add chip definitions for the SAM4L
+	  family (2013-6-3).
+	* configs/sam4l-xplained:  A partial configuration that will (eventually)
+	  support the SAM4L Xplained Pro developement board (2013-6-3).
+	* arch/arm/src/sam34/chip/sam4l_pinmap.h:  Initial cut as SAM4L
+	  pin mapping (2013-6-3).
+	* arch/arm/src/stm32/stm32*_dma.*:  Add a new interface function,
+	  stm32_dmacapable() that can be used to determine if DMA is
+	  possible from the specified memory address.  From Petteri Aimonen
+	  (2013-6-4).
+	* arch/arm/src/stm32/stm32_spi.c:  If CONFIG_STM32_DMACAPABLE is
+	  defined, use stm32_dmacapable() to determine if it is possible
+	  to perform DMA from the specified address.  This change is
+	  important for the STM32 F4 which may have SPI data buffers
+	  allocated on the stack in CCM memory which cannot support the
+	  DMA.  From Petteri Aimonen (2013-6-4).
+	* nuttx/arch/arm/src/sam34/sam4l_gpio.h: Created GPIO driver
+	  header file for the SAM4L.  Also renamed the SAM3U header
+	  file to sam3u_gpio.h (2013-6-4).
+	* nuttx/arch/arm/src/sam34/sam4l_gpio.c: Created GPIO driver for
+	  the SAM4L (2013-6-4).
+	* nuttx/configs/sam4l-xplained/src/sam_userleds.c:  Added.
+	  (2013-6-4).
+	* configs/sam4l-xplained/src/sam_userleds.c:  Add application
+	  LED interfaces (2013-6-5).
+	* arch/arm/src/sam34/sam4l_gpio.c and arch/arm/src/sam34/chip/sam4l_gpio.h:
+	  Fix GPIO port address; fix compilation errors (2013-6-5).
+	* arch/arm/src/sam34/chip/sam4l_flashcalw.h:  Add header file
+	  for SAM4L FLASH and PICOCACHE definitions (2013-6-5).
+	* arch/arm/src/sam34/chip/sam4l_pm.h:  Add header file for SAM4L
+	  Power Management.  Leveraged from AVR32 (2013-6-5).
+	* arch/arm/src/sam34/sarm4l_clockconfig.c:  SAM4L clock configuration
+	  logic (leveraged from AVR32).
+	* nuttx/arch/arm/src/sam34/sam4l_periphclks.c/h:  Add common
+	  logic to enabled/disable SAM4L peripheral clocking (2013-6-5).
+	* nuttx/arch/arm/src/sam34/chip/sam4l_bpm.h and sam4l_scif.h:  Add
+	  register definitions for the SAM4L BMP and SCIF blocks (2013-6-6).
+	* nuttx/arch/arm/src/sam34/sam4l_clockconfig.c:  Now selects an
+	  optimal power scaling mode (2013-6-6).
+	* nuttx/arch/arm/src/stm32/stm32_serial.c and nuttx/include/termios.h:
+	  Change for hardware flow control support for STM32. It also fixes
+	  incorrect operation of USART2 and UART5 in current master.  Submitted
+	  by Lorenz Meier but includes changes by Mike Smith (2013-6-6).
+	* nuttx/arch/arm/src/stm32/stm32_otgfshost.c:  A backward conditional
+	  prevent detection of disonnection events.  Reported by Scott (2013-6-6).
+	* nuttx/arch/arm/src/sam34/chip/sam4l_bscif.h: Add registers definitions
+	  for the SAM4L BSCIF module (2013-6-6).
+	* nuttx/arch/arm/src/sam34/sam4l_clockconfig.c and chip/sam4l_wdt.h:
+	  Finally finished the SAM4L clock configuration logic; Added a
+	  WDT register definition header file (2013-6-8).
+	* nuttx/arch/arm/src/sam34/chip/sam4l_usart.h and sam4l_picouart.h:
+	  Add UART/USART register defintion files for the SAM4L (2013-6-8).
+	* arm/src/sam34/chip/sam3u_periphclks.h:  More macros and definitions
+	  to generalize peripheral clocking and to hide differences between
+	  the SAM3U and the SAM4L (2013-6-8).
+	* configs/sam4l-xplained/ostest:  The SAM4L now passed the OS test
+	  (2013-6-9).
+	* configs/sam4l-xplained/nsh:  Added an NSH configuration for the
+	  SAM4L Xplained Pro board (2013-6-9).
+	* configs/sam4l-xplained/src/sam_cxxinitialize.c:  Added C++ support
+	  to the SAM4L Xplained Pro board configuration (2013-6-9).
+	* arm/src/sam34/chip/sam_irq.c:  Extend IRQ support to handle the
+	  larger number of NVIC interrupts used by the SAM4L (2013-6-9).
+	* arch/arm/src/sam45/chip:  Beginning updates of SAM3U header files
+	  to include support for the SAM4S: WDT, SUPC, EEFC, MATRIX, PMC,
+	  UARTs, USARTs, HSMCI, SPI (2013-6-10).
+	* arch/arm/src/chip/sam4s_memorymap.h, sam4s_irq.h, and sam4s_vectors.h:
+	  Add SAM4S memory map and interrupt definitions (2013-6-10)
+	* configs/sam4s-xplained:  Add framework for the SAM4S Xplained board.
+	  There is not much there on initial checkin (2013-6-10).
+	* arch/arm/src/sam34: SAM3S support: GPIO, chip characteristics,
+	  peripheral Kconfig (2013-6-11).
+	* arch/arm/src/sam34/chip/sam4s_pinmap.h:  Add SAM4S pin configuration
+	  definitions (2013-6-11).
+	* arch/arm/src/sam34/sam4s_periphclks.h:  Add macros to manage SAM4S
+	  peripheral clocks (2013-6-11).
+	* configs/sam4s-xplained: Configuration builds error-free (2013-6-11).
+	* configs/sam4s-xplained/nsh:  Added an NSH configuration for the
+	  SAM4S Xplained board.  Both the OS test and the NSH configurations
+	  no execute error-free.  Delay loops calibrated for both the SAM4L
+	  and SAM4S boards (2013-6-12).
+	* Standardize on CONFIG_NSH_BUILTIN_APPS.  Remove all other variants
+	  of the build-as-an-NSH-application configuration settings
+	  (2013-6-12).
+	* arch/arm/src/sam34/sam_periphclks.h:  A header file that just
+	  includes the right header file.  This cleans up the messy logic
+	  in all of the C files and puts the mess in one place (2013-6-12).
+	* arch/arm/src/arm*/Toolchain.mk, Kconfig (and lots of configuration
+	  files):  Add support for a generic Windows EABI toolchain (2013-6-13).
+
+6.29 2013-07-31 Gregory Nutt <gnutt@nuttx.org>
+
+	* arch/arm/src/sam34/chip/sam4l_pinmap.h: Change naming of some pin
+	  configurations to match names used with other SAM part (2013-6-15).
+	* arch/arm/src/sam34/sam4l_clockconfig.c: Corrected some typos
+	  (2013-6-15).
+	* configs/sam4l-xplained/src/sam_buttons.c: Eliminate a warning
+	  (2013-6-15).
+	* configs/sam4l-xplained/src/sam_mmcsd.c, sam_nsh.c, sam_spi.c,
+	  sam3u-ek.h, Kconfig, Makefile, sam4l-xplained.h,
+	  configs/sam4l-xplained/README.txt, and
+	  configs/sam4l-xplained/include/board.h:  Add support for the SPI-
+	  based SD card on the I/O1 module (2013-6-15).
+	* arch/arm/src/sam34/sam_spi.c:  Re-architect the SAM3/4 SPI driver
+	  so that is it compatible with the SPI drivers of other MCUs
+	  (2013-6-16).
+	* configs/sam3u-ek/src/up_touchscreen.c and configs/sam4l-xplained/src/sam_mmcsd.c:
+	  Changed needed because of the above change to the SAM3/4 SPI
+	  interface (2013-6-16).
+	* drivers/input/ads7843e.c:  Remove the wait for the touchscreen busy
+	  bit.  I don't see the busy bit changing on the SAM3U-EK board.  But
+	  maybe it is not supposed to.  From my reading of the ADS7843 spec, it
+	  would not be appropriate to wait for the BUSY bit to de-asserted
+	  anyway (since it is only de-asserted when we read the data)
+	  (2013-6-16).
+	* configs/sam3u-ek/src/up_touchscreen.c: Fix polarity of the /PENIRQ
+	  signal (it is active low) (2013-6-16).
+	* configs/sam3u-ek/include/board.h:  The SAM3U-EK board now runs at
+	  96MHz.  This might have broken some things? (2013-6-17).
+	* drivers/mmcsd/mmcsd-spi.c:  Driver need to make sure that the SPI mode
+	  and data width are correct (2013-6-17).
+	* arch/arm/src/kinetis/kinetis_tsi.h:  Corrections to the Kinetis
+	  (2013-6-18)
+	* arch/arm/src/sam34/sam_spi.c:  Fix SPI mode setting.  In the SAM3/4
+	  family, the clock phase control (CPHA) is inverted (NPHA) (2013-6-18).
+	* arch/arm/src/kl/chip/kl_tsi.h: Freescale KL25Z TSI register
+	  definitions from Alan Carvalho de Assis (2013-6-18).
+	* configs/freedom-kl25z/src/kl_tsi.c:  Example TSI driver for the
+	  Freedom KL25Z board from Alan Carvalho de Assis (2013-6-18).
+	* arch/arm/src/sam34/sam_spi.c:  Correct an incorrect pointer test.
+	  Was checking if the wrong pointer was NULL (2013-6-18).
+	* arch/arm/src/kl/kl_spi.c and chip/kl_spi.h:  Add SPI driver and
+	  register definitions for the Freescale KL25Z (2013-6-19).
+	* arm/src/sam34/chip/sam4l_lcdca.h:  Register definition file for
+	  the SAM4L LCD peripheral (2013-6-19).
+	* arm/src/sam34/chip/sam_spi.h:  SPI register definition file updated
+	  to include a few differences for the SAM4L (2013-6-19)
+	* arm/src/sam34/chip/sam4l_pdca.h: Add SAM4L PDCA register definition
+	  file; also renamed sam_dmac.* files to sam3u_dmac.* to identify
+	  them as SAM4U/4S only files (2013-6-19).
+	* configs/freedom-lk25z/src/kl_spi.c:  Add the framework for
+	  controlling SPI-related discrete inputs and outputs.  Taken from
+	  work by Alan Carvalho de Assis (2013-6-20).
+	* arch/arm/src/kl/kl_dumpgpio.c:  Now compiles (2013-6-20).
+	* configs/:  Several defconfig files were changed that had
+	  CONFIG_HAVE_CXXINITIALIZE=y.  Because of recent changes to
+	  apps/examples, these configurations may need to have
+	  CONFIG_EXAMPLES_NSH_CXXINITIALIZE=y so that they behave as they did
+	  before, i.e., so that C++ initializers will be called when NSH starts
+	  up (2013-6-21).
+	* configs/sam4l-xplained/src/sam_slcd.c:  Beginning of a driver for the
+	  LED1 segment LCD module.  This driver is incomplete on initial check-
+	  in (2013-6-21).
+	* drivers/net/enc28j60.c:  Change buffer ordering to work around Errata
+	  #5.  From Dave (ziggurat29, 2013-6-22).
+	* configs/sam4l-xplained/src/sam_slcd.c:  LED1 segment LCD module is now
+	  functional (2013-6-23).
+	* drivers/lcd/ssd1306.c and include/nuttx/lcd/ssd1306.h.  Renamed
+	  ug-2864hsweg01.c and .h to ssd1306.c and .h.  Extended to support the
+	  UG-2832HSWEG04 which is very similar and also based on the SSD1306
+	  controller (2013-6-23).
+	* configs/sam4l-xplained/src/sam_ug2832hsweg04.c: Add support for the
+	  UG-2832HSWEG04 OLED on the SAM4L Xplained Pro's OLED1 module
+	  (2013-6-23).
+	* include/debug.h:  Added macro DEBUGPANIC for forces crashes when debug
+	  is enabled.
+	* drivers/lcd/ssd1306.c:  Driver now appears to be function for the
+	  UG-2832HSWEG04 in landscape mode (2013-6-24).
+	* drivers/lcd/ug-2864ambag01.c and ug-9664hswag01.c:  Add/updated
+	  support for reverse portrait mode from lessons learned with the
+	  UG-2832HSWEG04.  Untested changes! (2013-6-24).
+	* arch/arm/src/stm32/stm32_ccm.c and .h:  Add support for a seperate CCM
+	  heap.  This may be useful for segregating allocations for CCM (which
+	  cannot be used for DMA) from other allocations (that may be used used
+	  for DMA) (2013-6-25).
+	* arch/arm/src/sam32/sam3u_gpio.h:  Correct configuration of PIO pins
+	  for SAM4S B and C peripherals (2013-6-26)
+	* configs/sam4s-xplained/src/sam_sram.c:  Added support for on-board
+	  1MB SRAM (2013-6-26).
+	* arch/arm/include/sam34/chip.h and sam3x_irq.h:  Add support for
+	  SAM3X and SAM3A chips (2013-6-26).
+	* arch/arm/src/sam34/chip/sam3x_vectors.h:  Add support for SAM3X/3A
+	  interrupt vectors (2013-6-26).
+	* arch/arm/src/sam34/sam3x_periphclks.h:  Add peripheral clock
+	  controls for the SAM3X/3A (2013-6-26).
+	* arch/arm/src/sam34/chip/sam3x_memorymap.h:  Add SAM3X/3A memory map
+	  (2013-6-26).
+	* arch/arm/src/sam34/chip/sam3x_pinmap.h:  Add SAM3X/3A pin
+	  multi-plexing definitions (2013-6-26).
+	* arch/arm/src/sam34/sam3x_gpio.h:  Add SAM3X/3A gpio encoding
+	  macros.  These differ from the SAM3U only in because of the
+	  6 PIOs:  PIOA-PIOF (2013-6-26).
+	* configs/arduino-due:  This is an empty directory now with only
+	  a README file in it but this directory will eventually hold a port
+	  for the Arduino Due (2013-6-26).
+	* arch/arm/src/sam34/Kconfig:  Add SAM3X/3A peripherals to the SAM3/4
+	  configuration logic (2013-6-26).
+	* arch/arm/src and include/ and configs/sam*/:  Large rename of all
+	  references to SPI with SPI0.  This is because all other SAMs have
+	  only SPI but the 3X/3A have SPI0 and SPI1 (2013-6-26).
+	* configs/arduino-due:  Complete the basic board configuration and
+	  integrate this into the configuration and build system.  The Arduino
+	  Due is now ready to begin test (2013-6-17).
+	* configs/arduino-due/nsh:  Add an NSH configuration for the Arduino
+	  Due.  Both the OS test and NSH configuration are now functional
+	  (2013-6-28).
+	* configs/arduino-due/src:  Add support for the "L" LED (2013-6-28).
+	* arch/arm/src/sam34/sam_allocateheap.c:  Clocking must be applied
+	  to the SMC module for the 3X and 3A family in order for the NFC
+	  SRAM to be functional (2013-6-28).
+	* arch/arm/src/sam34/sam3u_gpio.c:  Need to disable write
+	  protection before configuring PIO pins.
+	* configs/sam3u-ek/nsh:  The touchscreen is now functional.  The above
+	  fix to the sam3u_gpio.c write protection also fixed the touchscreen
+	  problem (2013-6-28).
+	* confgis/sam3u_ek/nxwm:  Created a configuration for the NxWM
+	  window manager for the SAM3U-EK board (2013-6-29).
+	* drivers/spi and include/nuttx/spi:  New sub-directories to hold
+	  SPI-related files.  includes/nuttx/spi.h moved to include/nuttx/spi/.;
+	  SPI-related Kconfig info moved from drivers/Kconfig to drivers/spi/kconfig
+	  (2013-7-1).
+	* drivers/spi/spi_bitbang.c and include/nuttx/spi/spi_bitbang.h:  Add
+	  support for a generic bit-bang SPI driver.  This checkout is the
+	  common upper-half logic.  Still missing the lower half (2013-7-1).
+	* include/nuttx/spi/spi_bitbang.c:  This is the common lower-half bit-
+	  bang SPI logic (2013-7-1).
+	* configs/arduino-due/src/sam_nsh.c and sam_mmcsd.c:  Add NSH customize
+	  initialization.  If so configured, initialize the SPI bit bang
+	  interface to the MMC/SD slot on the ITEAD shield (2013-7-1).
+	* fs/fs_mount.c:  Fix compilation error if no file systems are enabled:
+	  Change error to ERROR (2013-7-3).
+	* arch/arm/src/sam34/sam_gpioirq.c:  Fix some errors for interrupts
+	  on ports D-F (2013-7-3).
+	* /drivers/usbdev/composite.c: Fix a typo in the composite device
+	  driver unitialization logic.  DEV1 should be DEV2 in one case
+	  (2013-7-4).
+	* arch/arm/src/sam34/sam3u_gpio.c:  sam_configgpio() must protect
+	  against re-entrancy (2013-7-5).
+	* libc/misc/lib_crc16.c and include/crc16.h:  Add CRC16 support
+	  (2013-7-7).
+	* arch/arm/src/stm32/stm32_otgfsdev.c:  SourceForge bug #16:  Fix
+	  to the endpoint allocation logic.  Apparently the same endpoint can
+	  be allocated as both an IN or an OUT endpoint.  The existing
+	  implementation only supported one allocation, either IN or OUT.  This
+	  resulted in failures to allocate enpoints when used with the CDC/ACM +
+	  MSC composite driver (From Chia Cheng Tsao, 2013-7-8).
+	* arch/arm/src/stm32/stm32_sdio.c:  SourceForge bug #17:  Add
+	  support for the data block end (DBCKEND) interrupt to terminate
+	  transfers (From Chia Cheng Tsao, 2013-7-8)
+	* drivers/rwbuffer.c: SourceForge bug #17: Correct typos that can cause
+	  failures in some configurations (From Chia Cheng Tsao, 2013-7-8).
+	* include/nuttx/usb/usbdev.h: Fix some typos that cause compiler errors
+	  when CONFIG_USBDEV_DMA and CONFIG_USBDEV_DMAMEMORY are selected (From
+	  Chia Cheng Tsao, 2013-7-12).
+	* nuttx/configs/olimex-lpc1766stk/zmodem:  Add a new configuration to
+	  test the Zmodem sz and rz commands (which don't actually exist yet,
+	  but will). (2013-7-12).
+	* arch/arm/include/armv7-a and src/armv7-a:  Beginning to add support
+	  for the ARMv7-A, the Cortex-A5 in particular.  The initial checkin
+	  is only fragmentary:  A few header files and some copied ARM9
+	  assembly files.  More to come (2013-7-18).
+	* arch/arm/include/sama5, arch/arm/src/sama5, and configs/sama5d3x-e:
+	  Add a directory framework to support the Atmel AT91SAMA5D3 family and
+	  the SAMA5D3x-EK board(s) in particular.  There is very little here on
+	  the first check-in, this structure is being used now primarily to
+	  create the Cortex-A5 support (2013-7-19).
+	* arch/arm/src/armv7-a/arm_cache.S:  Cortex-A5 cache operations
+	  (2013-7-20).
+	* /arch/arm/src/armv7-a/arm_fpuconfig.S and fpu.h: A few more files for
+	  the ARMv7-A/Cortex-A5 port (2013-7-21).
+	* arch/arm/src/sama5/sam_boot.c, sam_clockconfig.h, sam_lowputc.h, and
+	  sam_timerisr.c:  A few  more files for the SAMA5D3 port (2013-7-21).
+	* configs/sama5d3x-ek/src/sam_autoleds.c:  A few more files for the port
+	  to the SAMA5D3x-EK board (2013-7-21).
+	* arch/arm/src/sama5/sam_irq.c: SAMA5 interrupt handling logic
+	  (2013-7-22).
+	* arch/arm/src/sama5/sam_clockconfig.c:  Add SAMA5 PLL configuration
+	  logic (plus associated header files).  Initiali checkin is for the
+	  SAM3U which is very similar but needs to be verified (2013-7-22).
+	* arch/arm/src/sama5/sam_periphclks.h:  Add macros to enable and
+	  disable SAMA5 peripheral clocks (2013-7-22).
+	* arch/arm/src/sama5/sam_lowputc.c and sam_serial.c:  Add support
+	  for SAMA5 UARTs.  Does not even compile as of initial checkin.
+	  (2013-7-22).
+	* arch/arm/src/sama5/sam_gpio.c:  Add GPIO configuration support
+	  for the SAMA5.  Still compilation issues.  (2013-7-22).
+	* arch/arm/src/sama5/chip/sama5d3x_pinmap.h:  Add pin multiplexing
+	  definitions for the SAMA5D3 (2013-7-23).
+	* arch/arm/src/sama5/chip/:  New header files for SAMA5 AXI Matrix
+	  SFR, and BSC blocks (2013-7-23).
+	* arch/arm/src/armv7-a/arm_vectors.S:  Force 8-byte stack alignment
+	  in interrupt handlers before calling C code.  Other ARM
+	  architectures need to do this as well (2013-7-23).
+	* arm/src/armv7-m/up_copyarmstate.c and armv7-a/up_copyarmstate.c:
+	  Added a new form of the register copy function that should save quit a
+	  bit of time for armv7-m (without common vectors) and with armv7-a
+	  (2013-7-23).
+	* arch/arm/src/armv7-a/arm_restorefpu.S, arm_savefpu.S, arm_doirq.c,
+	  arm_fullcontextrestore.S, arm_saveusercontext.S:  Add hardware
+	  floating point register save/restore logic for the Cortex-A5\
+	  (2013-7-23).
+	* arch/Kconfig:  Attempt at generic external memory configuration is not
+	  flexible enough, especially for the SAMA5.  Move external memory
+	  configuration options from arch/Kconfig to
+	  arch/arm/src/lpc17xx/Kconfig, lpc31xx/Kconfig, sam34/Kconfig, and
+	  sama5/Kconfig and renamed each from CONFIG_ARCH_ to, for example,
+	  CONFIG_LPC31_.  This renaming also affect many defconfig files
+	  (2013-7-24).
+	* arch/arm/src/sama5/Kconfig and sam_allocateheap.c:  Set up
+	  configuration options for SAMA5 external memory regions; add a custom
+	  sam_allocateheap.c to add the various configured memory regions to the
+	  heap (2013-7-24).
+	* configs/sama5d3x-ek/src/sam_buttons.c, sam_userleds.c, and
+	  sam_autoleds.c:  Add support for the buttons and LEDs on-board the
+	  SAMA5D3x-EK (2013-7-24).
+	* configs/sama5d3x-ek/ostest/defconfig:  Switch console to USART1
+	  (2013-7-4).
+	* arch/arm/src/sam34/Kconfig and drivers/serial/Kconfig:  All serial
+	  configuration logic for USARTs needs to depend on if the USART is
+	  configured as a UART or not.  And this is for all CPUS, not just
+	  SAM3/4 (2013-7-24).
+	* arch/arm/src/arm/up_head.S and arch/arm/src/armv7-a/arm_head.S:
+	  Fix a bug (uninitialized register error) that crept in the ARM9
+	  boot-up code several years ago and was cloned into the Cortex-A5
+	  code.  Obviously no one has used the ARM9 NuttX port for years!
+	* Many files:  Finally... I changed the naming of configuration
+	  variables like CONFIG_DRAM_ to CONFIG_RAM_.  This has bothered
+	  me for a long time since most boards don't have DRAM.  The more
+	  generic RAM naming should not produce so much cognitive dissonance
+	  (2013-7-26).
+	* configs/sama5d3x-ek/hello:  Added a tiny hello world configuration
+	  to simplify bring up of the SAMA5 (it will probably be removed
+	  later) (2013-7-26).
+	* The sama5d3x-ek/hello now runs correctly (2013-7-28).
+	* configs/sama5d3x-ek/ostest/:  This configuration has been modified
+	  to run out NOR flash.  More work is still needed to reconfigure the
+	  SMC so that the NOR flash can work with the high clock (2013-7-28).
+	* arch/arm/src/sama5/sam_clockconfig.c/h and
+	  configs/sama5d3x-ek/src/sam_norflash.c:  Add a file structure that
+	  will (eventually) support reconfiguration of NOR flash when NuttX
+	  boots from NOR FLASH (2013-7-29).
+	* arch/arm/src/sama5/chip/sam_hsmc/h:  SAMA5 HSMC register
+	  defintion file (2013-7-29)
+	* configs/sama5d3x-ek/src/sam_norflash.c:  Add board specific
+	  logic to re-configure the SAMA5D3x-EK NOR FLASH before while
+	  running out of NOR FLASH.  We need to change the NOR FLASH
+	  timing BEFORE increasing the main clock (2013-7-29).
+	* configs/sama5d3-ek/norboot and src/nor_main.c:  The norboot
+	  configuration to help debug NuttX in NOR flash.  It runs
+	  out of ISRAM, configures NOR FLASH, then waits for you to
+	  break in with a debugger to start the program in NOR FLASH
+	  (2013-7-29).
+	* arch/arm/src/armv7-a/arm_cache.S:  Separate the bigger cache
+	  operations into separater files (2013-7-29).
+	* arch/arm/src/stm32/stm32_dac.c:  Fixed numerous DAC driver
+	  errors and added support for DAC DMA (contributed by John
+	  Wharington, 2013-7-30).
+	* arch/arm/src/stm32/stm32f30xx_i2c.c:  An I2C driver for
+	  the STM32 F3 family from John Wharington (2013-7-30).
+	* arch/arm/include/armv7-m:  Add irqdisable() (2013-7-30);
+	* configs/sama5d3-ek/src/nor_main.c:  Now disables interrupts
+	  before jumping to NOR flash (2013-7-30).
+	* configs/sama5d3-ek/nsh:  Add an NSH configuration for the
+	  SAMA5D3x-EK (2013-7-31)
+	* configs/sama5d3-ek/src/sam_cxxinitialize.c:  Add C++ support
+	  (2013-7-31).
+
+6.30 2013-xx-xx Gregory Nutt <gnutt@nuttx.org>
+
+	* arch/arm/src/sama5/arm_pghead.S:  Separate the logic that is
+	  enabled by CONFIG_PAGING out of arm_head.S.  That was just
+	  too much conditional compilation to be supportable
+	  (2013-8-1).
+	* arch/arm/src/sama5/arm_head.S: Setup page table mappings for
+	  all of .text, .bss, .data, stacks and heap before enabling
+	  the MMU and caching.  This is safer because it avoids the
+	  caching issues (and much less redundant) (2013-8-1)
+	* arch/arm/src/sama5/chip/sam_mpddrc.h:  Add DDR controller
+	  registers definitions for the SAMA5 (2013-8-1).
+	* nuttx/configs/sama5d3x-ek/src/sam_sdram.c:  Add logic which
+	  will (eventually) support the SDRAM on the SAMA5D3x-EK
+	  board.  Initial commit is untested and incomplete (2013-8-1).
+	* arch/arm/src/armv7-a/arm_mmu.c:  Move some generic MMU logic
+	  out of SAMA5-specific code into this share-able file (2013-8-2)
+	* arch/arm/src/armv7-a/mmu.h:  Add inline functions to invalidate
+	  a single TLB.
+	* arch/arm/src/sama5/sam_allocateheap.c and chip/sama5d3x_memorymap.h:
+	  Add logic to handle signed overflow when a memory region is
+	  greater than or equal to 2GB (2013-8-2).
+	* arch/arm/src/sama5/sam_boot.c:  Boot logic now initially
+	  configures DRAM as strongly ordered so that it can be initialized.
+	  After initialization, the page table entries are modified so
+	  that DRAM is fully cache-able (2018-8-2).
+	* arch/arm/src/sama5/chip/sam_mpddrc.h:  Correct typos in the
+	  SAMA5 DDR controller register definitions (2013-8-2).
+	* arch/arm/src/sama5/sam_irq.c:  Correct handling of spurious
+	  interrupts (2013-8-3).
+	* arch/*/src/*/*_irq.c:  Standardize configuration variables used
+	  to enable interrupt controller debug output (2013-8-3).
+	* arch/arm/src/sama5/chip/sam_dmac.h: Add register definitions for the
+	  SAMA5 DMA controller (2013-8-3).
+	* arch/arm/src/sama5/sam_dmac.c and sam_dmac.h:  Add support for the
+	  SAMA5 DMAC controllers.  Initial check-in is untested and is a
+	  straight leverage from the SAM3/4 (2013-8-4).
+	* arch/arm/src/sama5/sam_spi.c, sam_spi.h, and chip/sam_spi.h:
+	  Leverage SPI support from SAM/3/4.  Initial check-in is untested
+	  and have several limitations:  No DMA, no SPI1 support (2013-8-4).
+	* arch/arm/src/sama5/sam_spi.c and sam_spi.h:  Now supports SPI1
+	  and a register access debug option (2013-8-4).
+	* configs/sama5d3x-ek/src/sam_spi.c:  Add board support for the
+	  AT25 serial flash (2013-8-4).
+	* configs/sama5d3x-ek/nsh/defconfig:  FAT file system support is
+	  now enabled by default (2013-8-5)
+	* confgis/sama5d3x-ek/src/sam_nsh.c:  Automatically mount AT25
+	  file system for NSH if so configured (2013-8-5).
+	* confgis/sama5d3x-ek/src/sam_nsh.c:  Verified that the AT25 FLASH
+	  works on the SAMA5D3x-EK boards and can support a FAT file system
+	  (2013-8-5).
+	* arch/arm/src/sam34/sam_spi.c:  Corrected an error in the SAM3/4
+	  SPI driver while testing the SAMA5 SPI driver:  If CONFIG_SPI_OWNBUS
+	  is not set, the driver will not configure the SPI mode correctly
+	  (2013-8-5).
+	* configs/sama5d3x-ek/src/sam_at25.c: Move AT25 initialization logic
+	  out of sam_nsh.c and into a separate file where it can be better
+	  shared (2013-8-5).
+	* arch/arm/src/sama5/sam_hsmci.c, sam_hsmci.h, and chip.sam_hsmci.h:
+	  Add register definitions and a driver for the (3) HSMCI memory card
+	  interfaces provided by the SAMA5.  Leveraged from the SAM3/4 and
+	  untested on initial commit (2013-8-5).
+	* nuttx/configs/sama5d3x-ek/src/sam_hsmci.c and sam_nsh.c:  Add support
+	  for the (2) SD card slots provided on the SAMA5D3x-EK boards.
+	  Untested on initial commit (2013-8-5).
+	* arch/arm/src/sama5 and nuttx/configs/sama5d3x-ek:  Massive renaming
+	  to get consistent once and for in the usage of PIO vs GPIO.  Other
+	  platforms use the term GPIO more, but Atmel prefers PIO.  I prefer
+	  consistency.  Also fixed CONFIG_PIO vs CONFIG_SAMA5_PIO and renamed
+	  files sam_gpio.* to sam_pio.* (2013-8-6).
+	* arch/arm/src/sama5/sam_pioirq.c:  Add support for SAMA5 PIO interrupts
+	  (2013-8-6).
+	* configs/sama5d3x-ek/src/sam_hsmci.c:  Add support for SD slot card
+	  detection PIO interrupts (2013-8-6).
+	* arch/arm/src/sam34/sam_hsmci.c and sama5/sam_hsmci.c:  Fix handling
+	  of some masked status conditions that can cause false-alarm errors
+	  (2013-8-6).
+	* arch/arm/src/sama5/sam_dmac.c and sam34/sam34_dmac.c:  For SAMA5,
+	  correct some bad register address and some bad assertions that caused
+	  false alarms.  These latter were backported to the SAM34 DMAC driver
+	  as well (2013-8-6).
+	* arch/arm/src/sama5/sam_dmac.c and sam34/sam34_dmac.c: Correct
+	  some parameters reversed in function call (2013-8-6).
+	* arch/arm/src/sama5/sam_spi.c:  The SAMA5 SPI driver now supports
+	  DMA transfers (2013-8-9).
+	* arch/arm/src/sama5/sam_dmac.c:  Finally after many bugfixes (the
+	  last being caching issues), the SAMA5 DMA support has been
+	  verified (with SPI) (2013-8-9).
+	* arch/arm/src/sama5/sam_memories.c and .h:  Centralize logic for
+	  conversions between physical and virtual addresses (2013-8-9).
+	* arch/arm/src/sama5/sam_hsmci.c and sam34/sam_hsmci.c:  Correct a
+	  race condition in the SAMA5 HSCMI driver:  The tranfer done
+	  interrupt was firing before the wait was started.  Fix this and
+	  also backported the changes to SAM3/4 (untested).  Now HSCMI is
+	  functional on the SAMA5 with DMA! (2013-8-10).
+	* arch/arm/src/sam34/sam3u_periphclks.h: Correct a typo in a register
+	  name (2013-8-10).
+	* drivers/mmcsd/mmcsd_sdio.c:  Correction for a bad return value
+	  when multiple block SDIO transfers are suppressed.  By Andrew Tridgell
+	  via Lorenz Meier (2013-8-10).
+	* drivers/serial/serial.c, drivers/usbdev/cdcacm.c, and
+	  include/nuttx/fs/ioctl.h: Added support for FIONREAD and FIONWRITE,
+	  added TERMIOS input / output processing support for UART and CDCACM
+	  serial ports. Implemented by Mike Smith, Andrew Tridgell and Lorenz
+	  Meier (2013-8-10).
+	* drivers/usbdev/cdcacm.c:  Added FIONREAD and FIONWRITE to CDC/ACM
+	  driver based on serial.c implementation. From Lorenz Meier
+	  (2013-8-10).
+	* arch/arm/src/stm32/Kconfig and stm32_serial.c:  Added option to
+	  disable serial port reordering.  From Lorenz Meier (2013-8-10).
+	* arch/arm/src/sama5/Kconfig, sam_ohci.c, and
+	  arch/arm/src/sama5/sam_clockconfig.c:  Add a OHCI driver for the SAMA5.
+	  Untested on initial check-in (2013-8-11).
+	* include/nuttx/usb/usbhost.h, arch/arm/src/stm32, arch/arm/src/lpc17xx,
+	  and include/nuttx/usb/usbhost.h, and nuttx/configs/<stm32-boards>:
+	  Move prototype of usbhost_initialize() of usbhost.h and into
+	  architecture specific files.  This is necessasrybecause some chips
+	  (like the SAMA5) have multiple, different USB host interfaces
+	  (2013-8-11).
+	* drivers/usbhost/usbhost_hidkbd.c and usbhost_storage.c:  Correct some
+	  compilation errors when pre-allocated class structures are used.  Also
+	  eliminate some warnings about uninitialized variables (2013-8-11).
+	* configs/sama5d3x-ek/src/sam_usb.c and related files:  Add support for
+	  initialization of the USB host and mass storage class device (2013-8-11).
+	* arch/arm/src/sama5/sam_ohci.c and sam_usbhost.h (was sam_ohci.h), and
+	  configs/sama5d3x-ek/src/sam_usb.c, and sama5d3x-ek.h:  Add controls
+	  to enable VBUS power in OHCI host most (2013-8-12).
+	* includes/nuttx/usb/usbhost.h, all USB host drivers in arch/, and all
+	  USB host-side connection monitoring threads in configs/*/src:  The
+	  SAMA5 has three downstream ports; all of the other USB host
+	  implementations have only one.  This will require significant changes
+	  to the USB host interfaces starting with these chnages to monitor
+	  connections on a port-by-port basis.  This effects a lot of files and
+	  more changes are coming for this issues.  Changes are being blindly
+	  incorporated into other architrectures.  I am being careful to avoid
+	  breakage, but I expect some (2013-8-12).
+	* configs/olimex-stm32-p107/nsh/defconfig and appconfig:  Converted to
+	  use the kconfig-frontends tool. From Max Holtzberg (2013-8-12).
+	* includes/nuttx/usb/usbhost.h, et al:  Continued changes to the USB
+	  host interface to support multiple downstream ports.  When a class
+	  is disconnected, it needs to provide the FunctionAddress to the
+	  USB HCD disconnect method so that the HCD will know which port
+	  is being disconnected (2013-8-12).
+	* nuttx/arch/arm/src/stm32/Kconfig, Make.defs, and /stm32f30xxx_i2c.c:
+	  STM32 F3 I2C fixes from John Wharington (2013-8-13).
+	* nuttx/arch/arm/src/sama5/sam_serial.c:  Fix a re-entrancy problem
+	  in up_putc().  I think all architectures have this re-entrancy
+	  than can result in serial interrupt being disabled, but I have only
+	  seen the symptom on SAMA5 (2013-8-13).
+	* includes/nuttx/usb/usbhost.h and many other affected files:  Separate
+	  wait() and enumerate() methods from struct usbhost_driver_s and move
+	  to new interface, struct usbhost_connection_s.  This is part of the
+	  necessary restructuring of the USB host interface to support multiple
+	  root hub ports (2013-8-13).
+	* arch/arm/src/sama5/sam_ohci.c:  Major restructuring of the driver due
+	  in order to handle multiple root hub ports.  Basically instead of one
+	  driver structure with an arrayof root hub port structures, there is no
+	  one container structure with an array of driver structures, one for
+	  each root hub port.  The advantage is that each class->driver call not
+	  passes information associated with the RHport implicitly.  The klugey,
+	  procedural alternative was to add the function address to every
+	  interface method (which I started to do but backed above) (2013-8-13).
+	* arch/arm/src/sama5/sam_memories.c and .h:  Extended logic so do
+	  conversions from physical to virtual addresses (2013-8-14).
+	* arch/arm/src/sama5/sam_ohci.c:  Add D cache contols and conversion
+	  between physical and virtual address (2013-8-14).
+	* arch/arm/src/stm32/stm32_spi.c:  nbits() interface extended to
+	  control bit order as well as bit width (from Teemu Pirinen)
+	  (2013-8-16)
+	* arch/arm/src/sama5/sam_ohci.c:  More to be tested, but the SAMA5
+	  OHCI driver is now basically funtional (2013-8-16).
+	* include/nuttx/usb/ehci.h:  EHCI header file (2013-8-17).
+	* arch/arm/src/stm32/stm32_i2c.c:  Correct an error that crept into
+	  the STM32 F1 I2C driver with some recent changes.  From Yiran Liao
+	  (2013-8-18).
+	* drivers/usbhost/usbhost_devaddr.c and include/nuttx/usb/usbhost_devaddr.h:
+	  Add logic for management of device addresses.  This logic does not
+	  currently hook into into anything.  It will someday be a part of the
+	  NuttX USB hub implementation (2013-8-18).
+	* nuttx/arch/arm/src/sama5/sam_ehci.c and other files:  Create a skeleton
+	  environment for development of an EHCI driver.  Not much in place yet
+	  (2013-8-20).
+	* nuttx/arch/arm/src/sama5/sam_ehci.c:  Now code complete for all
+	  asynchronous endpoints (control and bulk); nothing yet in place
+	  for periodic endponts (interrupt and isochronous) (2013-8-22).
+	* include/nuttx/serial/serial.h and arch/arm/src/stm32/chip/stm32f40xxx_pinmap.h:
+	  SourceForge bug #16 Fix IO pin map. Add CONFIG_SERIAL_TERMIOS support.
+	  Also fixes some STM32 F4 Timer 8 pin configurations.  From CCTSAO
+	  (2013-8-23).
+	* arch/arm/src/lpc17xx/lpc17_usbhost.h:  Fix #endif with missing #if
+	  condition.  Reported by Andrew Bradford (2013-8-23).
+	* nuttx/arch/arm/src/sama5/sam_ehci.c:  Now handles low- and full-speed
+	  connections by giving the port to the OHCI driver (2013-8-24).
+	* nuttx/arch/arm/src/sama5/sam_ohci.c:  Now uses the work queue to
+	  defer interrupt processing (2013-8-24).
+	* nuttx/arch/arm/src/sama5/sam_ohci.c and nuttx/arch/arm/src/sama5/sam_ehci.c:
+	  EHCI is now the common interrupt "master."  It will receive all UHPHS
+	  interrupts and route the interrupt event to both the OHCI and EHCI
+	  logic (2013-8-24).
+	* net/uip/uip_arp.c:  Correct backward condition in netmask task.
+	  From Max Holtzberg (2013-8-25).
+	* arch/arm/src/sama5/sam_ohci.c:  SAMA5 OHCI is again functional by
+	  itself after all of the changes to integrate with EHCI. (2013-8-25).
+	* drivers/net/encx24j600.c/.h and include/nuttx/net/encx24j600.h: 
+	  Support the Microchip ENCX24J600 Ethernet driver from Max Holtberg
+	  (2013-8-25).
+	* configs/olimex-stm32-p107:  Incorporate ENCX24J600 support for the
+	  Olimex STM32 P107 board.  From Max Holtzberg (2013-8-25).
+	* fs/romfs/fs_romfsutil.c:  Fix an error where long (>15) file names
+	  were read incorrectly from a ROMFS file system.  From Mike Smith
+	  (2013-8-25).
+	* arch/arm/src/stm32/stm32_sdio.c: SourceForge bug #17 Fix if
+	  CONFIG_SDIO_BLOCKSETUP defined, OS will crash". Generate an error
+	  if CONFIG_SDIO_BLOCKSETUP is defined; that option is not yet supported
+	  by the STM32 SDIO driver.  From CCTSAO (2013-6-26)
+	* drivers/net/encx24j600.c and .h: Use the ENC's SRAM for multiple TX
+	  packets.  From Max Holtzberg (2013-6-26).
+	* include/nuttx/usb/usbhost.h, drivers/usbhost/usbhost_enumerate.c, and
+	  all USB host drivers:  Added a new driver method:  getdevinfo.  This
+	  method is intended to get various information about the connected device,
+	  but currently returns only the device speed.  The device speed is
+	  necessary by usbhost_enumerate in order to set a credible initial EP0
+	  max packetsize.  High speed needs 64 bytes, low speed needs 8 bytes,
+	  and full speed can handle almost any size (2013-8-26).
+	* arch/arm:  Add hooks for Cortex-A8.  Not much more yet (2013-8-27).
+	* Lots of files:  Fix all occurrents of "the the" in documentation and
+	  comments (2013-8-27).
+	* arch/arm/src/sama5/sam_allocateheap.c:  Correct the logic that
+	  determines which memory regions get added to the heap.  When
+	  CONFIG_MM_NREGIONS > 1, the logic was adding the ISRAM region to
+	  the heap twice! (2013-6-27).
+	* nuttx/arch/arm/src/sama5/sam_ehci.c:  Add (untested) support for
+	  interrupt endpoints (2013-8-28).
+	* arch/arm/src/sama5/chip/sam_udphs.h:  High-speed USB device register
+	  definitions for the SAMA5 (2013-8-28)
+	* arch/arm/src/sama5/sam-udphs.c:  A framework for the USB device
+	  driver taken from another architecture.  There is very little
+	  useful in this initial check-in (2013-8-29).
+	* Remove all empty and most useless README.txt files (2013-8-31)
+	* configs/freedom-kl25z/src/kl_spi.c:  Correct typo in name of a
+	  function.  From Alan Carvalho de Assis (2013-8-31).
+	* drivers/usbdev/cdcacm_desc.c:  Fixed some compilation errors that
+	  only occur when dual speed support is enabled (2013-9-1).
+	* arch/arm/src/sama5/sam_clockconfig.c and configs/sama5d3x-ek/include/board_*mhz.h:
+	  Add logic to support UDPHS clocking (2013-9-13).
+	* arm/src/stm32/chip/stm32_tim.h:  Some CCER bit settings changed
+	  per SourceForge bug #18 submitted by CCCTSAO (2013-9-2).
+	* apps/examples/cc3000, configs/freedom-kl25z, drivers/wireless/cc3000,
+	  and nuttx/include/nuttx/cc3000.  Initial support for the TI CC3000
+	  network module on the Freescale Freedom-KL25Z board from Alan Carvalho
+	  de Assis.  This is still very much a work in progress (2013-9-3).
+	* configs/*/usbmsc:  Renamed from config/*/usbstorage to match the
+	  change in naming in apps/examples submitted by CCTSAO (2013-9-5).
+	* drivers/usbdev.c and pl2303.c:  Don't use max packetsize assigned to
+	  the endpoint when allocating request buffers; The default value of
+	  the endpoint max packetsize may be incorrect because the endpoint
+	  has not yet been configured.  Verified on CDC/ACM.  Corresponding
+	  changes made to pl2303, but untested (2013-9-5).
+	* arch/arm/src/sama5/sam_udphs.c:  The high-speed device side driver
+	  is now functional (although more testing is always needed) (2013-9-5).
+	* net/net_monitor.c: Fixes a race condition where a loss of connection
+	  may not be detected when the connection is lost before it has been
+	  accepted (from Max Holtzberg) (2013-9-6).
+	* configs/sama5d3x-ek/demo:  Add a new NSH configuration.  The
+	  original NSH configuration will be a simple platform for testing
+	  individual features; the demo configuration will be a more complex
+	  platform for demonstrating multiple interacting features (2013-9-6).
+	* net/uip/uip_tcpbacklog.c:  Fix a major bug in the TCP/IP backlog
+	  initialization:  Only the first backlog buffer was getting added
+	  to the free list.  From Max Holtzberg (2013-9-6).
+	* configs/sama5d3x-ek/demo:  Add support for USB MSC device on the
+	  AT25 serial FLASH (untested) (2013-9-6).
+	* drivers/net/enc28j60.c:  Changes back-ported from the ENCX24J600
+	  to the ENC28J60 by Max Holtzberg.  These seem like reasonable and
+	  correct changes, but have yet to be verified on an ENC28J60 (2013-9-6).
+	* drivers/usbdev/usbdev_strings.c:  Extended decoding and stringifging
+	  of USB trace output to include trace output from class drivers.
+	  (2013-9-6).
+	* drivers/usbdev/usbmsc_desc.c:  Fix a warning when USB MSC is
+	  compiled for a high-speed device (2013-9-7).
+	* drivers/usbhost/usbhost_storage.c:  If device is returning fatal
+	  transfer errors while attempt to initialize, don't bother with
+	  the startup retries; abort immediately so that the device will
+	  be reset and we can try again (2013-9-9).
+	* drivers/usbhost/usbhost_storagge:  Correct a reference counting
+	  error:  When an MSC device transfer fails while waiting for
+	  UnitTestReady (see 2013-9-9), the reference count was not being
+	  decremented.  The end result is a memory leak (2013-9-10).
+

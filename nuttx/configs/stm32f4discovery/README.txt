@@ -2,7 +2,20 @@ README
 ======
 
 This README discusses issues unique to NuttX configurations for the
-STMicro STM32F4Discovery development board.
+STMicro STM32F4Discovery development board featuring the STM32F407VGT6
+MCU. The STM32F407VGT6 is a 168MHz Cortex-M4 operation with 1Mbit Flash
+memory and 128kbytes. The board features:
+
+  - On-board ST-LINK/V2 for programming and debugging,
+  - LIS302DL, ST MEMS motion sensor, 3-axis digital output accelerometer,
+  - MP45DT02, ST MEMS audio sensor, omni-directional digital microphone,
+  - CS43L22, audio DAC with integrated class D speaker driver,
+  - Eight LEDs and two push-buttons,
+  - USB OTG FS with micro-AB connector, and
+  - Easy access to most MCU pins.
+
+Refer to http://www.st.com/internet/evalboard/product/252419.jsp for
+further information about this board. 
 
 Contents
 ========
@@ -20,7 +33,7 @@ Contents
   - FPU
   - FSMC SRAM
   - SSD1289
-  - UG-2864AMBAG01 / UG-2964SWEG01
+  - UG-2864AMBAG01 / UG-2864HSWEG01
   - STM32F4Discovery-specific Configuration Options
   - Configurations
 
@@ -694,8 +707,8 @@ The following summarize the bit banging oprations:
     WriteData(data);
   }
 
-UG-2864AMBAG01 / UG-2964SWEG01
-==============================
+UG-2864AMBAG01 / UG-2864HSWEG01
+===============================
 
 I purchased an OLED display on eBay.  The OLED is 128x64 monochrome and
 is based on an UG-2864AMBAG01 OLED controller.  The OLED can run in either
@@ -727,9 +740,9 @@ that I am using:
   (1) Required because of on-board MEMS
   -------------------------------------------------------------------------
 
-Darcy Gong recently added support for the UG-2964SWEG01 OLED which is also
+Darcy Gong recently added support for the UG-2864HSWEG01 OLED which is also
 an option with this configuratin.  I have little technical information about
-the UG-2964SWEG01 interface (see configs/stm32f4discovery/src/up_ug2864sweg01.c).
+the UG-2864HSWEG01 interface (see configs/stm32f4discovery/src/up_ug2864hsweg01.c).
 
 STM32F4Discovery-specific Configuration Options
 ===============================================
@@ -776,13 +789,13 @@ STM32F4Discovery-specific Configuration Options
     CONFIG_ENDIAN_BIG - define if big endian (default is little
        endian)
 
-    CONFIG_DRAM_SIZE - Describes the installed DRAM (SRAM in this case):
+    CONFIG_RAM_SIZE - Describes the installed DRAM (SRAM in this case):
 
-       CONFIG_DRAM_SIZE=0x00010000 (64Kb)
+       CONFIG_RAM_SIZE=0x00010000 (64Kb)
 
-    CONFIG_DRAM_START - The start address of installed DRAM
+    CONFIG_RAM_START - The start address of installed DRAM
 
-       CONFIG_DRAM_START=0x20000000
+       CONFIG_RAM_START=0x20000000
 
     CONFIG_STM32_CCMEXCLUDE - Exclude CCM SRAM from the HEAP
 
@@ -1030,7 +1043,7 @@ Where <subdir> is one of the following:
 
   1. Before you can use this example, you must first install the uClibc++
      C++ library.  This is located outside of the NuttX source tree at
-     misc/uClibc++ in SVN.  See the README.txt file for instructions on
+     misc/uClibc++ in GIT.  See the README.txt file for instructions on
      how to install uClibc++
 
   2. This configuration uses the mconf-based configuration tool.  To
@@ -1121,7 +1134,7 @@ Where <subdir> is one of the following:
     In the normal case (just 'make'), make will attempt to build both user-
     and kernel-mode blobs more or less interleaved.  This actual works!
     However, for me it is very confusing so I prefer the above make command:
-    Make the user-space binaries first (pass1), then make the the kernel-space
+    Make the user-space binaries first (pass1), then make the kernel-space
     binaries (pass2)
 
     NOTES:
@@ -1424,7 +1437,7 @@ Where <subdir> is one of the following:
         reconfiguration process.
 
   3. This configured can be re-configured to use either the
-     UG-2864AMBAG01 or UG-2864SWEG01 0.96 inch OLEDs by adding
+     UG-2864AMBAG01 or UG-2864HSWEG01 0.96 inch OLEDs by adding
      or changing the following items in the configuration (using
      'make menuconfig'):
 
@@ -1628,6 +1641,12 @@ Where <subdir> is one of the following:
        configuration so nothing should appear on UART2 unless you enable
        some debug output or enable the USB monitor.
 
+       NOTE:  Using the SYSLOG to get debug output has limitations.  Among
+       those are that you cannot get debug output from interrupt handlers.
+       So, in particularly, debug output is not a useful way to debug the
+       USB device controller driver.  Instead, use the USB monitor with
+       USB debug off and USB trance on (see below).
+
     4. Enabling USB monitor SYSLOG output.  If tracing is enabled, the USB
        device will save encoded trace output in in-memory buffer; if the
        USB monitor is enabled, that trace buffer will be periodically
@@ -1657,8 +1676,8 @@ Where <subdir> is one of the following:
     You could also use the non-standard PL2303 serial device instead of
     the standard CDC/ACM serial device by changing:
 
-      CONFIG_CDCACM=y               : Disable the CDC/ACM serial device class
-      CONFIG_CDCACM_CONSOLE=y       : The CDC/ACM serial device is NOT the console
+      CONFIG_CDCACM=n               : Disable the CDC/ACM serial device class
+      CONFIG_CDCACM_CONSOLE=n       : The CDC/ACM serial device is NOT the console
       CONFIG_PL2303=y               : The Prolifics PL2303 emulation is enabled
       CONFIG_PL2303_CONSOLE=y       : The PL2303 serial device is the console
 

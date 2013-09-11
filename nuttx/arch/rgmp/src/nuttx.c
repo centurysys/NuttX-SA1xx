@@ -422,7 +422,7 @@ void _exit(int status)
 
     /* Destroy the task at the head of the ready to run list. */
 
-    (void)task_deletecurrent();
+    (void)task_exit();
 
     /* Now, perform the context switch to the new ready-to-run task at the
      * head of the list.
@@ -449,23 +449,6 @@ void up_assert(const uint8_t *filename, int line)
         exit(EXIT_FAILURE);
     }
 }
-
-void up_assert_code(const uint8_t *filename, int line, int code)
-{
-    fprintf(stderr, "Assertion failed at file:%s line: %d error code: %d\n", 
-            filename, line, code);
-
-    // in interrupt context or idle task means kernel error 
-    // which will stop the OS
-    // if in user space just terminate the task
-    if (up_interrupt_context() || current_task->pid == 0) {
-        panic("%s: %d\n", __func__, __LINE__);
-    }
-    else {
-        exit(EXIT_FAILURE);
-    }
-}
-
 
 #ifndef CONFIG_DISABLE_SIGNALS
 

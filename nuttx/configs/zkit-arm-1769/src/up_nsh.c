@@ -49,8 +49,9 @@
 #include <debug.h>
 #include <errno.h>
 
-#include <nuttx/spi.h>
+#include <nuttx/spi/spi.h>
 #include <nuttx/mmcsd.h>
+#include "lpc17_spi.h"
 
 /****************************************************************************
  * Pre-Processor Definitions
@@ -148,7 +149,7 @@ int nsh_archinitialize(void)
 
   /* Get the SSP port */
 
-  ssp = lpc17_sspinitialize(CONFIG_NSH_MMCSDSPIPORTNO);
+  ssp = lpc17_spiinitialize(CONFIG_NSH_MMCSDSPIPORTNO);
   if (!ssp)
     {
       message("nsh_archinitialize: Failed to initialize SSP port %d\n",

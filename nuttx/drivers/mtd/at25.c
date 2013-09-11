@@ -2,7 +2,7 @@
  * drivers/mtd/at25.c
  * Driver for SPI-based AT25DF321 (32Mbit) flash.
  *
- *   Copyright (C) 2009-2012 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2009-2013 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *           Petteri Aimonen <jpa@nx.mail.kapsi.fi>
  *
@@ -51,15 +51,20 @@
 
 #include <nuttx/kmalloc.h>
 #include <nuttx/fs/ioctl.h>
-#include <nuttx/spi.h>
+#include <nuttx/spi/spi.h>
 #include <nuttx/mtd.h>
 
 /************************************************************************************
  * Pre-processor Definitions
  ************************************************************************************/
+/* Configuration ********************************************************************/
 
 #ifndef CONFIG_AT25_SPIMODE
 #  define CONFIG_AT25_SPIMODE SPIDEV_MODE0
+#endif
+
+#ifndef CONFIG_AT25_SPIFREQUENCY
+#  define CONFIG_AT25_SPIFREQUENCY 20000000
 #endif
 
 /* AT25 Registers *******************************************************************/
@@ -180,7 +185,7 @@ static void at25_lock(FAR struct spi_dev_s *dev)
 
   SPI_SETMODE(dev, CONFIG_AT25_SPIMODE);
   SPI_SETBITS(dev, 8);
-  (void)SPI_SETFREQUENCY(dev, 20000000);
+  (void)SPI_SETFREQUENCY(dev, CONFIG_AT25_SPIFREQUENCY);
 }
 
 /************************************************************************************
@@ -200,7 +205,6 @@ static inline int at25_readid(struct at25_dev_s *priv)
 {
   uint16_t manufacturer;
   uint16_t memory;
-  uint16_t version;
 
   fvdbg("priv: %p\n", priv);
 
@@ -664,10 +668,12 @@ FAR struct mtd_dev_s *at25_initialize(FAR struct spi_dev_s *dev)
    * to be extended to handle multiple FLASH parts on the same SPI bus.
    */
 
-  priv = (FAR struct at25_dev_s *)kmalloc(sizeof(struct at25_dev_s));
+  priv = (FAR struct at25_dev_s *)kzalloc(sizeof(struct at25_dev_s));
   if (priv)
     {
-      /* Initialize the allocated structure */
+      /* Initialize the allocated structure (unsupported methods were
+       * nullified by kzalloc).
+       */
 
       priv->mtd.erase  = at25_erase;
       priv->mtd.bread  = at25_bread;

@@ -334,11 +334,11 @@ extern const uint8_t g_inodemagic[NXFFS_MAGICSIZE];
 
 extern const uint8_t g_datamagic[NXFFS_MAGICSIZE];
 
-/* If CONFIG_NXFSS_PREALLOCATED is defined, then this is the single, pre-
+/* If CONFIG_NXFFS_PREALLOCATED is defined, then this is the single, pre-
  * allocated NXFFS volume instance.
  */
 
-#ifdef CONFIG_NXFSS_PREALLOCATED
+#ifdef CONFIG_NXFFS_PREALLOCATED
 extern struct nxffs_volume_s g_volume;
 #endif
 
@@ -670,7 +670,7 @@ extern off_t nxffs_inodeend(FAR struct nxffs_volume_s *volume,
  * Name: nxffs_verifyblock
  *
  * Description:
- *   Assure the the provided (logical) block number is in the block cache
+ *   Assure that the provided (logical) block number is in the block cache
  *   and that it has a valid block header (i.e., proper magic and
  *   marked good)
  *

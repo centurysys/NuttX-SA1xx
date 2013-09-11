@@ -65,7 +65,7 @@
 /* If CONFIG_ARCH_RAMVECTORS is defined, then the ARM logic must provide
  * ARM-specific implementations of up_ramvec_initialize(), irq_attach(), and
  * irq_dispatch.  In this case, it is also assumed that the ARM vector
- * table resides in RAM, has the the name up_ram_vectors, and has been
+ * table resides in RAM, has the name up_ram_vectors, and has been
  * properly positioned and aligned in memory by the linker script.
  */
 
@@ -100,7 +100,7 @@ void up_ramvec_initialize(void)
 
   /* The vector table must be aligned */
 
-  DEBUGASSERT(((uintptr)g_ram_vectors & ~NVIC_VECTAB_TBLOFF_MASK) == 0);
+  DEBUGASSERT(((uint32_t)g_ram_vectors & ~NVIC_VECTAB_TBLOFF_MASK) == 0);
 
   /* Copy the ROM vector table at address zero to RAM vector table.
    *

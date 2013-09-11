@@ -240,7 +240,7 @@ PIN CONFIGURATIONS                     SIGNAL NAME                ON-BOARD CONNE
 MEB Connector
 =============
 
-The following table summarizes how the pins brought the the MEB through the
+The following table summarizes how the pins brought the MEB through the
 J2 on the Ethernet Starter Kit are mapped.  This connect is J2 on the Ethernet
 Starter Kit and J3 on the MEB.
 
@@ -814,15 +814,15 @@ PIC32MX Configuration Options
     CONFIG_ENDIAN_BIG - define if big endian (default is little
        endian)
 
-    CONFIG_DRAM_SIZE - Describes the installed DRAM (CPU SRAM in this case):
+    CONFIG_RAM_SIZE - Describes the installed DRAM (CPU SRAM in this case):
 
-       CONFIG_DRAM_SIZE=(32*1024) (32Kb)
+       CONFIG_RAM_SIZE=(32*1024) (32Kb)
 
        There is an additional 32Kb of SRAM in AHB SRAM banks 0 and 1.
 
-    CONFIG_DRAM_START - The start address of installed DRAM
+    CONFIG_RAM_START - The start address of installed DRAM
 
-       CONFIG_DRAM_START=0xa0000000
+       CONFIG_RAM_START=0xa0000000
 
     CONFIG_ARCH_IRQPRIO - The PIC32MXx supports interrupt prioritization
 
@@ -1095,7 +1095,7 @@ Where <subdir> is one of the following:
 
       CONFIG_CDCACM=y         : Enable the CDCACM device
 
-    examples/usbstorage - There are some hooks in the appconfig file
+    examples/usbmsc - There are some hooks in the appconfig file
     to enable the USB mass storage device.  However, this device cannot
     work until support for the SD card is also incorporated.
 
@@ -1206,12 +1206,12 @@ Where <subdir> is one of the following:
       -CONFIG_EXAMPLES_USBMSC_DEVPATH1="/dev/mmcsd0"
       +CONFIG_EXAMPLES_USBMSC_DEVPATH1="/dev/ram0"
 
-  2. Changes to nuttx/.config.
+  2. Changes to apps/.config.
 
-    a) Enable building of the examples/usbstorage:
+    a) Enable building of the examples/usbmsc:
 
-      -# CONFIGURED_APPS += examples/usbstorage
-      +  CONFIGURED_APPS += examples/usbstorage
+      -# CONFIGURED_APPS += examples/usbmsc
+      +  CONFIGURED_APPS += examples/usbmsc
 
   3. When NSH first comes up, you must manually create the RAM disk
      before exporting it:

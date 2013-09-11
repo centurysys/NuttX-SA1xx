@@ -427,13 +427,13 @@ Teensy++ Configuration Options
     CONFIG_ENDIAN_BIG - define if big endian (default is little
        endian)
 
-    CONFIG_DRAM_SIZE - Describes the installed DRAM.  One of:
+    CONFIG_RAM_SIZE - Describes the installed DRAM.  One of:
 
-       CONFIG_DRAM_SIZE=(8*1024) - (8Kb)
+       CONFIG_RAM_SIZE=(8*1024) - (8Kb)
 
-    CONFIG_DRAM_START - The start address of installed DRAM
+    CONFIG_RAM_START - The start address of installed DRAM
 
-       CONFIG_DRAM_START=0x800100
+       CONFIG_RAM_START=0x800100
 
     CONFIG_ARCH_LEDS - Use LEDs to show state. Unique to boards that
        have LEDs
@@ -536,15 +536,15 @@ Where <subdir> is one of the following:
     to get it to fit within AVR memory constraints, it will probably be
     necessary to disable some OS features.
 
-  usbstorage:
+  usbmsc:
     This configuration directory exercises the USB mass storage
-    class driver at apps/examples/usbstorage.  See apps/examples/README.txt
+    class driver at apps/examples/usbmsc.  See apps/examples/README.txt
     for more information.  NOTE:  THIS CONFIGURATION HAS NOT YET BEEN
     DEBUGGED AND DOES NOT WORK!!!  ISSUES:  (1) THE SPI DRIVER IS UNTESTED,
     (2) THE USB DRIVER IS UNTESTED, AND (3) THE RAM USAGE MIGHT BE EXCESSIVE.
 
     Update 7/11:  (1) The SPI/SD driver has been verified, however, (2) I
-    believe that the current teensy/usbstorage configuration uses too
+    believe that the current teensy/usbmsc configuration uses too
     much SRAM for the system to behave sanely.  A lower memory footprint
     version of the mass storage driver will be required before this can
     be debugged

@@ -1,7 +1,7 @@
 /****************************************************************************
  * arch/arm/src/stm32/stm32_sdio.c
  *
- *   Copyright (C) 2009, 2011-2012 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2009, 2011-2013 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -203,7 +203,7 @@
 #  error "Unknown STM32 DMA"
 #endif
 
-/* SDIO DMA Channel/Stream selection.  For the the case of the STM32 F4, there
+/* SDIO DMA Channel/Stream selection.  For the case of the STM32 F4, there
  * are multiple DMA stream options that must be dis-ambiguated in the board.h
  * file.
  */
@@ -248,15 +248,16 @@
                             SDIO_MASK_CMDRENDIE)
 #define SDIO_XFRDONE_MASK  (0)
 
-#define SDIO_CMDDONE_ICR   (SDIO_ICR_CMDSENTC)
+#define SDIO_CMDDONE_ICR   (SDIO_ICR_CMDSENTC|SDIO_ICR_DBCKENDC)
 #define SDIO_RESPDONE_ICR  (SDIO_ICR_CTIMEOUTC|SDIO_ICR_CCRCFAILC|\
-                            SDIO_ICR_CMDRENDC)
+                            SDIO_ICR_CMDRENDC|SDIO_ICR_DBCKENDC)
 #define SDIO_XFRDONE_ICR   (SDIO_ICR_DATAENDC|SDIO_ICR_DCRCFAILC|\
                             SDIO_ICR_DTIMEOUTC|SDIO_ICR_RXOVERRC|\
-                            SDIO_ICR_TXUNDERRC|SDIO_ICR_STBITERRC)
+                            SDIO_ICR_TXUNDERRC|SDIO_ICR_STBITERRC|\
+                            SDIO_ICR_DBCKENDC)
 
 #define SDIO_WAITALL_ICR   (SDIO_CMDDONE_ICR|SDIO_RESPDONE_ICR|\
-                            SDIO_XFRDONE_ICR)
+                            SDIO_XFRDONE_ICR|SDIO_ICR_DBCKENDC)
 
 /* Let's wait until we have both SDIO transfer complete and DMA complete. */
 
@@ -480,6 +481,9 @@ struct stm32_dev_s g_sdiodev =
     .clock            = stm32_clock,
     .attach           = stm32_attach,
     .sendcmd          = stm32_sendcmd,
+#ifdef CONFIG_SDIO_BLOCKSETUP
+    .blocksetup       = stm32_blocksetup, /* Not implemented yet */
+#endif
     .recvsetup        = stm32_recvsetup,
     .sendsetup        = stm32_sendsetup,
     .cancel           = stm32_cancel,
@@ -678,7 +682,7 @@ static void stm32_setpwrctrl(uint32_t pwrctrl)
  *
  * Description:
  *   Return the current value of the  the PWRCTRL field of the SDIO POWER
- *   register.  This function can be used to see the the SDIO is power ON
+ *   register.  This function can be used to see if the SDIO is powered ON
  *   or OFF
  *
  * Input Parameters:
@@ -948,7 +952,7 @@ static void stm32_dataconfig(uint32_t timeout, uint32_t dlen, uint32_t dctrl)
  * Name: stm32_datadisable
  *
  * Description:
- *   Disable the the SDIO data path setup by stm32_dataconfig() and
+ *   Disable the SDIO data path setup by stm32_dataconfig() and
  *   disable DMA.
  *
  ****************************************************************************/

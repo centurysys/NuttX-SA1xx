@@ -1,7 +1,7 @@
 /****************************************************************************
  * drivers/usbhost/usbhost_storage.c
  *
- *   Copyright (C) 2010-2012 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2010-2013 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -102,8 +102,9 @@
 #define USBHOST_BOUTFOUND   0x04
 #define USBHOST_ALLFOUND    0x07
 
-#define USBHOST_MAX_RETRIES 100
-#define USBHOST_MAX_CREFS   0x7fff
+#define USBHOST_RETRY_USEC  (50*1000)  /* Retry each 50 milliseconds */
+#define USBHOST_MAX_RETRIES 100        /* Give up after 5 seconds */
+#define USBHOST_MAX_CREFS   INT16_MAX  /* Max cref count before signed overflow */
 
 /****************************************************************************
  * Private Types
@@ -137,6 +138,13 @@ struct usbhost_state_s
   size_t                  tbuflen;      /* Size of the allocated transfer buffer */
   usbhost_ep_t            bulkin;       /* Bulk IN endpoint */
   usbhost_ep_t            bulkout;      /* Bulk OUT endpoint */
+};
+
+/* This is how struct usbhost_state_s looks to the free list logic */
+
+struct usbhost_freestate_s
+{
+  FAR struct usbhost_freestate_s *flink;
 };
 
 /****************************************************************************
@@ -300,7 +308,7 @@ static struct usbhost_state_s g_prealloc[CONFIG_USBHOST_NPREALLOC];
 /* This is a list of free, pre-allocated USB host storage class instances */
 
 #if CONFIG_USBHOST_NPREALLOC > 0
-static struct usbhost_state_s *g_freelist;
+static FAR struct usbhost_freestate_s *g_freelist;
 #endif
 
 /* This is a bitmap that is used to allocate device names /dev/sda-z. */
@@ -356,7 +364,7 @@ static void usbhost_takesem(sem_t *sem)
 #if CONFIG_USBHOST_NPREALLOC > 0
 static inline FAR struct usbhost_state_s *usbhost_allocclass(void)
 {
-  struct usbhost_state_s *priv;
+  FAR struct usbhost_freestate_s *entry;
   irqstate_t flags;
 
   /* We may be executing from an interrupt handler so we need to take one of
@@ -364,15 +372,15 @@ static inline FAR struct usbhost_state_s *usbhost_allocclass(void)
    */
 
   flags = irqsave();
-  priv = g_freelist;
-  if (priv)
+  entry = g_freelist;
+  if (entry)
     {
-      g_freelist        = priv->class.flink;
-      priv->class.flink = NULL;
+      g_freelist = entry->flink;
     }
+
   irqrestore(flags);
-  ullvdbg("Allocated: %p\n", priv);;
-  return priv;
+  ullvdbg("Allocated: %p\n", entry);;
+  return (FAR struct usbhost_state_s *)entry;
 }
 #else
 static inline FAR struct usbhost_state_s *usbhost_allocclass(void)
@@ -407,16 +415,17 @@ static inline FAR struct usbhost_state_s *usbhost_allocclass(void)
 #if CONFIG_USBHOST_NPREALLOC > 0
 static inline void usbhost_freeclass(FAR struct usbhost_state_s *class)
 {
+  FAR struct usbhost_freestate_s *entry = (FAR struct usbhost_freestate_s *)class;
   irqstate_t flags;
-  DEBUGASSERT(class != NULL);
+  DEBUGASSERT(entry != NULL);
 
-  ullvdbg("Freeing: %p\n", class);;
+  ullvdbg("Freeing: %p\n", entry);
 
   /* Just put the pre-allocated class structure back on the freelist */
 
   flags = irqsave();
-  class->class.flink = g_freelist;
-  g_freelist = class;
+  entry->flink = g_freelist;
+  g_freelist = entry;
   irqrestore(flags);
 }
 #else
@@ -692,6 +701,7 @@ static inline int usbhost_maxlunreq(FAR struct usbhost_state_s *priv)
 
       *(priv->tbuffer) = 0;
     }
+
   return OK;
 }
 
@@ -821,7 +831,6 @@ static inline int usbhost_readcapacity(FAR struct usbhost_state_s *priv)
 static inline int usbhost_inquiry(FAR struct usbhost_state_s *priv)
 {
   FAR struct usbmsc_cbw_s *cbw;
-  FAR struct scsiresp_inquiry_s *resp;
   int result;
 
   /* Initialize a CBW (re-using the allocated transfer buffer) */
@@ -846,9 +855,12 @@ static inline int usbhost_inquiry(FAR struct usbhost_state_s *priv)
                              priv->tbuffer, SCSIRESP_INQUIRY_SIZEOF);
       if (result == OK)
         {
-          /* TODO: If USB debug is enabled, dump the response data here */
+#if 0
+          FAR struct scsiresp_inquiry_s *resp;
 
+          /* TODO: If USB debug is enabled, dump the response data here */
           resp = (FAR struct scsiresp_inquiry_s *)priv->tbuffer;
+#endif
 
           /* Receive the CSW */
 
@@ -970,6 +982,11 @@ static inline int usbhost_cfgdesc(FAR struct usbhost_state_s *priv,
   DEBUGASSERT(priv != NULL &&
               configdesc != NULL &&
               desclen >= sizeof(struct usb_cfgdesc_s));
+
+  /* Keep the compiler from complaining about uninitialized variables */
+
+  memset(&bindesc, 0, sizeof(struct usbhost_epdesc_s));
+  memset(&boutdesc, 0, sizeof(struct usbhost_epdesc_s));
 
   /* Verify that we were passed a configuration descriptor */
 
@@ -1203,9 +1220,12 @@ static inline int usbhost_initvolume(FAR struct usbhost_state_s *priv)
 
       /* Wait just a bit */
 
-      usleep(50*1000);
+      usleep(USBHOST_RETRY_USEC);
 
-      /* Send TESTUNITREADY to see if the unit is ready */
+      /* Send TESTUNITREADY to see if the unit is ready.  The most likely error
+       * error that can occur here is a a stall which simply means that the
+       * the device is not yet able to respond.
+       */
 
       ret = usbhost_testunitready(priv);
       if (ret == OK)
@@ -1227,6 +1247,19 @@ static inline int usbhost_initvolume(FAR struct usbhost_state_s *priv)
 
           uvdbg("Request sense\n");
           ret = usbhost_requestsense(priv);
+        }
+
+      /* It is acceptable for a mass storage device to respond to the
+       * Test Unit Ready and Request Sense commands with a stall if it is
+       * unable to respond.  But other failures mean that something is
+       * wrong and a device reset is in order.  The transfer functions will
+       * return -EPERM if the transfer failed due to a stall.
+       */
+
+      if (ret < 0 && ret != -EPERM)
+        {
+          udbg("ERROR: DRVR_TRANSFER returned: %d\n", ret);
+          break;
         }
     }
 
@@ -1289,45 +1322,43 @@ static inline int usbhost_initvolume(FAR struct usbhost_state_s *priv)
       ret = register_blockdriver(devname, &g_bops, 0, priv);
     }
 
-  /* Check if we successfully initialized. We now have to be concerned
-   * about asynchronous modification of crefs because the block
+  /* Decrement the reference count.  We incremented the reference count
+   * above so that usbhost_destroy() could not be called.  We now have to
+   * be concerned about asynchronous modification of crefs because the block
    * driver has been registerd.
    */
 
-  if (ret == OK)
+  usbhost_takesem(&priv->exclsem);
+  DEBUGASSERT(priv->crefs >= 2);
+
+  /* Decrement the reference count */
+
+  priv->crefs--;
+
+  /* Check if we successfully initialized.  If so, handle a corner case
+   * where (1) open() has been called so the reference count was > 2, but
+   * the device has been disconnected. In this case, the class instance
+   * needs to persist until close()
+   * is called.
+   */
+
+  if (ret == OK && priv->crefs <= 1 && priv->disconnected)
     {
-      usbhost_takesem(&priv->exclsem);
-      DEBUGASSERT(priv->crefs >= 2);
-
-      /* Decrement the reference count */
-
-      priv->crefs--;
-
-      /* Handle a corner case where (1) open() has been called so the
-       * reference count was > 2, but the device has been disconnected.
-       * In this case, the class instance needs to persist until close()
-       * is called.
+      /* The will cause the enumeration logic to disconnect the class
+       * driver.
        */
 
-      if (priv->crefs <= 1 && priv->disconnected)
-        {
-          /* The will cause the enumeration logic to disconnect
-           * the class driver.
-           */
-
-          ret = -ENODEV;
-        }
-
-      /* Release the semaphore... there is a race condition here.
-       * Decrementing the reference count and releasing the semaphore
-       * allows usbhost_destroy() to execute (on the worker thread);
-       * the class driver instance could get destoryed before we are
-       * ready to handle it!
-       */
-
-       usbhost_givesem(&priv->exclsem);
+      ret = -ENODEV;
     }
 
+  /* Release the semaphore... there is a race condition here.
+   * Decrementing the reference count and releasing the semaphore
+   * allows usbhost_destroy() to execute (on the worker thread);
+   * the class driver instance could get destroyed before we are
+   * ready to handle it!
+   */
+
+  usbhost_givesem(&priv->exclsem);
   return ret;
 }
 
@@ -1549,6 +1580,7 @@ static inline int usbhost_tfree(FAR struct usbhost_state_s *priv)
       priv->tbuffer = NULL;
       priv->tbuflen = 0;
     }
+
   return result;
 }
 
@@ -2225,14 +2257,15 @@ int usbhost_storageinit(void)
    */
 
 #if CONFIG_USBHOST_NPREALLOC > 0
+  FAR struct usbhost_freestate_s *entry;
   int i;
 
   g_freelist = NULL;
   for (i = 0; i < CONFIG_USBHOST_NPREALLOC; i++)
     {
-      struct usbhost_state_s *class = &g_prealloc[i];
-      class->class.flink = g_freelist;
-      g_freelist         = class;
+      entry        = (FAR struct usbhost_freestate_s *)&g_prealloc[i];
+      entry->flink = g_freelist;
+      g_freelist   = entry;
     }
 #endif
 

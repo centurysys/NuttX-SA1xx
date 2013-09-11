@@ -84,7 +84,7 @@ CodeSourcery on Linux
 
   If you select the CodeSourcery toolchain, the make system will assume that you
   are running a Windows version of the toolchain.  If you are running under Linux,
-  the the make will probably fail.  The fix is to edit your Make.defs file and
+  the make will probably fail.  The fix is to edit your Make.defs file and
   use something like:
 
     CROSSDEV = arm-none-eabi-
@@ -295,13 +295,13 @@ Eagle100-specific Configuration Options
     CONFIG_ENDIAN_BIG - define if big endian (default is little
        endian)
 
-    CONFIG_DRAM_SIZE - Describes the installed DRAM (SRAM in this case):
+    CONFIG_RAM_SIZE - Describes the installed DRAM (SRAM in this case):
 
-       CONFIG_DRAM_SIZE=0x00010000 (64Kb)
+       CONFIG_RAM_SIZE=0x00010000 (64Kb)
 
-    CONFIG_DRAM_START - The start address of installed DRAM
+    CONFIG_RAM_START - The start address of installed DRAM
 
-       CONFIG_DRAM_START=0x20000000
+       CONFIG_RAM_START=0x20000000
 
     CONFIG_ARCH_IRQPRIO - The LM3S6918 supports interrupt prioritization
 

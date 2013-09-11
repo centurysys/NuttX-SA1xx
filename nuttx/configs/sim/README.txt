@@ -203,7 +203,7 @@ cxxtest
   -----
   1. Before you can use this example, you must first install the uClibc++
      C++ library.  This is located outside of the NuttX source tree at
-     misc/uClibc++ in SVN.  See the README.txt file for instructions on
+     misc/uClibc++ in GIT.  See the README.txt file for instructions on
      how to install uClibc++
 
   2. This configuration uses the mconf-based configuration tool.  To
@@ -239,6 +239,11 @@ mount
 
     cd <nuttx-directory>/tools
     ./configure.sh sim/mount
+
+mtdpart
+
+  This is the apps/examples/mtdpart test using a MTD RAM driver to
+  simulate the FLASH part.
 
 nettest
 
@@ -486,6 +491,11 @@ nx11
     +CONFIGURED_APPS += examples/nxconsole
 
   See apps/examples/README.txt for further details.
+
+nxffs
+
+  This is the apps/examples/nxffs test using a MTD RAM driver to
+  simulate the FLASH part.
 
 nxlines
 

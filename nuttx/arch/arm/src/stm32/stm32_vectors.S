@@ -138,14 +138,16 @@ stm32_vectors:
 #undef UNUSED
 #define UNUSED(i) .word stm32_reserved
 
-#if defined(CONFIG_STM32_STM32F10XX)
-#  include "chip/chip/stm32f10xxx_vectors.h"
+#if defined(CONFIG_STM32_STM32L15XX)
+#  include "chip/stm32l15xxx_vectors.h"
+#elif defined(CONFIG_STM32_STM32F10XX)
+#  include "chip/stm32f10xxx_vectors.h"
 #elif defined(CONFIG_STM32_STM32F20XX)
-#  include "chip/chip/stm32f20xxx_vectors.h"
+#  include "chip/stm32f20xxx_vectors.h"
 #elif defined(CONFIG_STM32_STM32F30XX)
-#  include "chip/chip/stm32f30xxx_vectors.h"
+#  include "chip/stm32f30xxx_vectors.h"
 #elif defined(CONFIG_STM32_STM32F40XX)
-#  include "chip/chip/stm32f40xxx_vectors.h"
+#  include "chip/stm32f40xxx_vectors.h"
 #else
 #  error "No vectors for STM32 chip"
 #endif
@@ -176,14 +178,16 @@ handlers:
 #undef UNUSED
 #define UNUSED(i)
 
-#if defined(CONFIG_STM32_STM32F10XX)
-#  include "chip/chip/stm32f10xxx_vectors.h"
+#if defined(CONFIG_STM32_STM32L15XX)
+#  include "chip/stm32l15xxx_vectors.h"
+#elif defined(CONFIG_STM32_STM32F10XX)
+#  include "chip/stm32f10xxx_vectors.h"
 #elif defined(CONFIG_STM32_STM32F20XX)
-#  include "chip/chip/stm32f20xxx_vectors.h"
+#  include "chip/stm32f20xxx_vectors.h"
 #elif defined(CONFIG_STM32_STM32F30XX)
-#  include "chip/chip/stm32f30xxx_vectors.h"
+#  include "chip/stm32f30xxx_vectors.h"
 #elif defined(CONFIG_STM32_STM32F40XX)
-#  include "chip/chip/stm32f40xxx_vectors.h"
+#  include "chip/stm32f40xxx_vectors.h"
 #else
 #  error "No handlers for STM32 chip"
 #endif
@@ -247,7 +251,7 @@ stm32_common:
 	sub		r1, #(4*SW_FPU_REGS)
 #endif
 
-	/* Save the the remaining registers on the stack after the registers pushed
+	/* Save the remaining registers on the stack after the registers pushed
 	 * by the exception handling logic. r2=SP and r3=primask or basepri, r4-r11,
 	 * r14=register values.
 	 */

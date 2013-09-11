@@ -47,66 +47,67 @@
  * Pre-processor Definitions
  ****************************************************************************/
 
-/* Macro Name: ASSERT, ASSERTCODE, et al. */
+/* Macro Name: ASSERT, VERIFY, et al. */
 
-#undef ASSERT       - Assert if the condition is not true
-#undef ASSERTCODE   - Assert with an error code if the condition is not true
-#undef VERIFY       - Assert if a function returns a negative value
-#undef DEBUGASSERT  - Like ASSERT, but only if CONFIG_DEBUG is defined
-#undef DEBUGVERIFY  - Like VERIFY, but only if CONFIG_DEBUG is defined
-#undef PANIC        - Unconditional error with code
+#undef ASSERT       /* Assert if the condition is not true */
+#undef VERIFY       /* Assert if a function returns a negative value */
+#undef DEBUGASSERT  /* Like ASSERT, but only if CONFIG_DEBUG is defined */
+#undef DEBUGVERIFY  /* Like VERIFY, but only if CONFIG_DEBUG is defined */
+#undef PANIC        /* Unconditional abort */
 
 #ifdef CONFIG_HAVE_FILENAME
 
 #  define ASSERT(f) \
      { if (!(f)) up_assert((const uint8_t *)__FILE__, (int)__LINE__); }
 
-#  define ASSERTCODE(f, code) \
-     { if (!(f)) up_assert_code((const uint8_t *)__FILE__, (int)__LINE__, code); }
-
 #  define VERIFY(f) \
      { if ((f) < 0) up_assert((const uint8_t *)__FILE__, (int)__LINE__); }
 
+#  define PANIC() \
+     up_assert((const uint8_t *)__FILE__, (int)__LINE__)
+
 #  ifdef CONFIG_DEBUG
+
 #    define DEBUGASSERT(f) \
        { if (!(f)) up_assert((const uint8_t *)__FILE__, (int)__LINE__); }
+
 #    define DEBUGVERIFY(f) \
        { if ((f) < 0) up_assert((const uint8_t *)__FILE__, (int)__LINE__); }
+
+#    define DEBUGPANIC() \
+       up_assert((const uint8_t *)__FILE__, (int)__LINE__)
+
 #  else
+
 #    define DEBUGASSERT(f)
 #    define DEBUGVERIFY(f) ((void)(f))
-#  endif /* CONFIG_DEBUG */
+#    define DEBUGPANIC()
 
-#  define PANIC(code) \
-      up_assert_code((const uint8_t *)__FILE__, (int)__LINE__, (code)|0x8000)
+#  endif /* CONFIG_DEBUG */
 
 #else
-#  define ASSERT(f) \
-     { if (!(f)) up_assert(); }
 
-#  define ASSERTCODE(f, code) \
-     { if (!(f)) up_assert_code(code); }
-
-#    define VERIFY(f) \
-       { if ((f) < 0) up_assert(); }
+#  define ASSERT(f)        { if (!(f)) up_assert(); }
+#  define VERIFY(f)        { if ((f) < 0) up_assert(); }
+#  define PANIC()          up_assert()
 
 #  ifdef CONFIG_DEBUG
-#    define DEBUGASSERT(f) \
-       { if (!(f)) up_assert(); }
-#    define DEBUGVERIFY(f) \
-       { if ((f) < 0) up_assert(); }
+
+#    define DEBUGASSERT(f) { if (!(f)) up_assert(); }
+#    define DEBUGVERIFY(f) { if ((f) < 0) up_assert(); }
+#    define DEBUGPANIC()   up_assert()
+
 #  else
+
 #    define DEBUGASSERT(f)
 #    define DEBUGVERIFY(f) ((void)(f))
+#    define DEBUGPANIC()
+
 #  endif /* CONFIG_DEBUG */
-
-#  define PANIC(code) \
-      up_assert_code((code)|0x8000)
-
 #endif
 
 #ifndef assert
-#define assert ASSERT
+#  define assert ASSERT
 #endif
 
 /****************************************************************************
@@ -131,11 +132,8 @@ extern "C"
 
 #ifdef CONFIG_HAVE_FILENAME
 void up_assert(FAR const uint8_t *filename, int linenum) noreturn_function;
-void up_assert_code(FAR const uint8_t *filename, int linenum, int errcode)
-       noreturn_function;
 #else
 void up_assert(void) noreturn_function;
-void up_assert_code(int errcode) noreturn_function;
 #endif
 
 #undef EXTERN

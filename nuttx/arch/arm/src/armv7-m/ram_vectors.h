@@ -68,7 +68,7 @@
  * the table.
  */
 
-#define ARMV7M_VECTAB_SIZE (ARMV7M_PERIPHERAL_INTERRUPTS)
+#define ARMV7M_VECTAB_SIZE (ARMV7M_PERIPHERAL_INTERRUPTS + 16)
 
 /************************************************************************************
  * Public Data
@@ -77,7 +77,7 @@
 /* If CONFIG_ARCH_RAMVECTORS is defined, then the ARM logic must provide
  * ARM-specific implementations of irq_initialize(), irq_attach(), and
  * irq_dispatch.  In this case, it is also assumed that the ARM vector
- * table resides in RAM, has the the name up_ram_vectors, and has been
+ * table resides in RAM, has the name up_ram_vectors, and has been
  * properly positioned and aligned in memory by the linker script.
  */
 

@@ -36,9 +36,11 @@ endchoice
 config USBDEV_MAXPOWER
 	int "Maximum power consumption in mA"
 	default 100
-	depends on USBDEV_BUSPOWERED
+#	depends on USBDEV_BUSPOWERED
 	---help---
-		Maximum power consumption in mA
+		Maximum power consumption in mA.  This selection should only apply if
+		the device is bus powered (USBDEV_BUSPOWERED).  It is, however, used
+		unconditionally in several USB device drivers.
 
 config USBDEV_DMA
 	bool "Enable DMA methods"
@@ -78,7 +80,7 @@ config USBDEV_TRACE
 
 config USBDEV_TRACE_NRECORDS
 	int "Number of trace entries to remember"
-	default 32 
+	default 128
 	depends on USBDEV_TRACE
 	---help---
 		Number of trace entries to remember
@@ -86,7 +88,7 @@ config USBDEV_TRACE_NRECORDS
 config USBDEV_TRACE_STRINGS
 bool "Decode device controller events"
 	default n
-	depends on USBDEV_TRACE
+	depends on USBDEV_TRACE || DEBUG_USB
 	---help---
 		If USBDEV_TRACE_STRINGS is defined, then the USB device controller
 		driver must provide arrays of strings to support decoding of device-
@@ -125,8 +127,8 @@ config COMPOSITE_EP0MAXPACKET
 
 config COMPOSITE_VENDORID
 	hex "Composite vendor ID"
-	default 0
-	
+	default 0x0000
+
 config COMPOSITE_VENDORSTR
 	string "Composite vendor ID"
 	default "Nuttx"
@@ -135,8 +137,8 @@ config COMPOSITE_VENDORSTR
 
 config COMPOSITE_PRODUCTID
 	hex "Composite product id"
-	default 0
-	
+	default 0x0000
+
 config COMPOSITE_PRODUCTSTR
 	string "Composite product string"
 	default "Composite device"
@@ -179,15 +181,15 @@ config PL2303_CONSOLE
 		as the console device.
 
 config PL2303_EPINTIN
-	int "Logical endpoint numbers"
+	int "Interrupt IN endpoint number"
 	default 1
 
 config PL2303_EPBULKOUT
-	int "Endpoint Bulkout"
+	int "Bulk OUT endpoint number"
 	default 2
 
 config PL2303_EPBULKIN
-	int "Endpoint Bulkin"
+	int "Bulk IN endpoint number"
 	default 3
 
 config PL2303_EP0MAXPACKET
@@ -205,6 +207,17 @@ config PL2303_NRDREQS
 	default 4
 	---help---
 		The number of write/read requests that can be in flight
+
+config PL2303_BULKIN_REQLEN
+	int "Size of one write request buffer"
+	default 768 if USBDEV_DUALSPEED
+	default 96  if !USBDEV_DUALSPEED
+	---help---
+		Ideally, the BULKOUT request size should *not* be the same size as
+		the maxpacket size.  That is because IN transfers of exactly the
+		maxpacket size will be followed by a NULL packet.  The BULKOUT,
+		on the other hand, request buffer size is always the same as the
+		maxpacket size.
 
 config PL2303_RXBUFSIZE
 	int "Receive buffer size"
@@ -257,14 +270,14 @@ config CDCACM_COMPOSITE
 	depends on USBDEV_COMPOSITE
 	---help---
 		Configure the CDC serial driver as part of a composite driver
-		(only if CONFIG_USBDEV_COMPOSITE is also defined)
+		(only if USBDEV_COMPOSITE is also defined)
 
 config CDCACM_IFNOBASE
 	int "Offset the CDC/ACM interface numbers"
 	default 0
 	depends on CDCACM_COMPOSITE
 	---help---
-		If the CDC driver is part of a composite device, then this may need to 
+		If the CDC driver is part of a composite device, then this may need to
 		be defined to offset the CDC/ACM interface numbers so that they are
 		unique and contiguous.  When used with the Mass Storage driver, the
 		correct value for this offset is zero.
@@ -274,12 +287,12 @@ config CDCACM_STRBASE
 	default 0
 	depends on CDCACM_COMPOSITE
 	---help---
-		If the CDC driver is part of a composite device, then this may need to 
+		If the CDC driver is part of a composite device, then this may need to
 		be defined to offset the CDC/ACM string numbers so that they are
 		unique and contiguous.  When used with the Mass Storage driver, the
 		correct value for this offset is four (this value actuallly only needs
 		to be defined if names are provided for the Notification interface,
-		config CDCACM_NOTIFSTR, or the data interface, CONFIG_CDCACM_DATAIFSTR).
+		config CDCACM_NOTIFSTR, or the data interface, CDCACM_DATAIFSTR).
 
 config CDCACM_EP0MAXPACKET
 	int "Endpoint 0 max packet size"
@@ -288,63 +301,63 @@ config CDCACM_EP0MAXPACKET
 		Endpoint 0 max packet size. Default 64.
 
 config CDCACM_EPINTIN
-	int "Hardware endpoint that supports interrupt IN operation"
+	int "Interrupt IN endpoint number"
 	default 1
 	---help---
 		The logical 7-bit address of a hardware endpoint that supports
 		interrupt IN operation.  Default 1.
 
 config CDCACM_EPINTIN_FSSIZE
-	int "Endpoint in full speed size"
+	int "Interupt IN full speed MAXPACKET size"
 	default 64
 	---help---
 		Max package size for the interrupt IN endpoint if full speed mode.
 		Default 64.
 
 config CDCACM_EPINTIN_HSSIZE
-	int "Endpoint in high speed size"
+	int "Interupt IN high speed MAXPACKET size"
 	default 64
 	---help---
 		Max package size for the interrupt IN endpoint if high speed mode.
 		Default 64.
 
 config CDCACM_EPBULKOUT
-	int "Endpoint bulk out"
+	int "Bulk OUT endpoint number"
 	default 3
 	---help---
 		The logical 7-bit address of a hardware endpoint that supports
 		bulk OUT operation.  Default: 3
 
 config CDCACM_EPBULKOUT_FSSIZE
-	int "Endpoint bulk out full speed size"
+	int "Bulk OUT full speed  MAXPACKET size"
 	default 64
 	---help---
 		Max package size for the bulk OUT endpoint if full speed mode.
 		Default 64.
 
 config CDCACM_EPBULKOUT_HSSIZE
-	int "Endpoint bulk out high speed size"
+	int "Bulk OUT out high speed  MAXPACKET size"
 	default 512
 	---help---
 		Max package size for the bulk OUT endpoint if high speed mode.
 		Default 512.
 
 config CDCACM_EPBULKIN
-	int "Endpoint bulk in"
+	int "Bulk IN endpoint number"
 	default 2
 	---help---
 		The logical 7-bit address of a hardware endpoint that supports
 		bulk IN operation.  Default: 2
 
 config CDCACM_EPBULKIN_FSSIZE
-	int "Endpoint bulk in full speed size"
+	int "Bulk IN full speed  MAXPACKET size"
 	default 64
 	---help---
 		Max package size for the bulk IN endpoint if full speed mode.
 		Default 64.
 
 config CDCACM_EPBULKIN_HSSIZE
-	int "Endpoint bulk in high speed size"
+	int "Bulk IN high speed  MAXPACKET size"
 	default 512
 	---help---
 		Max package size for the bulk IN endpoint if high speed mode.
@@ -361,6 +374,17 @@ config CDCACM_NRDREQS
 	default 4
 	---help---
 		The number of write/read requests that can be in flight
+
+config CDCACM_BULKIN_REQLEN
+	int "Size of one write request buffer"
+	default 768 if USBDEV_DUALSPEED
+	default 96  if !USBDEV_DUALSPEED
+	---help---
+		Ideally, the BULKOUT request size should *not* be the same size as
+		the maxpacket size.  That is because IN transfers of exactly the
+		maxpacket size will be followed by a NULL packet.  The BULKOUT,
+		on the other hand, request buffer size is always the same as the
+		maxpacket size.
 
 config CDCACM_RXBUFSIZE
 	int "Receive buffer size"
@@ -430,14 +454,14 @@ config USBMSC_COMPOSITE
 	depends on USBDEV_COMPOSITE
 	---help---
 		Configure the mass storage driver as part of a composite driver
-		(only if CONFIG_USBDEV_COMPOSITE is also defined)
+		(only if USBDEV_COMPOSITE is also defined)
 
 config USBMSC_IFNOBASE
 	int "Offset the mass storage interface number"
 	default 2
 	depends on USBMSC_COMPOSITE
 	---help---
-		If the CDC driver is part of a composite device, then this may need to 
+		If the CDC driver is part of a composite device, then this may need to
 		be defined to offset the mass storage interface number so that it is
 		unique and contiguous.  When used with the CDC/ACM driver, the
 		correct value for this offset is two (because of the two CDC/ACM
@@ -448,11 +472,11 @@ config USBMSC_STRBASE
 	default 2
 	depends on USBMSC_COMPOSITE
 	---help---
-		If the CDC driver is part of a composite device, then this may need to 
+		If the CDC driver is part of a composite device, then this may need to
 		be defined to offset the mass storage string numbers so that they are
 		unique and contiguous.  When used with the CDC/ACM driver, the
 		correct value for this offset is four (or perhaps 5 or 6, depending
-		on if CONFIG_CDCACM_NOTIFSTR or CONFIG_CDCACM_DATAIFSTR are defined).
+		on if CDCACM_NOTIFSTR or CDCACM_DATAIFSTR are defined).
 
 config USBMSC_EP0MAXPACKET
 	int "Max packet size for endpoint 0"
@@ -461,15 +485,15 @@ config USBMSC_EP0MAXPACKET
 		Max packet size for endpoint 0
 
 config USBMSC_EPBULKOUT
-	int "Endpoint bulk out"
-	default 0
+	int "Bulk OUT endpoint number"
+	default 2
 	---help---
 		The logical 7-bit address of a hardware endpoints that support
 		bulk OUT and IN operations
 
 config USBMSC_EPBULKIN
-	int "Endpoint bulk in"
-	default 0
+	int "Bulk IN endpoint number"
+	default 3
 	---help---
 		The logical 7-bit address of a hardware endpoints that support
 		bulk OUT and IN operations
@@ -498,18 +522,25 @@ config USBMSC_BULKOUTREQLEN
 		maxpacket and ideally as large as a block device sector.
 
 config USBMSC_VENDORID
-	hex "Mass stroage Vendor ID"
-	default 0x00
-	
+	hex "Mass storage Vendor ID"
+	default 0x584e
+	---help---
+		The vendor ID (VID).  The value here is bogus.  You should not use
+		it in any commercial products!  You must go through the proper
+		channels to request a vendor ID for your company if you do not
+		already have one!
+
 config USBMSC_VENDORSTR
-	string "Mass stroage vendor string"
+	string "Mass storage vendor string"
 	default "Nuttx"
 	---help---
 		The vendor ID code/string
 
 config USBMSC_PRODUCTID
-	hex "Mass stroage Product ID"
-	default 0x00
+	hex "Mass storage Product ID"
+	default 0x5342
+	---help---
+		The product ID (PID).
 
 config USBMSC_PRODUCTSTR
 	string "Mass storage product string"
@@ -520,7 +551,7 @@ config USBMSC_VERSIONNO
 	default "0x399"
 
 config USBMSC_REMOVABLE
-	bool "Mass stroage remove able"
+	bool "Mass storage remove able"
 	default n
 	---help---
 		Select if the media is removable

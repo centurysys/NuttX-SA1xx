@@ -241,7 +241,9 @@ static void lpc17_takesem(sem_t *sem);
 /* Byte stream access helper functions *****************************************/
 
 static inline uint16_t lpc17_getle16(const uint8_t *val);
+#if 0 /* Not used */
 static void lpc17_putle16(uint8_t *dest, uint16_t val);
+#endif
 
 /* OHCI memory pool helper functions *******************************************/
 
@@ -268,13 +270,13 @@ static void lpc17_setinttab(uint32_t value, unsigned int interval, unsigned int 
 #endif
 
 static inline int lpc17_addinted(struct lpc17_usbhost_s *priv,
-                                 const FAR struct usbhost_epdesc_s *epdesc, 
+                                 FAR const struct usbhost_epdesc_s *epdesc, 
                                  struct lpc17_ed_s *ed);
 static inline int lpc17_reminted(struct lpc17_usbhost_s *priv,
                                  struct lpc17_ed_s *ed);
 
 static inline int lpc17_addisoced(struct lpc17_usbhost_s *priv,
-                                  const FAR struct usbhost_epdesc_s *epdesc, 
+                                  FAR const struct usbhost_epdesc_s *epdesc, 
                                   struct lpc17_ed_s *ed);
 static inline int lpc17_remisoced(struct lpc17_usbhost_s *priv,
                                   struct lpc17_ed_s *ed);
@@ -294,12 +296,16 @@ static int lpc17_usbinterrupt(int irq, FAR void *context);
 
 /* USB host controller operations **********************************************/
 
-static int lpc17_wait(FAR struct usbhost_driver_s *drvr, bool connected);
-static int lpc17_enumerate(FAR struct usbhost_driver_s *drvr);
+static int lpc17_wait(FAR struct usbhost_connection_s *conn,
+                      FAR const bool *connected);
+static int lpc17_enumerate(FAR struct usbhost_connection_s *conn, int rhpndx);
+
 static int lpc17_ep0configure(FAR struct usbhost_driver_s *drvr, uint8_t funcaddr,
                               uint16_t maxpacketsize);
+static int lpc17_getdevinfo(FAR struct usbhost_driver_s *drvr,
+                            FAR struct usbhost_devinfo_s *devinfo);
 static int lpc17_epalloc(FAR struct usbhost_driver_s *drvr,
-                         const FAR struct usbhost_epdesc_s *epdesc, usbhost_ep_t *ep);
+                         FAR const struct usbhost_epdesc_s *epdesc, usbhost_ep_t *ep);
 static int lpc17_epfree(FAR struct usbhost_driver_s *drvr, usbhost_ep_t ep);
 static int lpc17_alloc(FAR struct usbhost_driver_s *drvr,
                        FAR uint8_t **buffer, FAR size_t *maxlen);
@@ -334,9 +340,8 @@ static struct lpc17_usbhost_s g_usbhost =
 {
   .drvr             =
     {
-      .wait         = lpc17_wait,
-      .enumerate    = lpc17_enumerate,
       .ep0configure = lpc17_ep0configure,
+      .getdevinfo   = lpc17_getdevinfo,
       .epalloc      = lpc17_epalloc,
       .epfree       = lpc17_epfree,
       .alloc        = lpc17_alloc,
@@ -349,6 +354,14 @@ static struct lpc17_usbhost_s g_usbhost =
       .disconnect   = lpc17_disconnect,
     },
   .class            = NULL,
+};
+
+/* This is the connection/enumeration interface */
+
+static struct usbhost_connection_s g_usbconn =
+{
+  .wait             = lpc17_wait,
+  .enumerate        = lpc17_enumerate,
 };
 
 /* This is a free list of EDs and TD buffers */
@@ -534,11 +547,13 @@ static inline uint16_t lpc17_getle16(const uint8_t *val)
  *
  *******************************************************************************/
 
+#if 0 /* Not used */
 static void lpc17_putle16(uint8_t *dest, uint16_t val)
 {
   dest[0] = val & 0xff; /* Little endian means LS byte first in byte stream */
   dest[1] = val >> 8;
 }
+#endif
 
 /*******************************************************************************
  * Name: lpc17_edfree
@@ -877,7 +892,7 @@ static void lpc17_setinttab(uint32_t value, unsigned int interval, unsigned int 
  *******************************************************************************/
  
 static inline int lpc17_addinted(struct lpc17_usbhost_s *priv,
-                                 const FAR struct usbhost_epdesc_s *epdesc, 
+                                 FAR const struct usbhost_epdesc_s *epdesc, 
                                  struct lpc17_ed_s *ed)
 {
 #ifndef CONFIG_USBHOST_INT_DISABLE
@@ -1113,7 +1128,7 @@ static inline int lpc17_reminted(struct lpc17_usbhost_s *priv,
  *******************************************************************************/
  
 static inline int lpc17_addisoced(struct lpc17_usbhost_s *priv,
-                                  const FAR struct usbhost_epdesc_s *epdesc, 
+                                  FAR const struct usbhost_epdesc_s *epdesc, 
                                   struct lpc17_ed_s *ed)
 {
 #ifndef CONFIG_USBHOST_ISOC_DISABLE
@@ -1289,7 +1304,7 @@ static int lpc17_ctrltd(struct lpc17_usbhost_s *priv, uint32_t dirpid,
       else 
         {
           uvdbg("Bad TD completion status: %d\n", EDCTRL->tdstatus);
-          ret = -EIO;
+          ret = ed->tdstatus == TD_CC_STALL ? -EPERM : -EIO;
         }
     }
 
@@ -1516,10 +1531,10 @@ static int lpc17_usbinterrupt(int irq, FAR void *context)
  *   Wait for a device to be connected or disconneced.
  *
  * Input Parameters:
- *   drvr - The USB host driver instance obtained as a parameter from the call to
- *      the class create() method.
- *   connected - TRUE: Wait for device to be connected; FALSE: wait for device
- *      to be disconnected
+ *   conn - The USB host connection instance obtained as a parameter from the call to
+ *      the USB driver initialization logic.
+ *   connected - A pointer to a boolean value:  TRUE: Wait for device to be
+ *      connected; FALSE: wait for device to be disconnected
  *
  * Returned Values:
  *   Zero (OK) is returned when a device in connected. This function will not
@@ -1533,21 +1548,23 @@ static int lpc17_usbinterrupt(int irq, FAR void *context)
  *
  *******************************************************************************/
 
-static int lpc17_wait(FAR struct usbhost_driver_s *drvr, bool connected)
+static int lpc17_wait(FAR struct usbhost_connection_s *conn,
+                      FAR const bool *connected)
 {
-  struct lpc17_usbhost_s *priv = (struct lpc17_usbhost_s *)drvr;
+  struct lpc17_usbhost_s *priv = (struct lpc17_usbhost_s *)&g_usbhost;
   irqstate_t flags;
 
   /* Are we already connected? */
 
   flags = irqsave();
-  while (priv->connected == connected)
+  while (priv->connected == *connected)
     {
       /* No... wait for the connection/disconnection */
 
       priv->rhswait = true;
       lpc17_takesem(&priv->rhssem);
     }
+
   irqrestore(flags);
 
   udbg("Connected:%s\n", priv->connected ? "YES" : "NO");
@@ -1568,8 +1585,9 @@ static int lpc17_wait(FAR struct usbhost_driver_s *drvr, bool connected)
  *   charge of the sequence of operations.
  *
  * Input Parameters:
- *   drvr - The USB host driver instance obtained as a parameter from the call to
- *      the class create() method.
+ *   conn - The USB host connection instance obtained as a parameter from the call to
+ *      the USB driver initialization logic.
+ *   rphndx - Root hub port index.  0-(n-1) corresponds to root hub port 1-n.
  *
  * Returned Values:
  *   On success, zero (OK) is returned. On a failure, a negated errno value is
@@ -1582,9 +1600,10 @@ static int lpc17_wait(FAR struct usbhost_driver_s *drvr, bool connected)
  *
  *******************************************************************************/
 
-static int lpc17_enumerate(FAR struct usbhost_driver_s *drvr)
+static int lpc17_enumerate(FAR struct usbhost_connection_s *conn, int rphndx)
 {
-  struct lpc17_usbhost_s *priv = (struct lpc17_usbhost_s *)drvr;
+  struct lpc17_usbhost_s *priv = (struct lpc17_usbhost_s *)&g_usbhost;
+  DEBUGASSERT(priv && rhpndx == 0);
 
   /* Are we connected to a device?  The caller should have called the wait()
    * method first to be assured that a device is connected.
@@ -1620,7 +1639,7 @@ static int lpc17_enumerate(FAR struct usbhost_driver_s *drvr)
    */
 
   uvdbg("Enumerate the device\n");
-  return usbhost_enumerate(drvr, 1, &priv->class);
+  return usbhost_enumerate(&g_usbhost.drvr, 1, &priv->class);
 }
 
 /************************************************************************************
@@ -1679,6 +1698,37 @@ static int lpc17_ep0configure(FAR struct usbhost_driver_s *drvr, uint8_t funcadd
 }
 
 /************************************************************************************
+ * Name: lpc17_getdevinfo
+ *
+ * Description:
+ *   Get information about the connected device.
+ *
+ * Input Parameters:
+ *   drvr - The USB host driver instance obtained as a parameter from the call to
+ *      the class create() method.
+ *   devinfo - A pointer to memory provided by the caller in which to return the
+ *      device information.
+ *
+ * Returned Values:
+ *   On success, zero (OK) is returned. On a failure, a negated errno value is
+ *   returned indicating the nature of the failure
+ *
+ * Assumptions:
+ *   This function will *not* be called from an interrupt handler.
+ *
+ ************************************************************************************/
+
+static int lpc17_getdevinfo(FAR struct usbhost_driver_s *drvr,
+                            FAR struct usbhost_devinfo_s *devinfo)
+{
+  struct lpc17_usbhost_s *priv = (struct lpc17_usbhost_s *)drvr;
+
+  DEBUGASSERT(drvr && devinfo);
+  devinfo->speed = priv->lowspeed ? DEVINFO_SPEED_LOW : DEVINFO_SPEED_FULL;
+  return OK;
+}
+
+/************************************************************************************
  * Name: lpc17_epalloc
  *
  * Description:
@@ -1701,7 +1751,7 @@ static int lpc17_ep0configure(FAR struct usbhost_driver_s *drvr, uint8_t funcadd
  ************************************************************************************/
 
 static int lpc17_epalloc(FAR struct usbhost_driver_s *drvr,
-                         const FAR struct usbhost_epdesc_s *epdesc, usbhost_ep_t *ep)
+                         FAR const struct usbhost_epdesc_s *epdesc, usbhost_ep_t *ep)
 {
   struct lpc17_usbhost_s *priv = (struct lpc17_usbhost_s *)drvr;
   struct lpc17_ed_s      *ed;
@@ -2388,6 +2438,8 @@ errout:
 static void lpc17_disconnect(FAR struct usbhost_driver_s *drvr)
 {
   struct lpc17_usbhost_s *priv = (struct lpc17_usbhost_s *)drvr;
+  DEBUGASSERT(priv);
+
   priv->class = NULL;
 }
   
@@ -2474,7 +2526,7 @@ static inline void lpc17_ep0init(struct lpc17_usbhost_s *priv)
  *
  *******************************************************************************/
 
-FAR struct usbhost_driver_s *usbhost_initialize(int controller)
+FAR struct usbhost_connection_s *usbhost_initialize(int controller)
 {
   struct lpc17_usbhost_s *priv = &g_usbhost;
   uint32_t regval;
@@ -2702,5 +2754,5 @@ FAR struct usbhost_driver_s *usbhost_initialize(int controller)
   udbg("USB host Initialized, Device connected:%s\n",
        priv->connected ? "YES" : "NO");
 
-  return &priv->drvr;
+  return &g_usbconn;
 }

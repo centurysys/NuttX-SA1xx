@@ -86,34 +86,34 @@ volatile uint32_t *current_regs;
  *
  ****************************************************************************/
 
-#if defined(CONFIG_DEBUG_IRQ) && defined (CONFIG_DEBUG)
+#if defined(CONFIG_DEBUG_IRQ)
 static void nuc_dumpnvic(const char *msg, int irq)
 {
   irqstate_t flags;
 
   flags = irqsave();
 
-  slldbg("NVIC (%s, irq=%d):\n", msg, irq);
-  slldbg("  ISER:       %08x ICER:   %08x\n",
-         getreg32(ARMV6M_NVIC_ISER), getreg32(ARMV6M_NVIC_ICER));
-  slldbg("  ISPR:       %08x ICPR:   %08x\n",
-         getreg32(ARMV6M_NVIC_ISPR), getreg32(ARMV6M_NVIC_ICPR));
-  slldbg("  IRQ PRIO:   %08x %08x %08x %08x\n", 
+  lldbg("NVIC (%s, irq=%d):\n", msg, irq);
+  lldbg("  ISER:       %08x ICER:   %08x\n",
+        getreg32(ARMV6M_NVIC_ISER), getreg32(ARMV6M_NVIC_ICER));
+  lldbg("  ISPR:       %08x ICPR:   %08x\n",
+        getreg32(ARMV6M_NVIC_ISPR), getreg32(ARMV6M_NVIC_ICPR));
+  lldbg("  IRQ PRIO:   %08x %08x %08x %08x\n",
         getreg32(ARMV6M_NVIC_IPR0), getreg32(ARMV6M_NVIC_IPR1),
         getreg32(ARMV6M_NVIC_IPR2), getreg32(ARMV6M_NVIC_IPR3));
-  slldbg("              %08x %08x %08x %08x\n", 
+  lldbg("              %08x %08x %08x %08x\n",
         getreg32(ARMV6M_NVIC_IPR4), getreg32(ARMV6M_NVIC_IPR5),
         getreg32(ARMV6M_NVIC_IPR6), getreg32(ARMV6M_NVIC_IPR7));
 
-  slldbg("SYSCON:\n");
-  slldbg("  CPUID:      %08x\n",
-         getreg32(ARMV6M_SYSCON_CPUID));
-  slldbg("  ICSR:       %08x AIRCR:  %08x\n",
-         getreg32(ARMV6M_SYSCON_ICSR), getreg32(ARMV6M_SYSCON_AIRCR));
-  slldbg("  SCR:        %08x CCR:    %08x\n",
-         getreg32(ARMV6M_SYSCON_SCR), getreg32(ARMV6M_SYSCON_CCR));
-  slldbg("  SHPR2:      %08x SHPR3:  %08x\n",
-         getreg32(ARMV6M_SYSCON_SHPR2), getreg32(ARMV6M_SYSCON_SHPR3));
+  lldbg("SYSCON:\n");
+  lldbg("  CPUID:      %08x\n",
+        getreg32(ARMV6M_SYSCON_CPUID));
+  lldbg("  ICSR:       %08x AIRCR:  %08x\n",
+        getreg32(ARMV6M_SYSCON_ICSR), getreg32(ARMV6M_SYSCON_AIRCR));
+  lldbg("  SCR:        %08x CCR:    %08x\n",
+        getreg32(ARMV6M_SYSCON_SCR), getreg32(ARMV6M_SYSCON_CCR));
+  lldbg("  SHPR2:      %08x SHPR3:  %08x\n",
+        getreg32(ARMV6M_SYSCON_SHPR2), getreg32(ARMV6M_SYSCON_SHPR3));
 
   irqrestore(flags);
 }
@@ -138,7 +138,7 @@ static int nuc_nmi(int irq, FAR void *context)
 {
   (void)irqsave();
   dbg("PANIC!!! NMI received\n");
-  PANIC(OSERR_UNEXPECTEDISR);
+  PANIC();
   return 0;
 }
 
@@ -146,7 +146,7 @@ static int nuc_pendsv(int irq, FAR void *context)
 {
   (void)irqsave();
   dbg("PANIC!!! PendSV received\n");
-  PANIC(OSERR_UNEXPECTEDISR);
+  PANIC();
   return 0;
 }
 
@@ -154,31 +154,10 @@ static int nuc_reserved(int irq, FAR void *context)
 {
   (void)irqsave();
   dbg("PANIC!!! Reserved interrupt\n");
-  PANIC(OSERR_UNEXPECTEDISR);
+  PANIC();
   return 0;
 }
 #endif
-
-/****************************************************************************
- * Name: nuc_prioritize_syscall
- *
- * Description:
- *   Set the priority of an exception.  This function may be needed
- *   internally even if support for prioritized interrupts is not enabled.
- *
- ****************************************************************************/
-
-static inline void nuc_prioritize_syscall(int priority)
-{
-  uint32_t regval;
-
-  /* SVCALL is system handler 11 */
-
-  regval = getreg32(ARMV6M_SYSCON_SHPR2);
-  regval &= ~SYSCON_SHPR2_PRI_11_MASK;
-  regval |= (priority << SYSCON_SHPR2_PRI_11_SHIFT);
-  putreg32(regval, ARMV6M_SYSCON_SHPR2);
-}
 
 /****************************************************************************
  * Name: nuc_clrpend
@@ -250,13 +229,6 @@ void up_irqinitialize(void)
 
   irq_attach(NUC_IRQ_SVCALL, up_svcall);
   irq_attach(NUC_IRQ_HARDFAULT, up_hardfault);
-
-  /* Set the priority of the SVCall interrupt */
-
-#ifdef CONFIG_ARCH_IRQPRIO
-/* up_prioritize_irq(NUC_IRQ_PENDSV, NVIC_SYSH_PRIORITY_MIN); */
-#endif
-   nuc_prioritize_syscall(NVIC_SYSH_SVCALL_PRIORITY);
 
   /* Attach all other processor exceptions (except reset and sys tick) */
 

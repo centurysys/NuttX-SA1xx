@@ -50,14 +50,16 @@
 #include <debug.h>
 #include <errno.h>
 
-#include <nuttx/spi.h>
+#include <nuttx/spi/spi.h>
 #include <nuttx/lcd/lcd.h>
 #include <nuttx/lcd/st7567.h>
+#include <nuttx/arch.h>
 
 #include "up_arch.h"
 #include "up_internal.h"
 
 #include "lpc17_gpio.h"
+#include "lpc17_ssp.h"
 #include "zkitarm_internal.h"
 
 #ifdef CONFIG_NX_LCDDRIVER
@@ -108,12 +110,11 @@ FAR struct lcd_dev_s *dev;
 int up_lcdinitialize(void)
 {
   lpc17_configgpio(ZKITARM_OLED_RST);
-  lpc17_configgpio(ZKITARM_OLED_CS);
   lpc17_configgpio(ZKITARM_OLED_RS);
   lpc17_gpiowrite(ZKITARM_OLED_RST, 1);
-  lpc17_gpiowrite(ZKITARM_OLED_CS, 1);
   lpc17_gpiowrite(ZKITARM_OLED_RS, 1);
 
+  zkit_sspinitialize();
   spi = lpc17_sspinitialize(0);
   if (!spi)
     {
@@ -166,7 +167,7 @@ void up_lcduninitialize(void)
  *   Set or clear the SD1329 D/Cn bit to select data (true) or command
  *   (false).  This function must be provided by platform-specific logic.
  *   This is an implementation of the cmddata method of the SPI
- *   interface defined by struct spi_ops_s (see include/nuttx/spi.h).
+ *   interface defined by struct spi_ops_s (see include/nuttx/spi/spi.h).
  *
  * Input Parameters:
  *

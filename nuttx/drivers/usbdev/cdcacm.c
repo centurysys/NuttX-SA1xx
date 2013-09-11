@@ -359,17 +359,13 @@ static int cdcacm_sndpacket(FAR struct cdcacm_dev_s *priv)
 
   /* Get the maximum number of bytes that will fit into one bulk IN request */
 
-#ifdef CONFIG_CDCACM_BULKREQLEN
-  reqlen = MAX(CONFIG_CDCACM_BULKREQLEN, ep->maxpacket);
-#else
-  reqlen = ep->maxpacket;
-#endif
+  reqlen = MAX(CONFIG_CDCACM_BULKIN_REQLEN, ep->maxpacket);
 
   while (!sq_empty(&priv->reqlist))
     {
       /* Peek at the request in the container at the head of the list */
 
-      reqcontainer = (struct cdcacm_req_s *)sq_peek(&priv->reqlist);
+      reqcontainer = (FAR struct cdcacm_req_s *)sq_peek(&priv->reqlist);
       req          = reqcontainer->req;
 
       /* Fill the request with serial TX data */
@@ -539,6 +535,7 @@ static struct usbdev_req_s *cdcacm_allocreq(FAR struct usbdev_ep_s *ep,
           req = NULL;
         }
     }
+
   return req;
 }
 
@@ -841,12 +838,7 @@ static void cdcacm_rdcomplete(FAR struct usbdev_ep_s *ep,
 
   /* Requeue the read request */
 
-#ifdef CONFIG_CDCACM_BULKREQLEN
-  req->len = MAX(CONFIG_CDCACM_BULKREQLEN, ep->maxpacket);
-#else
   req->len = ep->maxpacket;
-#endif
-
   ret      = EP_SUBMIT(ep, req);
   if (ret != OK)
     {
@@ -901,16 +893,22 @@ static void cdcacm_wrcomplete(FAR struct usbdev_ep_s *ep,
   switch (req->result)
     {
     case OK: /* Normal completion */
-      usbtrace(TRACE_CLASSWRCOMPLETE, priv->nwrq);
-      cdcacm_sndpacket(priv);
+      {
+        usbtrace(TRACE_CLASSWRCOMPLETE, priv->nwrq);
+        cdcacm_sndpacket(priv);
+      }
       break;
 
     case -ESHUTDOWN: /* Disconnection */
-      usbtrace(TRACE_CLSERROR(USBSER_TRACEERR_WRSHUTDOWN), priv->nwrq);
+      {
+        usbtrace(TRACE_CLSERROR(USBSER_TRACEERR_WRSHUTDOWN), priv->nwrq);
+      }
       break;
 
     default: /* Some other error occurred */
-      usbtrace(TRACE_CLSERROR(USBSER_TRACEERR_WRUNEXPECTED), (uint16_t)-req->result);
+      {
+        usbtrace(TRACE_CLSERROR(USBSER_TRACEERR_WRUNEXPECTED), (uint16_t)-req->result);
+      }
       break;
     }
 }
@@ -944,7 +942,7 @@ static int cdcacm_bind(FAR struct usbdevclass_driver_s *driver,
   priv->usbdev   = dev;
 
   /* Save the reference to our private data structure in EP0 so that it
-   * can be recovered in ep0 completion events (Unless we are part of 
+   * can be recovered in ep0 completion events (Unless we are part of
    * a composite device and, in that case, the composite device owns
    * EP0).
    */
@@ -981,6 +979,7 @@ static int cdcacm_bind(FAR struct usbdevclass_driver_s *driver,
       ret = -ENODEV;
       goto errout;
     }
+
   priv->epintin->priv = priv;
 
   /* Pre-allocate the IN bulk endpoint */
@@ -992,6 +991,7 @@ static int cdcacm_bind(FAR struct usbdevclass_driver_s *driver,
       ret = -ENODEV;
       goto errout;
     }
+
   priv->epbulkin->priv = priv;
 
   /* Pre-allocate the OUT bulk endpoint */
@@ -1003,14 +1003,15 @@ static int cdcacm_bind(FAR struct usbdevclass_driver_s *driver,
       ret = -ENODEV;
       goto errout;
     }
+
   priv->epbulkout->priv = priv;
 
-  /* Pre-allocate read requests */
+  /* Pre-allocate read requests.  The buffer size is one full packet. */
 
-#ifdef CONFIG_CDCACM_BULKREQLEN
-  reqlen = MAX(CONFIG_CDCACM_BULKREQLEN, priv->epbulkout->maxpacket);
+#ifdef CONFIG_USBDEV_DUALSPEED
+  reqlen = CONFIG_CDCACM_EPBULKOUT_HSSIZE;
 #else
-  reqlen = priv->epbulkout->maxpacket;
+  reqlen = CONFIG_CDCACM_EPBULKOUT_FSSIZE;
 #endif
 
   for (i = 0; i < CONFIG_CDCACM_NRDREQS; i++)
@@ -1023,17 +1024,29 @@ static int cdcacm_bind(FAR struct usbdevclass_driver_s *driver,
           ret = -ENOMEM;
           goto errout;
         }
+
       reqcontainer->req->priv     = reqcontainer;
       reqcontainer->req->callback = cdcacm_rdcomplete;
     }
 
-  /* Pre-allocate write request containers and put in a free list */
+  /* Pre-allocate write request containers and put in a free list.
+   * The buffer size should be larger than a full packet.  Otherwise,
+   * we will send a bogus null packet at the end of each packet.
+   *
+   * Pick the larger of the max packet size and the configured request
+   * size.
+   */
 
-#ifdef CONFIG_CDCACM_BULKREQLEN
-  reqlen = MAX(CONFIG_CDCACM_BULKREQLEN, priv->epbulkin->maxpacket);
+#ifdef CONFIG_USBDEV_DUALSPEED
+  reqlen = CONFIG_CDCACM_EPBULKIN_HSSIZE;
 #else
-  reqlen = priv->epbulkin->maxpacket;
+  reqlen = CONFIG_CDCACM_EPBULKIN_FSSIZE;
 #endif
+
+  if (CONFIG_CDCACM_BULKIN_REQLEN > reqlen)
+    {
+      reqlen = CONFIG_CDCACM_BULKIN_REQLEN;
+    }
 
   for (i = 0; i < CONFIG_CDCACM_NWRREQS; i++)
     {
@@ -1045,6 +1058,7 @@ static int cdcacm_bind(FAR struct usbdevclass_driver_s *driver,
           ret = -ENOMEM;
           goto errout;
         }
+
       reqcontainer->req->priv     = reqcontainer;
       reqcontainer->req->callback = cdcacm_wrcomplete;
 
@@ -1813,9 +1827,10 @@ static void cdcuart_detach(FAR struct uart_dev_s *dev)
 
 static int cdcuart_ioctl(FAR struct file *filep,int cmd,unsigned long arg)
 {
-  struct inode        *inode = filep->f_inode;
-  struct cdcacm_dev_s *priv  = inode->i_private;
-  int                  ret   = OK;
+  struct inode        *inode  = filep->f_inode;
+  struct cdcacm_dev_s *priv   = inode->i_private;
+  FAR uart_dev_t      *serdev = &priv->serdev;
+  int                  ret    = OK;
 
   switch (cmd)
     {
@@ -1904,6 +1919,90 @@ static int cdcuart_ioctl(FAR struct file *filep,int cmd,unsigned long arg)
          */
 
         ret = -ENOSYS;
+      }
+      break;
+
+#ifdef CONFIG_SERIAL_TERMIOS
+    case TCGETS:
+      {
+        struct termios *termiosp = (struct termios*)arg;
+
+        if (!termiosp)
+          {
+            ret = -EINVAL;
+            break;
+          }
+
+        /* And update with flags from this layer */
+
+        termiosp->c_iflag = serdev->tc_iflag;
+        termiosp->c_oflag = serdev->tc_oflag;
+        termiosp->c_lflag = serdev->tc_lflag;
+      }
+      break;
+
+    case TCSETS:
+      {
+        struct termios *termiosp = (struct termios*)arg;
+
+        if (!termiosp)
+          {
+            ret = -EINVAL;
+            break;
+          }
+
+        /* Update the flags we keep at this layer */
+
+        serdev->tc_iflag = termiosp->c_iflag;
+        serdev->tc_oflag = termiosp->c_oflag;
+        serdev->tc_lflag = termiosp->c_lflag;
+      }
+      break;
+#endif
+
+    case FIONREAD:
+      {
+        int count;
+        irqstate_t state = irqsave();
+
+        /* Determine the number of bytes available in the buffer. */
+
+        if (serdev->recv.tail <= serdev->recv.head)
+          {
+            count = serdev->recv.head - serdev->recv.tail;
+          }
+        else
+          {
+            count = serdev->recv.size - (serdev->recv.tail - serdev->recv.head);
+          }
+
+        irqrestore(state);
+
+        *(int *)arg = count;
+        ret = 0;
+      }
+      break;
+
+    case FIONWRITE:
+      {
+        int count;
+        irqstate_t state = irqsave();
+
+        /* Determine the number of bytes free in the buffer. */
+
+        if (serdev->xmit.head < serdev->xmit.tail)
+          {
+            count = serdev->xmit.tail - serdev->xmit.head - 1;
+          }
+        else
+          {
+            count = serdev->xmit.size - (serdev->xmit.head - serdev->xmit.tail) - 1;
+          }
+
+        irqrestore(state);
+
+        *(int *)arg = count;
+        ret = 0;
       }
       break;
 

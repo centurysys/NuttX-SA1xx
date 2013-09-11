@@ -36,7 +36,7 @@ WD=`pwd`
 
 # Get command line parameters
 
-USAGE="USAGE: $0 [-d|-h] [-b build] -v <major.minor> <outfile-path>"
+USAGE="USAGE: $0 [-d|-h] [-b <build>] -v <major.minor> <outfile-path>"
 ADVICE="Try '$0 -h' for more information"
 
 unset VERSION
@@ -62,12 +62,15 @@ while [ ! -z "$1" ]; do
 		echo $USAGE
 		echo ""
 		echo "Where:"
+		echo "	-b <build>"
+		echo "		Use this build identification string.  Default: use GIT build ID"
+		echo "		NOTE: GIT build information may not be available in a snapshot"
 		echo "	-d"
 		echo "		Enable script debug"
 		echo "	-h"
 		echo "		show this help message and exit"
 		echo "	-v <major.minor>"
-		echo "		The NuttX version number expressed a major and minor number separated"
+		echo "		The NuttX version number expressed as a major and minor number separated"
 		echo "		by a period"
 		echo " 	<outfile-path>"
 		echo "		The full path to the version file to be created"
@@ -109,17 +112,17 @@ if [ "X${MAJOR}" = "X${VERSION}" ]; then
 fi
 MINOR=`echo ${VERSION} | cut -d'.' -f2`
 
-# Get SVN information (if not provided on the command line)
+# Get GIT information (if not provided on the command line)
 
 if [ -z "${BUILD}" ]; then
-	SVNINFO=`svn info 2>/dev/null | fgrep 'Revision:'`
-	if [ -z "${SVNINFO}" ]; then
-		echo "SVN version information is not available"
+	GITINFO=`git log 2>/dev/null | head -1`
+	if [ -z "${GITINFO}" ]; then
+		echo "GIT version information is not available"
 		exit 3
 	fi
-	BUILD=`echo ${SVNINFO} | cut -d' ' -f2`
+	BUILD=`echo ${GITINFO} | cut -d' ' -f2`
 	if [ -z "${BUILD}" ]; then
-		echo "SVN build information not found"
+		echo "GIT build information not found"
 		exit 4
 	fi
 fi
@@ -132,4 +135,4 @@ echo "" >>${OUTFILE}
 echo "CONFIG_VERSION_STRING=\"${VERSION}\"" >>${OUTFILE}
 echo "CONFIG_VERSION_MAJOR=${MAJOR}" >>${OUTFILE}
 echo "CONFIG_VERSION_MINOR=${MINOR}" >>${OUTFILE}
-echo "CONFIG_VERSION_BUILD=${BUILD}" >>${OUTFILE}
+echo "CONFIG_VERSION_BUILD=\"${BUILD}\"" >>${OUTFILE}

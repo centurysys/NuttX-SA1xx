@@ -1,8 +1,7 @@
 /************************************************************************************
  * configs/sam3u-ek/src/up_spi.c
- * arch/arm/src/board/up_spi.c
  *
- *   Copyright (C) 2009, 2011 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2009, 2011, 2013 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -45,15 +44,16 @@
 #include <debug.h>
 #include <errno.h>
 
-#include <nuttx/spi.h>
+#include <nuttx/spi/spi.h>
 #include <arch/board/board.h>
 
 #include "up_arch.h"
 #include "chip.h"
-#include "sam3u_internal.h"
-#include "sam3uek_internal.h"
+#include "sam_gpio.h"
+#include "sam_spi.h"
+#include "sam3u-ek.h"
 
-#ifdef CONFIG_SAM3U_SPI
+#ifdef CONFIG_SAM34_SPI0
 
 /************************************************************************************
  * Definitions
@@ -86,14 +86,14 @@
  ************************************************************************************/
 
 /************************************************************************************
- * Name: sam3u_spiinitialize
+ * Name: sam_spiinitialize
  *
  * Description:
- *   Called to configure SPI chip select GPIO pins for the SAM3U10E-EVAL board.
+ *   Called to configure SPI chip select GPIO pins for the SAM3U-EK board.
  *
  ************************************************************************************/
 
-void weak_function sam3u_spiinitialize(void)
+void weak_function sam_spiinitialize(void)
 {
   /* The ZigBee module connects used NPCS0.  However, there is not yet any
    * ZigBee support.
@@ -102,84 +102,45 @@ void weak_function sam3u_spiinitialize(void)
    /* The touchscreen connects using NPCS2 (PC14). */
 
 #if defined(CONFIG_INPUT) && defined(CONFIG_INPUT_ADS7843E)
-   sam3u_configgpio(GPIO_TSC_NPCS2);
+   sam_configgpio(GPIO_TSC_NPCS2);
 #endif
 }
 
 /****************************************************************************
- * Name:  sam3u_spicsnumber, sam3u_spiselect, sam3u_spistatus, and
- *        sam3u_spicmddata
+ * Name:  sam_spiselect, sam_spistatus, and sam_spicmddata
  *
  * Description:
  *   These external functions must be provided by board-specific logic.  They
  *   include:
  *
- *   o sam3u_spicsnumbe and sam3u_spiselect which are helper functions to
- *     manage the board-specific aspects of the unique SAM3U chip select
- *     architecture.
- *   o sam3u_spistatus and sam3u_spicmddata:  Implementations of the status
+ *   o sam_spiselect is a functions tomanage the board-specific chip selects
+ *   o sam_spistatus and sam_spicmddata:  Implementations of the status
  *     and cmddata methods of the SPI interface defined by struct spi_ops_
- *     (see include/nuttx/spi.h). All other methods including
- *     up_spiinitialize()) are provided by common SAM3U logic.
+ *     (see include/nuttx/spi/spi.h). All other methods including
+ *     up_spiinitialize()) are provided by common SAM3/4 logic.
  *
  *  To use this common SPI logic on your board:
  *
- *   1. Provide logic in sam3u_boardinitialize() to configure SPI chip select
+ *   1. Provide logic in sam_boardinitialize() to configure SPI chip select
  *      pins.
- *   2. Provide sam3u_spicsnumber(), sam3u_spiselect() and sam3u_spistatus()
- *      functions in your board-specific logic.  These functions will perform
- *      chip selection and status operations using GPIOs in the way your board
- *      is configured.
+ *   2. Provide sam_spiselect() and sam_spistatus() functions in your board-
+ *      specific logic.  These functions will perform chip selection and
+ *      status operations using GPIOs in the way your board is configured.
  *   2. If CONFIG_SPI_CMDDATA is defined in the NuttX configuration, provide
- *      sam3u_spicmddata() functions in your board-specific logic.  This
+ *      sam_spicmddata() functions in your board-specific logic.  This
  *      function will perform cmd/data selection operations using GPIOs in
  *      the way your board is configured.
  *   3. Add a call to up_spiinitialize() in your low level application
  *      initialization logic
  *   4. The handle returned by up_spiinitialize() may then be used to bind the
- *      SPI driver to higher level logic (e.g., calling 
+ *      SPI driver to higher level logic (e.g., calling
  *      mmcsd_spislotinitialize(), for example, will bind the SPI driver to
  *      the SPI MMC/SD driver).
  *
  ****************************************************************************/
 
 /****************************************************************************
- * Name: sam3u_spicsnumber
- *
- * Description:
- *   The SAM3U has 4 CS registers for controlling device features.  This
- *   function must be provided by board-specific code.  Given a logical device
- *   ID, this function returns a number from 0 to 3 that identifies one of
- *   these SAM3U CS resources.
- *
- * Input Parameters:
- *   devid - Identifies the (logical) device
- *
- * Returned Values:
- *   On success, a CS number from 0 to 3 is returned; A negated errno may
- *   be returned on a failure.
- *
- ****************************************************************************/
-
-int sam3u_spicsnumber(enum spi_dev_e devid)
-{
-  int cs = -EINVAL;
-
-#if defined(CONFIG_INPUT) && defined(CONFIG_INPUT_ADS7843E)
-  if (devid == SPIDEV_TOUCHSCREEN)
-    {
-      /* Assert the CS pin to the OLED display */
-
-      cs = 2;
-    }
-#endif
-
-  spidbg("devid: %d CS: %d\n", (int)devid, cs);
-  return cs;
-}
-
-/****************************************************************************
- * Name: sam3u_spiselect
+ * Name: sam_spiselect
  *
  * Description:
  *   PIO chip select pins may be programmed by the board specific logic in
@@ -203,7 +164,7 @@ int sam3u_spicsnumber(enum spi_dev_e devid)
  *
  ****************************************************************************/
 
-void sam3u_spiselect(enum spi_dev_e devid, bool selected)
+void sam_spiselect(enum spi_dev_e devid, bool selected)
 {
   /* The touchscreen chip select is implemented as a GPIO OUTPUT that must
    * be controlled by this function.  This is because the ADS7843E driver
@@ -216,13 +177,13 @@ void sam3u_spiselect(enum spi_dev_e devid, bool selected)
 #if defined(CONFIG_INPUT) && defined(CONFIG_INPUT_ADS7843E)
   if (devid == SPIDEV_TOUCHSCREEN)
     {
-      sam3u_gpiowrite(GPIO_TSC_NPCS2, !selected);
+      sam_gpiowrite(GPIO_TSC_NPCS2, !selected);
     }
 #endif
 }
 
 /****************************************************************************
- * Name: sam3u_spistatus
+ * Name: sam_spistatus
  *
  * Description:
  *   Return status information associated with the SPI device.
@@ -231,13 +192,13 @@ void sam3u_spiselect(enum spi_dev_e devid, bool selected)
  *   devid - Identifies the (logical) device
  *
  * Returned Values:
- *   Bit-encoded SPI status (see include/nuttx/spi.h.
+ *   Bit-encoded SPI status (see include/nuttx/spi/spi.h.
  *
  ****************************************************************************/
 
-uint8_t sam3u_spistatus(FAR struct spi_dev_s *dev, enum spi_dev_e devid)
+uint8_t sam_spistatus(FAR struct spi_dev_s *dev, enum spi_dev_e devid)
 {
   return 0;
 }
 
-#endif /* CONFIG_SAM3U_SPI */
+#endif /* CONFIG_SAM34_SPI0 */

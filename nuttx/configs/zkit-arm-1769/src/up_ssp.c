@@ -49,7 +49,7 @@
 #include <stdbool.h>
 #include <debug.h>
 
-#include <nuttx/spi.h>
+#include <nuttx/spi/spi.h>
 #include <arch/board/board.h>
 
 #include "up_arch.h"
@@ -98,28 +98,19 @@
  * Name: zkit_sspinitialize
  *
  * Description:
- *   Called to configure SPI chip select GPIO pins for the LM3S6965 Eval Kit.
+ *   Called to configure SPI chip select GPIO pins for the ZKIT-ARM-1769 Kit.
  *
  ************************************************************************************/
 
 void weak_function zkit_sspinitialize(void)
 {
-  /* Configure the SPI-based microSD CS GPIO */
+  /* Configure the SPI-based LCD CS GPIO */
 
   ssp_dumpgpio("zkit_sspinitialize() Entry)");
 
-  /* Configure card detect and chip select for the SD slot.  NOTE:  Jumper J55 must
-   * be set correctly for the SD slot chip select.
-   */
+  /* Configure chip select for the LCD. */
 
 #ifdef CONFIG_LPC17_SSP0
-  (void)lpc17_configgpio(ZKITARM_SD_CS);
-  (void)lpc17_configgpio(ZKITARM_SD_CD);
-
-  /* Configure chip select for the OLED. For the SPI interface, insert jumpers in
-   * J42, J43, J45 pin1-2 and J46 pin 1-2.
-   */
-
 #ifdef CONFIG_NX_LCDDRIVER
   (void)lpc17_configgpio(ZKITARM_OLED_CS);
 #endif
@@ -135,7 +126,7 @@ void weak_function zkit_sspinitialize(void)
  *   The external functions, lpc17_ssp0/ssp1select and lpc17_ssp0/ssp1status
  *   must be provided by board-specific logic.  They are implementations of the select
  *   and status methods of the SPI interface defined by struct spi_ops_s (see
- *   include/nuttx/spi.h). All other methods (including lpc17_sspinitialize())
+ *   include/nuttx/spi/spi.h). All other methods (including lpc17_sspinitialize())
  *   are provided by common LPC17xx logic.  To use this common SPI logic on your
  *   board:
  *
@@ -169,6 +160,22 @@ uint8_t lpc17_ssp1status(FAR struct spi_dev_s *dev, enum spi_dev_e devid)
   sspdbg("Returning SPI_STATUS_PRESENT\n");
   return SPI_STATUS_PRESENT;
 }
+
+/******************************************************************************
+ * Name:  lpc17_ssp1cmddata
+ *
+ * Description: Dummy Function
+ *
+ ******************************************************************************/
+
+#ifdef CONFIG_SPI_CMDDATA
+int weak_function lpc17_ssp1cmddata(FAR struct spi_dev_s *dev,
+                                    enum spi_dev_e devid, bool cmd)
+{
+  return OK;
+}
+
+#endif /* CONFIG_SPI_CMDDATA */
 #endif /* CONFIG_LPC17_SSP1 */
 
 #ifdef CONFIG_LPC17_SSP0
@@ -177,34 +184,24 @@ void  lpc17_ssp0select(FAR struct spi_dev_s *dev, enum spi_dev_e devid, bool sel
   sspdbg("devid: %d CS: %s\n", (int)devid, selected ? "assert" : "de-assert");
   ssp_dumpgpio("lpc17_spi0select() Entry");
 
-  if (devid == SPIDEV_MMCSD)
-    {
-      /* Assert/de-assert the CS pin to the card */
-
-      (void)lpc17_gpiowrite(ZKITARM_SD_CS, !selected);
-    }
 #ifdef CONFIG_NX_LCDDRIVER
-  else if (devid == SPIDEV_DISPLAY)
+  if (devid == SPIDEV_DISPLAY)
     {
       /* Assert the CS pin to the OLED display */
 
       (void)lpc17_gpiowrite(ZKITARM_OLED_CS, !selected);
     }
 #endif
+
   ssp_dumpgpio("lpc17_spi0select() Exit");
 }
 
 uint8_t lpc17_ssp0status(FAR struct spi_dev_s *dev, enum spi_dev_e devid)
 {
-  if (devid == SPIDEV_MMCSD)
+  if (devid == SPIDEV_DISPLAY)
     {
-      /* Read the state of the card-detect bit */
-
-      if (lpc17_gpioread(ZKITARM_SD_CD) == 0)
-        {
-          sspdbg("Returning SPI_STATUS_PRESENT\n");
-          return SPI_STATUS_PRESENT;
-        }
+      sspdbg("Returning SPI_STATUS_PRESENT\n");
+      return SPI_STATUS_PRESENT;
     }
 
   sspdbg("Returning zero\n");

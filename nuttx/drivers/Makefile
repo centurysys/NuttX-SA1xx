@@ -1,7 +1,7 @@
 ############################################################################
 # drivers/Makefile
 #
-#   Copyright (C) 2007-2012 Gregory Nutt. All rights reserved.
+#   Copyright (C) 2007-2013 Gregory Nutt. All rights reserved.
 #   Author: Gregory Nutt <gnutt@nuttx.org>
 #
 # Redistribution and use in source and binary forms, with or without
@@ -50,6 +50,7 @@ VPATH = .
 # the appropriate paths to the VPATH variable
 
 include analog$(DELIM)Make.defs
+include audio$(DELIM)Make.defs
 include bch$(DELIM)Make.defs
 include input$(DELIM)Make.defs
 include lcd$(DELIM)Make.defs
@@ -61,6 +62,7 @@ include power$(DELIM)Make.defs
 include sensors$(DELIM)Make.defs
 include sercomm$(DELIM)Make.defs
 include serial$(DELIM)Make.defs
+include spi$(DELIM)Make.defs
 include syslog$(DELIM)Make.defs
 include usbdev$(DELIM)Make.defs
 include usbhost$(DELIM)Make.defs

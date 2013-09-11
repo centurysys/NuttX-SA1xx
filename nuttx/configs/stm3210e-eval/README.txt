@@ -464,13 +464,13 @@ STM3210E-EVAL-specific Configuration Options
     CONFIG_ENDIAN_BIG - define if big endian (default is little
        endian)
 
-    CONFIG_DRAM_SIZE - Describes the installed DRAM (SRAM in this case):
+    CONFIG_RAM_SIZE - Describes the installed DRAM (SRAM in this case):
 
-       CONFIG_DRAM_SIZE=0x00010000 (64Kb)
+       CONFIG_RAM_SIZE=0x00010000 (64Kb)
 
-    CONFIG_DRAM_START - The start address of installed DRAM
+    CONFIG_RAM_START - The start address of installed DRAM
 
-       CONFIG_DRAM_START=0x20000000
+       CONFIG_RAM_START=0x20000000
 
     CONFIG_ARCH_IRQPRIO - The STM32F103Z supports interrupt prioritization
 
@@ -736,7 +736,7 @@ Where <subdir> is one of the following:
     ----------- ----------------------- --------------------------------
     Built-in    None                    apps/examples/nx
     Apps                                apps/examples/nxhello
-                                        apps/examples/usbstorage (5)
+                                        apps/examples/usbmsc (5)
                                         apps/system/i2c
     =========== ======================= ================================
 
@@ -754,7 +754,7 @@ Where <subdir> is one of the following:
         long file names in the FAT file system.  Please refer to the
         details in the top-level COPYING file.  Please do not use FAT
         long file name unless you are familiar with these patent issues.
-    (5) When built as an NSH add-on command (CONFIG_EXAMPLES_USBMSC_BUILTIN=y),
+    (5) When built as an NSH add-on command (CONFIG_NSH_BUILTIN_APPS=y),
         Caution should be used to assure that the SD drive is not in use when
         the USB storage device is configured.  Specifically, the SD driver
         should be unmounted like:
@@ -958,10 +958,10 @@ Where <subdir> is one of the following:
     In either the original appconfig file (before configuring)
     or in the final apps/.config file (after configuring).
 
-  usbstorage:
-  ----------
+  usbmsc:
+  -------
     This configuration directory exercises the USB mass storage
-    class driver at examples/usbstorage.  See examples/README.txt for
+    class driver at examples/usbmsc.  See examples/README.txt for
     more information.
 
       CONFIG_STM32_BUILDROOT=y      : NuttX buildroot under Linux or Cygwin

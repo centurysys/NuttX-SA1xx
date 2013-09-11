@@ -65,7 +65,7 @@
 #if defined(CONFIG_PAGING_M25PX) || defined(CONFIG_PAGING_AT45DB)
 #  include <sys/ioctl.h>
 #  include <nuttx/fs/ioctl.h>
-#  include <nuttx/spi.h>
+#  include <nuttx/spi/spi.h>
 #  include <nuttx/mtd.h>
 #endif
 
@@ -198,7 +198,7 @@ struct pg_source_s
 
   FAR struct mtd_dev_s *mtd;
 
-  /* This the the device geometry */
+  /* This the device geometry */
 
 #ifdef CONFIG_DEBUG
   FAR struct mtd_geometry_s geo;

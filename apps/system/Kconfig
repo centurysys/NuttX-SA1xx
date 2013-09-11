@@ -15,7 +15,11 @@ menu "FLASH Program Installation"
 source "$APPSDIR/system/install/Kconfig"
 endmenu
 
-menu "RAM Test"
+menu "FLASH Erase-all Command"
+source "$APPSDIR/system/flash_eraseall/Kconfig"
+endmenu
+
+menu "RAM test"
 source "$APPSDIR/system/ramtest/Kconfig"
 endmenu
 
@@ -41,4 +45,8 @@ endmenu
 
 menu "USB Monitor"
 source "$APPSDIR/system/usbmonitor/Kconfig"
+endmenu
+
+menu "Zmodem Commands"
+source "$APPSDIR/system/zmodem/Kconfig"
 endmenu

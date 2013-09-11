@@ -38,7 +38,7 @@ HEAD_ASRC  = lm_vectors.S
 CMN_ASRCS  = up_saveusercontext.S up_fullcontextrestore.S up_switchcontext.S
 CMN_ASRCS += vfork.S
 
-CMN_CSRCS  = up_assert.c up_blocktask.c up_copystate.c up_createstack.c
+CMN_CSRCS  = up_assert.c up_blocktask.c up_copyfullstate.c up_createstack.c
 CMN_CSRCS += up_mdelay.c up_udelay.c up_exit.c up_idle.c up_initialize.c
 CMN_CSRCS += up_initialstate.c up_interruptcontext.c up_memfault.c
 CMN_CSRCS += up_modifyreg8.c up_modifyreg16.c up_modifyreg32.c
@@ -68,7 +68,7 @@ ifeq ($(CONFIG_ELF),y)
 CMN_CSRCS += up_elf.c
 endif
 
-CHIP_ASRCS  = 
+CHIP_ASRCS  =
 CHIP_CSRCS  = lm_allocateheap.c lm_start.c lm_syscontrol.c lm_irq.c
 CHIP_CSRCS += lm_gpio.c lm_gpioirq.c lm_timerisr.c lm_lowputc.c lm_serial.c
 CHIP_CSRCS += lm_ssi.c lm_dumpgpio.c
@@ -79,4 +79,8 @@ endif
 
 ifdef CONFIG_NET
 CHIP_CSRCS += lm_ethernet.c
+endif
+
+ifdef CONFIG_LM_FLASH
+CHIP_CSRCS += lm_flash.c
 endif

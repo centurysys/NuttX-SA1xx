@@ -1,7 +1,7 @@
 /****************************************************************************
  * arch/arm/src/arm/up_doirq.c
  *
- *   Copyright (C) 2007-2009, 2011 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2007-2009, 2011, 2013 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -74,13 +74,13 @@ void up_doirq(int irq, uint32_t *regs)
 {
   up_ledon(LED_INIRQ);
 #ifdef CONFIG_SUPPRESS_INTERRUPTS
-  PANIC(OSERR_ERREXCEPTION);
+  PANIC();
 #else
   uint32_t *savestate;
 
   /* Nested interrupts are not supported in this implementation.  If you want
    * to implement nested interrupts, you would have to (1) change the way that
-   * current_regs is handled and (2) the design associated with
+   * current_regs is handled and (2) implement design changes associated with
    * CONFIG_ARCH_INTERRUPTSTACK.  The savestate variable will not work for
    * that purpose as implemented here because only the outermost nested
    * interrupt can result in a context switch (it can probably be deleted).

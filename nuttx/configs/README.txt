@@ -5,6 +5,7 @@ Table of Contents
 
   o Board-Specific Configurations
   o Summary of Files
+  o Configuration Variables
   o Supported Architectures
   o Configuring NuttX
   o Building Symbol Tables
@@ -131,8 +132,29 @@ defconfig -- This is a configuration file similar to the Linux
     (2) to generate include/nuttx/config.h which is included by
         most C files in the system.
 
-  The following variables are recognized by the build (you may
-  also include architecture/board-specific settings).
+appconfig -- This is another configuration file that is specific to the
+  application.  This file is copied into the application build directory
+  when NuttX is configured.  See ../apps/README.txt for further details.
+
+setenv.sh -- This is a script that you can include that will be installed at
+  the toplevel of the directory structure and can be sourced to set any
+  necessary environment variables.  You will most likely have to customize the
+  default setenv.sh script in order for it to work correctly in your
+  environment.
+
+Configuration Variables
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Note. This section is deprecated. Documentation of NuttX configuration is
+now provided in a separate, auto-generated Configuration Variable Document.
+That configuration variable document is generated using the kconfig2html
+tool. That tool analyzes the NuttX Kconfig files and generates the HTML
+document. As a consequence, this file may not be present at any given time
+but can be regenerated following the instructions in tools directory README
+file. 
+
+The following variables are recognized by the build (you may also include
+architecture/board-specific settings).
 
   Architecture selection:
 
@@ -166,9 +188,9 @@ defconfig -- This is a configuration file similar to the Linux
 
   Some architectures require a description of the RAM configuration:
 
-    CONFIG_DRAM_SIZE - Describes the installed DRAM.
-    CONFIG_DRAM_START - The start address of DRAM (physical)
-    CONFIG_DRAM_VSTART - The start address of DRAM (virtual)
+    CONFIG_RAM_SIZE - Describes the installed DRAM.
+    CONFIG_RAM_START - The start address of DRAM (physical)
+    CONFIG_RAM_VSTART - The start address of DRAM (virtual)
 
   General build options:
 
@@ -608,12 +630,12 @@ defconfig -- This is a configuration file similar to the Linux
       be a value supported by the processor's memory management unit.
     CONFIG_PAGING_NLOCKED - This is the number of locked pages in the
       memory map.  The locked address region will then be from
-      CONFIG_DRAM_VSTART through (CONFIG_DRAM_VSTART +
+      CONFIG_RAM_VSTART through (CONFIG_RAM_VSTART +
       CONFIG_PAGING_PAGESIZE*CONFIG_PAGING_NLOCKED)
     CONFIG_PAGING_LOCKED_PBASE and CONFIG_PAGING_LOCKED_VBASE - These
       may be defined to determine the base address of the locked page
       regions.  If neither are defined, the logic will be set the bases
-      to CONFIG_DRAM_START and CONFIG_DRAM_VSTART (i.e., it assumes
+      to CONFIG_RAM_START and CONFIG_RAM_VSTART (i.e., it assumes
       that the base address of the locked region is at the beginning
       of RAM).
       NOTE:  In some architectures, it may be necessary to take some
@@ -1672,16 +1694,6 @@ defconfig -- This is a configuration file similar to the Linux
     CONFIG_PTHREAD_STACK_MIN - Minimum pthread stack size
     CONFIG_PTHREAD_STACK_DEFAULT - Default pthread stack size
 
-appconfig -- This is another configuration file that is specific to the
-  application.  This file is copied into the application build directory
-  when NuttX is configured.  See ../apps/README.txt for further details.
-
-setenv.sh -- This is a script that you can include that will be installed at
-  the toplevel of the directory structure and can be sourced to set any
-  necessary environment variables.  You will most likely have to customize the
-  default setenv.sh script in order for it to work correctly in your
-  environment.
-
 Supported Boards
 ^^^^^^^^^^^^^^^^
 
@@ -1689,6 +1701,10 @@ configs/amber
   This is placeholder for the SoC Robotics Amber Web Server that is based
   on the Atmel AVR ATMega128 MCU.  There is not much there yet and what is
   there is untested due to tool-related issues.
+
+configs/arduino-due
+  This sub-directory holds board support for the Arduino DUE board featuring
+  the Atmel ATSAM3X8E MCU running at 84 MHz.
 
 configs/avr32dev1
   This is a port of NuttX to the Atmel AVR32DEV1 board.  That board is
@@ -1803,6 +1819,10 @@ configs/mbed
   The configurations in this directory support the mbed board (http://mbed.org)
   that features the NXP LPC1768 microcontroller. This OS is also built
   with the arm-nuttx-elf toolchain*.  STATUS:  Contributed.
+
+configs/mikroe-stm32f4
+  This is the port of NuttX to the MikroElektronika Mikromedia for STM32F4
+  development board.  Contributed by Ken Petit.
 
 configs/mcu123-lpc214x
   This port is for the NXP LPC2148 as provided on the mcu123.com
@@ -1920,6 +1940,11 @@ configs/pic32mx7mmb
   Mikroelektronika PIC32MX7 Multimedia Board (MMB).  See
   http://www.mikroe.com/ for further information.
 
+configs/pirelli_dpl10
+  This directory contains the board support for Pirelli "Discus" DP-L10 phones.
+  It is a variant of the compal_e88 config with the small changes for the
+  differences in the board.
+
 configs/pjrc-8051
   8051 Microcontroller.  This port uses the PJRC 87C52 development system
   and the SDCC toolchain.   This port is not quite ready for prime time.
@@ -1935,11 +1960,32 @@ configs/rgmp
   hybrid operating system. This makes your application able to use both RTOS
   and GPOS features.
 
-  See http://rgmp.sourceforge.net/wiki/index.php/Main_Page for further information
-  about RGMP.
+  See http://rgmp.sourceforge.net/wiki/index.php/Main_Page for further
+  information about RGMP.
+
+configs/sama5d3x-ek
+  This is the  port of NuttX to the Atmel SAMA5D3x-EK development boards
+  (where x=1,3,4, or 5).  These boards feature the Atmel SAMA5D3
+  microprocessors.  Four different SAMA5D3x-EK kits are available
+
+    - SAMA5D31-EK with the ATSAMA5D1 (http://www.atmel.com/devices/sama5d31.aspx)
+    - SAMA5D33-EK with the ATSAMA5D3 (http://www.atmel.com/devices/sama5d33.aspx)
+    - SAMA5D34-EK with the ATSAMA5D4 (http://www.atmel.com/devices/sama5d34.aspx)
+    - SAMA5D35-EK with the ATSAMA5D5 (http://www.atmel.com/devices/sama5d35.aspx)
+
+  The each consist of an identical base board with different plug-in modules
+  for each CPU.  An option 7 inch LCD is also available.  All four boards
+  are supported by NuttX with a simple reconfiguration of the processor
+  type.
+
+  There is also the SAMA5D3FAE-EK bundle includes everything:  The base
+  board, all four CPU modules, and the LCD.
 
 configs/sam3u-ek
   The port of NuttX to the Atmel SAM3U-EK development board.
+
+configs/sam4l-xplained
+  The port of NuttX to the Atmel SAM4L-Xplained development board.
 
 configs/sim
   A user-mode port of NuttX to the x86 Linux platform is available.
@@ -2024,8 +2070,8 @@ configs/z16f2800100zcog
 
 configs/z80sim
   z80 Microcontroller.  This port uses a Z80 instruction set simulator.
-  That simulator can be found in the NuttX SVN at
-  http://svn.code.sf.net/p/nuttx/code/trunk/misc/sims/z80sim.
+  That simulator can be found in the NuttX GIT at
+  http://sourceforge.net/p/nuttx/git/ci/master/tree/misc/sims/z80sim.
   This port also uses the SDCC toolchain (http://sdcc.sourceforge.net/")
   (verified with version 2.6.0).
 

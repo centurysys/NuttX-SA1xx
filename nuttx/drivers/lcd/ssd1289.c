@@ -53,7 +53,7 @@
 #include <debug.h>
 
 #include <nuttx/arch.h>
-#include <nuttx/spi.h>
+#include <nuttx/spi/spi.h>
 #include <nuttx/lcd/lcd.h>
 #include <nuttx/lcd/ssd1289.h>
 
@@ -1108,7 +1108,7 @@ static inline int ssd1289_hwinitialize(FAR struct ssd1289_dev_s *priv)
       ssd1289_putreg(lcd, SSD1289_PWRCTRL4, PWRCTRL4_SETTING);
       ssd1289_putreg(lcd, SSD1289_PWRCTRL5, PWRCTRL5_SETTING);
 
-      /* One driver does an odd setting of the the driver output control.
+      /* One driver does an odd setting of the driver output control.
        * No idea why.
        */
 #if 0
@@ -1135,7 +1135,7 @@ static inline int ssd1289_hwinitialize(FAR struct ssd1289_dev_s *priv)
 #if defined(CONFIG_LCD_PORTRAIT) || defined(CONFIG_LCD_RPORTRAIT)
       ssd1289_putreg(lcd, SSD1289_OUTCTRL,
                      (SSD1289_OUTCTRL_MUX(319) | SSD1289_OUTCTRL_TB |
-                      SSD1289_OUTCTRL_BGR      | SSD1289_OUTCTRL_REV);
+                      SSD1289_OUTCTRL_BGR      | SSD1289_OUTCTRL_REV));
 #else
       ssd1289_putreg(lcd, SSD1289_OUTCTRL,
                      (SSD1289_OUTCTRL_MUX(319) | SSD1289_OUTCTRL_BGR |

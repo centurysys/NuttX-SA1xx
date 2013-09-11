@@ -127,6 +127,7 @@ int uip_backlogcreate(FAR struct uip_conn *conn, int nblg)
       for (i = 0; i < nblg; i++)
         {
           sq_addfirst(&blc->bc_node, &bls->bl_free);
+          blc++;
         }
     }
 
@@ -204,7 +205,7 @@ int uip_backlogdestroy(FAR struct uip_conn *conn)
 
        /* Then free the entire backlog structure */
 
-       lib_free(blg);
+       kfree(blg);
     }
 
   return OK;
