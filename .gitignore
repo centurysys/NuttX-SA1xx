@@ -8,7 +8,7 @@ Make.dep
 .swp
 .*.swp
 core
-.gdbinit
+#.gdbinit
 cscope.out
 GPATH
 GRTAGS
