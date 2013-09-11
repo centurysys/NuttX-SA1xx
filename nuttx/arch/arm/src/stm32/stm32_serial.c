@@ -691,6 +691,10 @@ static struct up_dev_s g_usart3priv =
   .rs485_dir_polarity = true,
 #  endif
 #endif
+
+#ifdef CONFIG_ARCH_BOARD_SA1XX
+  .devname = "/dev/ttyS1",
+#endif
 };
 #endif
 
