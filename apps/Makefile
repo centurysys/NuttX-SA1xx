@@ -48,7 +48,7 @@ APPDIR = ${shell pwd}
 #   list can be extended by the .config file as well.
 
 CONFIGURED_APPS =
-SUBDIRS = examples graphics interpreters modbus builtin nshlib netutils system
+SUBDIRS = examples graphics interpreters modbus builtin nshlib netutils system sa-1xx
 
 # There are two different mechanisms for obtaining the list of configured
 # directories:
