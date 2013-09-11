@@ -96,6 +96,9 @@
 #elif CONFIG_AT24XX_SIZE == 256
 #  define AT24XX_NPAGES     512
 #  define AT24XX_PAGESIZE   64
+#elif CONFIG_AT24XX_SIZE == 16
+#  define AT24XX_NPAGES     128
+#  define AT24XX_PAGESIZE   16
 #endif
 
 /* For applications where a file system is used on the AT24, the tiny page sizes

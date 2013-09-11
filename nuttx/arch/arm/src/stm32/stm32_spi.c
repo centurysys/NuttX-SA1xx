@@ -333,8 +333,15 @@ static struct stm32_spidev_s g_spi2dev =
   .spiirq   = STM32_IRQ_SPI2,
 #endif
 #ifdef CONFIG_STM32_SPI_DMA
+#  if defined(CONFIG_STM32_STM32F10XX)
   .rxch     = DMACHAN_SPI2_RX,
   .txch     = DMACHAN_SPI2_TX,
+#  elif defined(CONFIG_STM32_STM32F40XX)
+  .rxch     = DMAMAP_SPI2_RX,
+  .txch     = DMAMAP_SPI2_TX,
+#  else
+#    error "Unknown STM32 DMA"
+#  endif
 #endif
 };
 #endif
@@ -894,6 +901,33 @@ static void spi_modifycr1(FAR struct stm32_spidev_s *priv, uint16_t setbits, uin
   cr1 |= setbits;
   spi_putreg(priv, STM32_SPI_CR1_OFFSET, cr1);
 }
+
+#ifdef CONFIG_ARCH_BOARD_SA1XX
+/************************************************************************************
+ * Name: spi_modifycr2
+ *
+ * Description:
+ *   Clear and set bits in the CR2 register
+ *
+ * Input Parameters:
+ *   priv    - Device-specific state data
+ *   clrbits - The bits to clear
+ *   setbits - The bits to set
+ *
+ * Returned Value:
+ *   None
+ *
+ ************************************************************************************/
+
+static void spi_modifycr2(FAR struct stm32_spidev_s *priv, uint16_t setbits, uint16_t clrbits)
+{
+  uint16_t cr2;
+  cr2 = spi_getreg(priv, STM32_SPI_CR2_OFFSET);
+  cr2 &= ~clrbits;
+  cr2 |= setbits;
+  spi_putreg(priv, STM32_SPI_CR2_OFFSET, cr2);
+}
+#endif
 
 /************************************************************************************
  * Name: spi_lock
@@ -1562,6 +1596,10 @@ FAR struct spi_dev_s *up_spiinitialize(int port)
           stm32_configgpio(GPIO_SPI1_SCK);
           stm32_configgpio(GPIO_SPI1_MISO);
           stm32_configgpio(GPIO_SPI1_MOSI);
+#ifdef CONFIG_ARCH_BOARD_SA1XX
+          /* Configure SPI2 pin: NSS */
+          stm32_configgpio(GPIO_SPI2_NSS);
+#endif
 
           /* Set up default configuration: Master, 8-bit, etc. */
 

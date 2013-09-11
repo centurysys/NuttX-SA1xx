@@ -4,7 +4,7 @@
  *  Copyright (C) 2012 Century Systems
  *  Author: Takeyoshi Kikuchi <kikuchi@centurysys.co.jp>
  *
- *  Last Modified: 2012/11/28 17:04:05 kikuchi
+ *  Last Modified: 2013/09/11 14:33:48 kikuchi
  ****************************************************************************/
 
 #include <stdio.h>
@@ -17,7 +17,7 @@
 #include <errno.h>
 
 #ifdef CONFIG_STM32_SPI2
-#  include <nuttx/spi.h>
+#  include <nuttx/spi/spi.h>
 #  include <nuttx/mtd.h>
 
 #  ifdef CONFIG_FS_NXFFS

@@ -3412,5 +3412,59 @@ void up_netinitialize(void)
 }
 #endif
 
+static int  stm32_phyread(uint16_t phydevaddr, uint16_t phyregaddr, uint16_t *value);
+
+/****************************************************************************
+ * Debug Functions
+ ****************************************************************************/
+
+#include <stdio.h>
+
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+#endif
+
+struct phy_regs_s {
+  uint16_t addr;
+  const char *name;
+};
+
+static const struct phy_regs_s kz8041_phy_regs[] = {
+  { 0x00, "Basic Control" },
+  { 0x01, "Basic Status" },
+  { 0x02, "PHY Identifier 1" },
+  { 0x03, "PHY Identifier 2" },
+  { 0x04, "Auto-Negotiation Advertisement" },
+  { 0x05, "Auto-Negotiation Link Partner Ability" },
+  { 0x06, "Auto-Negotiation Expansion" },
+  { 0x07, "Auto-Negotiation Next Page" },
+  { 0x08, "Link Partner Next Page Ability" },
+  { 0x15, "RXER Counter" },
+  { 0x1b, "Interrupt Control/Status" },
+  { 0x1e, "PHY Control 1" },
+  { 0x1f, "PHY Control 2" }
+};
+
+void stm32_eth_phydebug(void)
+{
+  int i;
+  uint16_t phyval;
+  struct phy_regs_s *regs;
+
+  sched_lock();
+
+  for (i = 0; i < ARRAY_SIZE(kz8041_phy_regs); i++)
+    {
+      regs = (struct phy_regs_s *) &kz8041_phy_regs[i];
+
+      if (stm32_phyread(CONFIG_STM32_PHYADDR, regs->addr, &phyval) == OK)
+        {
+          printf("[%02x]: 0x%04x (%s)\n", regs->addr, phyval, regs->name);
+        }
+    }
+
+  sched_unlock();
+}
+
 #endif /* STM32_NETHERNET > 0 */
 #endif /* CONFIG_NET && CONFIG_STM32_ETHMAC */

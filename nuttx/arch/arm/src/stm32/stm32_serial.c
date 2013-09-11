@@ -307,6 +307,18 @@ struct up_dev_s
 #ifdef HAVE_RS485
   const uint32_t    rs485_dir_gpio; /* U[S]ART RS-485 DIR GPIO pin configuration */
   const bool        rs485_dir_polarity; /* U[S]ART RS-485 DIR pin state for TX enabled */
+#  ifdef CONFIG_ARCH_BOARD_SA1XX
+  const uint32_t    rs485_txen_gpio;     /* U[S]ART RS-485 TxEnable GPIO pin configuration */
+  const bool        rs485_txen_polarity; /* U[S]ART RS-485 DIR pin state for TX enabled */
+  const uint32_t    rs485_rxen_gpio;     /* U[S]ART RS-485 RxEnable GPIO pin configuration */
+  const bool        rs485_rxen_polarity; /* U[S]ART RS-485 DIR pin state for RX enabled */
+#  endif
+#endif
+
+#ifdef CONFIG_ARCH_BOARD_SA1XX
+  const char       *devname;   /* device name */
+  const uint32_t   forceon_gpio;
+  const uint32_t   forceoff_gpio;
 #endif
 };
 
@@ -539,6 +551,10 @@ static struct up_dev_s g_usart1priv =
   .rs485_dir_polarity = true,
 #  endif
 #endif
+
+#ifdef CONFIG_ARCH_BOARD_SA1XX
+  .devname = "/dev/ttyS0",
+#endif
 };
 #endif
 
@@ -604,6 +620,10 @@ static struct up_dev_s g_usart2priv =
 #  else
   .rs485_dir_polarity = true,
 #  endif
+#endif
+
+#ifdef CONFIG_ARCH_BOARD_SA1XX
+  .devname = "/dev/ttySXBee",
 #endif
 };
 #endif
@@ -861,14 +881,31 @@ static struct up_dev_s g_usart6priv =
 #endif
   .vector         = up_interrupt_usart6,
 
-#ifdef CONFIG_USART6_RS485
+#ifndef CONFIG_ARCH_BOARD_SA1XX
+# ifdef CONFIG_USART6_RS485
   .rs485_dir_gpio = GPIO_USART6_RS485_DIR,
 #  if (CONFIG_USART6_RS485_DIR_POLARITY == 0)
   .rs485_dir_polarity = false,
 #  else
   .rs485_dir_polarity = true,
 #  endif
-#endif
+# endif
+#else /* CONFIG_ARCH_BOARD_SA1XX */
+  .rs485_txen_gpio = GPIO_USART6_RS485_TXEN,
+  .rs485_rxen_gpio = GPIO_USART6_RS485_RXEN,
+#  if (CONFIG_USART6_RS485_TXEN_POLARITY == 0)
+  .rs485_txen_polarity = false,
+#  else
+  .rs485_txen_polarity = true,
+#  endif
+#  if (CONFIG_USART6_RS485_RXEN_POLARITY == 0)
+  .rs485_rxen_polarity = false,
+#  else
+  .rs485_rxen_polarity = true,
+#  endif
+
+  .devname = "/dev/ttyS485",
+#endif /* CONFIG_ARCH_BOARD_SA1XX */
 };
 #endif
 
@@ -1329,6 +1366,14 @@ static int up_setup(struct uart_dev_s *dev)
   stm32_configgpio(priv->tx_gpio);
   stm32_configgpio(priv->rx_gpio);
 
+#ifdef CONFIG_ARCH_BOARD_SA1XX
+  if (priv->forceon_gpio != 0 && priv->forceoff_gpio != 0)
+    {
+      stm32_configgpio(priv->forceon_gpio);
+      stm32_configgpio(priv->forceoff_gpio);
+    }
+#endif
+
 #ifdef CONFIG_SERIAL_OFLOWCONROL
   if (priv->cts_gpio != 0)
     {
@@ -1349,6 +1394,17 @@ static int up_setup(struct uart_dev_s *dev)
       stm32_configgpio(priv->rs485_dir_gpio);
       stm32_gpiowrite(priv->rs485_dir_gpio, !priv->rs485_dir_polarity);
     }
+#  ifdef CONFIG_ARCH_BOARD_SA1XX
+  else if (priv->rs485_txen_gpio != 0 && priv->rs485_rxen_gpio != 0)
+    {
+      stm32_configgpio(priv->rs485_txen_gpio);
+      stm32_configgpio(priv->rs485_rxen_gpio);
+
+      /* Disable Tx, Enable Rx */
+      stm32_gpiowrite(priv->rs485_txen_gpio, !priv->rs485_txen_polarity);
+      stm32_gpiowrite(priv->rs485_rxen_gpio,  priv->rs485_rxen_polarity);
+    }
+#  endif /* CONFIG_ARCH_BOARD_SA1XX */
 #endif
 
   /* Configure CR2 */
@@ -1552,6 +1608,14 @@ static int up_attach(struct uart_dev_s *dev)
         */
 
        up_enable_irq(priv->irq);
+
+#ifdef CONFIG_ARCH_BOARD_SA1XX
+       if (priv->forceon_gpio != 0 && priv->forceoff_gpio != 0)
+         {
+           stm32_gpiowrite(priv->forceon_gpio, 1);
+           stm32_gpiowrite(priv->forceoff_gpio, 1);
+         }
+#endif
     }
   return ret;
 }
@@ -1571,6 +1635,14 @@ static void up_detach(struct uart_dev_s *dev)
   struct up_dev_s *priv = (struct up_dev_s*)dev->priv;
   up_disable_irq(priv->irq);
   irq_detach(priv->irq);
+
+#ifdef CONFIG_ARCH_BOARD_SA1XX
+  if (priv->forceon_gpio != 0 && priv->forceoff_gpio != 0)
+    {
+      stm32_gpiowrite(priv->forceon_gpio, 0);
+      stm32_gpiowrite(priv->forceoff_gpio, 0);
+    }
+#endif
 }
 
 /****************************************************************************
@@ -1642,6 +1714,16 @@ static int up_interrupt_common(struct up_dev_s *priv)
           (priv->ie & USART_CR1_TXEIE) == 0)
         {
           stm32_gpiowrite(priv->rs485_dir_gpio, !priv->rs485_dir_polarity);
+
+#  ifdef CONFIG_ARCH_BOARD_SA1XX
+          if (priv->rs485_txen_gpio != 0 && priv->rs485_rxen_gpio != 0)
+            {
+              /* Disable Tx, Enable Rx */
+              stm32_gpiowrite(priv->rs485_txen_gpio, !priv->rs485_txen_polarity);
+              stm32_gpiowrite(priv->rs485_rxen_gpio,  priv->rs485_rxen_polarity);
+            }
+#  endif /* CONFIG_ARCH_BOARD_SA1XX */
+
           up_restoreusartint(priv, priv->ie & ~USART_CR1_TCIE);
         }
 #endif
@@ -2080,6 +2162,14 @@ static void up_send(struct uart_dev_s *dev, int ch)
 #ifdef HAVE_RS485
   if (priv->rs485_dir_gpio != 0)
     stm32_gpiowrite(priv->rs485_dir_gpio, priv->rs485_dir_polarity);
+#  ifdef CONFIG_ARCH_BOARD_SA1XX
+  else if (priv->rs485_txen_gpio != 0 && priv->rs485_rxen_gpio != 0)
+    {
+      /* Enable Tx, Disable Rx */
+      stm32_gpiowrite(priv->rs485_rxen_gpio, !priv->rs485_rxen_polarity);
+      stm32_gpiowrite(priv->rs485_txen_gpio,  priv->rs485_txen_polarity);
+    }
+#  endif /* CONFIG_ARCH_BOARD_SA1XX */
 #endif
   up_serialout(priv, STM32_USART_TDR_OFFSET, (uint32_t)ch);
 }
@@ -2123,6 +2213,12 @@ static void up_txint(struct uart_dev_s *dev, bool enable)
         {
           ie |= USART_CR1_TCIE;
         }
+#    ifdef CONFIG_ARCH_BOARD_SA1XX
+      else if (priv->rs485_txen_gpio != 0 && priv->rs485_rxen_gpio != 0)
+        {
+          ie |= USART_CR1_TCIE;
+        }
+#    endif /* CONFIG_ARCH_BOARD_SA1XX */
 #  endif
 
       up_restoreusartint(priv, ie);
@@ -2459,8 +2555,12 @@ void up_serialinit(void)
 
       /* Register USARTs as devices in increasing order */
 
+#ifndef CONFIG_ARCH_BOARD_SA1XX
       devname[9] = '0' + minor++;
       (void)uart_register(devname, &uart_devs[i]->dev);
+#else
+      (void)uart_register(uart_devs[i]->devname, &uart_devs[i]->dev);
+#endif
     }
 #endif /* HAVE UART */
 }
