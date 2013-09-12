@@ -2917,6 +2917,16 @@ static inline void stm32_ethgpioconfig(FAR struct stm32_ethmac_s *priv)
   stm32_configgpio(GPIO_ETH_MII_TX_CLK);
   stm32_configgpio(GPIO_ETH_MII_TX_EN);
 
+#ifdef CONFIG_ARCH_BOARD_SA1XX
+  /* Enable external 25MHz clock */
+  stm32_configgpio(GPIO_ETH_PHY_OSCENB);
+  stm32_gpiowrite(GPIO_ETH_PHY_OSCENB, true);
+
+  /* PHY Reset Off */
+  stm32_configgpio(GPIO_ETH_PHY_RESET_N);
+  stm32_gpiowrite(GPIO_ETH_PHY_RESET_N, true);
+#endif
+
   /* Set up the RMII interface. */
 
 #elif defined(CONFIG_STM32_RMII)
@@ -2977,7 +2987,9 @@ static inline void stm32_ethgpioconfig(FAR struct stm32_ethmac_s *priv)
 
   /* Enable pulse-per-second (PPS) output signal */
 
+#ifndef CONFIG_ARCH_BOARD_SA1XX
   stm32_configgpio(GPIO_ETH_PPS_OUT);
+#endif
 }
 
 /****************************************************************************
