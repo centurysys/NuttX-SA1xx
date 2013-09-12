@@ -266,7 +266,7 @@ static void phy_interrupt_disable(void);
 
 /* TX timeout = 1 minute */
 
-#ifdef CONFIG_ARCH_BOARD_SA1XX_JMA
+#ifdef CONFIG_ARCH_BOARD_SA1XX
 #define STM32_TXTIMEOUT   (5*CLK_TCK)
 #else
 #define STM32_TXTIMEOUT   (60*CLK_TCK)
@@ -279,7 +279,7 @@ static void phy_interrupt_disable(void);
 
 /* PHY read/write delays in loop counts */
 
-#ifdef CONFIG_ARCH_BOARD_SA1XX_JMA
+#ifdef CONFIG_ARCH_BOARD_SA1XX
 #define PHY_READ_TIMEOUT  (0x0001ffff)
 #define PHY_WRITE_TIMEOUT (0x0001ffff)
 #define PHY_RETRY_TIMEOUT (0x0001ffff)
@@ -2669,7 +2669,7 @@ static int stm32_phyinit(FAR struct stm32_ethmac_s *priv)
 
   /* Enable auto-gegotiation */
 
-#ifdef CONFIG_ARCH_BOARD_SA1XX_JMA
+#ifdef CONFIG_ARCH_BOARD_SA1XX
   ret = stm32_phywrite(CONFIG_STM32_PHYADDR, MII_MCR, (MII_MCR_ANENABLE | MII_MCR_ANRESTART));
 #else
   ret = stm32_phywrite(CONFIG_STM32_PHYADDR, MII_MCR, MII_MCR_ANENABLE);
