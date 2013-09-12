@@ -693,7 +693,7 @@ static struct up_dev_s g_usart3priv =
 #endif
 
 #ifdef CONFIG_ARCH_BOARD_SA1XX
-  .devname = "/dev/ttyS1",
+  .devname = "/dev/ttyS232",
 #endif
 };
 #endif
