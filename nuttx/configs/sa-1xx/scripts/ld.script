@@ -112,7 +112,7 @@ SECTIONS
 		_sccm = ABSOLUTE(.);
 		*(.ccm .ccm.*)
 		_eccm = ABSOLUTE(.);
-	} > ccmram
+	} > ccmram AT > flash
 
 	/* Stabs debugging sections. */
 	.stab 0 : { *(.stab) }
