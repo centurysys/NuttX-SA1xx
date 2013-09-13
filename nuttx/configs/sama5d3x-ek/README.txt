@@ -625,8 +625,9 @@ AT24 Serial EEPROM
   A AT24C512 Serial EEPPROM was used for tested I2C.  There are other I2C/TWI
   devices on-board, but the serial EEPROM is the simplest test.
 
-  The Serial EEPROM was mounted on an external adaptor board and connected to
-  the SAMA5D3x-EK thusly:
+  There is, however, no AT24 EEPROM on board the SAMA5D3x-EK:  The Serial
+  EEPROM was mounted on an external adaptor board and connected to the
+  SAMA5D3x-EK thusly:
 
     - VCC -- VCC
     - GND -- GND
@@ -898,6 +899,9 @@ Configurations
     further functionality.  The demo configuration, on the other hand, is
     intended to be a rich configuration that shows many features all working
     together.
+
+    See also the NOTES associated with the nsh configuration for other hints
+    about features that can be included with this configuration.
 
     NOTES:
     1. This configuration uses the default USART1 serial console.  That
@@ -1240,10 +1244,13 @@ Configurations
        interpret.
 
     STATUS:
+      AT25
       2013-9-6:  I have not confirmed this, but it appears that the AT25 does not
         retain its formatting across power cycles.  I think that the contents of
         the AT25 are destroyed (i.e., reformatted for different use) by Linux when
         it runs out of NAND.
+
+      OHCI WITH EHCI
       2013-9-11:  OHCI does not work with EHCI.  At present, EHCI receives the
         full- or low-speed devices and correctly hands them off to OHCI.  But, for
         some unknown reason, the connection is lost and the port reverts to EHCI which
@@ -1465,18 +1472,18 @@ Configurations
        order to enable the AT25 FLASH chip select.
 
        You can then format the AT25 FLASH for a FAT file system and mount
-       the file system at /mnt/sdcard using these NSH commands:
+       the file system at /mnt/at25 using these NSH commands:
 
          nsh> mkfatfs /dev/mtdblock0
-         nsh> mount -t vfat /dev/mtdblock0 /mnt/sdcard
+         nsh> mount -t vfat /dev/mtdblock0 /mnt/at25
 
        Then you an use the FLASH as a normal FAT file system:
 
-         nsh> echo "This is a test" >/mnt/sdcard/atest.txt
-         nsh> ls -l /mnt/sdcard
-         /mnt/sdcard:
+         nsh> echo "This is a test" >/mnt/at25/atest.txt
+         nsh> ls -l /mnt/at25
+         /mnt/at25:
           -rw-rw-rw-      16 atest.txt
-         nsh> cat /mnt/sdcard/atest.txt
+         nsh> cat /mnt/at25/atest.txt
          This is a test
 
     9. Enabling HSMCI support. The SAMA5D3x-EK provides a two SD memory card
@@ -1708,7 +1715,144 @@ Configurations
        asynchronous with the trace output and, hence, difficult to
        interpret.
 
+    13. AT24 Serial EEPROM. A AT24C512 Serial EEPPROM was used for tested
+        I2C.  There are other I2C/TWI devices on-board, but the serial
+        EEPROM is the simplest test.
+
+        There is, however, no AT24 EEPROM on board the SAMA5D3x-EK:  The
+        serial EEPROM was mounted on an external adaptor board and
+        connected to the SAMA5D3x-EK thusly:
+
+        - VCC -- VCC
+        - GND -- GND
+        - TWCK0(PA31) -- SCL
+        - TWD0(PA30)  -- SDA
+
+        By default, PA30 and PA31 are SWJ-DP pins, it can be used as a pin
+        for TWI peripheral in the end application.
+
+        The following configuration settings were used:
+
+       System Type -> SAMA5 Peripheral Support
+         CONFIG_SAMA5_TWI0=y                   : Enable TWI0
+
+       System Type -> TWI device driver options
+         SAMA5_TWI0_FREQUENCY=100000           : Select a TWI frequency
+
+       Device Drivers -> I2C Driver Support
+         CONFIG_I2C=y                          : Enable I2C support
+         CONFIG_I2C_TRANSFER=y                 : Driver supports the transfer() method
+         CONFIG_I2C_WRITEREAD=y                : Driver supports the writeread() method
+
+       Device Drivers -> Memory Technology Device (MTD) Support
+         CONFIG_MTD=y                          : Enable MTD support
+         CONFIG_MTD_AT24XX=y                   : Enable the AT24 driver
+         CONFIG_AT24XX_SIZE=512                : Specifies the AT 24C512 part
+         CONFIG_AT24XX_ADDR=0x53               : AT24 I2C address
+
+       Application Configuration -> NSH Library
+         CONFIG_NSH_ARCHINIT=y                 : NSH board-initialization
+
+       File systems
+         CONFIG_NXFFS=y                        : Enables the NXFFS file system
+         CONFIG_NXFFS_PREALLOCATED=y           : Required
+                                               : Other defaults are probably OK
+
+       Board Selection
+         CONFIG_SAMA5_AT24_AUTOMOUNT=y         : Mounts AT24 for NSH
+         CONFIG_SAMA5_AT24_NXFFS=y             : Mount the AT24 using NXFFS
+
+       You can then format the AT25 FLASH for a FAT file system and mount
+       the file system at /mnt/at24 using these NSH commands:
+
+         nsh> mkfatfs /dev/mtdblock0
+         nsh> mount -t vfat /dev/mtdblock0 /mnt/at24
+
+       Then you an use the FLASH as a normal FAT file system:
+
+         nsh> echo "This is a test" >/mnt/at24/atest.txt
+         nsh> ls -l /mnt/at24
+         /mnt/at24:
+          -rw-rw-rw-      16 atest.txt
+         nsh> cat /mnt/at24/atest.txt
+         This is a test
+
+    13. I2C Tool. NuttX supports an I2C tool at apps/system/i2c that can be
+        used to peek and poke I2C devices.  That tool cal be enabled by
+        setting the following:
+
+       System Type -> SAMA5 Peripheral Support
+         CONFIG_SAMA5_TWI0=y                   : Enable TWI0
+         CONFIG_SAMA5_TWI1=y                   : Enable TWI1
+         CONFIG_SAMA5_TWI2=y                   : Enable TWI2
+
+       System Type -> TWI device driver options
+         SAMA5_TWI0_FREQUENCY=100000           : Select a TWI0 frequency
+         SAMA5_TWI1_FREQUENCY=100000           : Select a TWI1 frequency
+         SAMA5_TWI2_FREQUENCY=100000           : Select a TWI2 frequency
+
+       Device Drivers -> I2C Driver Support
+         CONFIG_I2C=y                          : Enable I2C support
+         CONFIG_I2C_TRANSFER=y                 : Driver supports the transfer() method
+         CONFIG_I2C_WRITEREAD=y                : Driver supports the writeread() method
+
+       Application Configuration -> NSH Library
+         CONFIG_SYSTEM_I2CTOOL=y               : Enable the I2C tool
+         CONFIG_I2CTOOL_MINBUS=0               : TWI0 has the minimum bus number 0
+         CONFIG_I2CTOOL_MAXBUS=2               : TWI2 has the maximum bus number 2
+         CONFIG_I2CTOOL_DEFFREQ=100000         : Pick a consistent frequency
+
+       The I2C tool has extensive help that can be accessed as follows:
+
+       nsh> i2c help
+       Usage: i2c <cmd> [arguments]
+       Where <cmd> is one of:
+
+         Show help     : ?
+         List busses   : bus
+         List devices  : dev [OPTIONS] <first> <last>
+         Read register : get [OPTIONS] [<repititions>]
+         Show help     : help
+         Write register: set [OPTIONS] <value> [<repititions>]
+         Verify access : verf [OPTIONS] [<value>] [<repititions>]
+
+       Where common "sticky" OPTIONS include:
+         [-a addr] is the I2C device address (hex).  Default: 03 Current: 03
+         [-b bus] is the I2C bus number (decimal).  Default: 0 Current: 0
+         [-r regaddr] is the I2C device register address (hex).  Default: 00 Current: 00
+         [-w width] is the data width (8 or 16 decimal).  Default: 8 Current: 8
+         [-s|n], send/don't send start between command and data.  Default: -n Current: -n
+         [-i|j], Auto increment|don't increment regaddr on repititions.  Default: NO Current: NO
+         [-f freq] I2C frequency.  Default: 100000 Current: 100000
+
+       NOTES:
+       o Arguments are "sticky".  For example, once the I2C address is
+         specified, that address will be re-used until it is changed.
+
+       WARNING:
+       o The I2C dev command may have bad side effects on your I2C devices.
+         Use only at your own risk.
+
+       As an eample, the I2C dev comman can be used to list all devices
+       responding on TWI0 (the default) like this:
+
+         nsh> i2c dev 0x03 0x77
+              0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+         00:          -- -- -- -- -- -- -- -- -- -- -- -- --
+         10: -- -- -- -- -- -- -- -- -- -- 1a -- -- -- -- --
+         20: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+         30: -- -- -- -- -- -- -- -- -- 39 -- -- -- 3d -- --
+         40: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+         50: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+         60: 60 -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+         70: -- -- -- -- -- -- -- --
+         nsh>
+
+        Address 0x1a is the WM8904.  Address 0x39 is the SIL9022A. I am
+        not sure what is at address 0x3d and 0x60
+
     STATUS:
+      PCK FREQUENCY
       2013-7-19:  This configuration (as do the others) run at 396MHz.
         The SAMA5D3 can run at 536MHz.  I still need to figure out the
         PLL settings to get that speed.
@@ -1716,75 +1860,60 @@ Configurations
         If the CPU speed changes, then so must the NOR and SDRAM
         initialization!
 
+      BOOT FROM NOT FLASH
       2013-7-31:  I have been unable to execute this configuration from NOR
         FLASH by closing the BMS jumper (J9).  As far as I can tell, this
         jumper does nothing on my board???  I have been using the norboot
         configuration to start the program in NOR FLASH (see just above).
         See "Creating and Using NORBOOT" above.
 
-      2013-7-31:  This NSH configuration appears to be fully functional.
+      2013-7-31:  The basic NSH configuration appears to be fully functional.
 
+      CALIBRATION
       2013-7-31:  Using delay loop calibration from the hello configuration.
         That configuration runs out of internal SRAM and, as a result, this
         configuration should be recalibrated.
 
+      SDRAM
       2013-8-3:  SDRAM configuration and RAM test usage have been verified
         and are functional.  I note some issues; occassionally, SDRAM is
         not functional on initial boot or is initially not functional but
         improves with accesses.  Clearly, more work needs to be done.
 
-        Here is another strange observation:  SDRAM accesses tend to
-        generate occasional spurious interrupts in those same conditions
-        where the memory test fails!  No idea why.
-
+      AT25 SERIAL FLASH
       2013-8-5:  The AT25 configuration has been verified to be functional.
       2013-8-9:  The AT25 configuration has been verified with DMA
         enabled.
 
-      2013-8-10: Basic HSCMI1 functionality (with DMA) has been verified.
-        Most testing is needed to assure that this is a stable solution.
-      2013-8-11: HSMCI0 is more finicky.  Usually there is no card
-        communcation and I get timeouts.  But if I remove and re-insert the
-        card it few times, sometimes communication is successfully and the
-        card behaves normally.  I suspected an electro-mechanical issue but
-        but now think there is more to the problem than that.
-      2013-8-11: I see another problem doing card insertion and card removal
-        testing.  When there is a lot of debug output, the system locks up.
-        I have traced to this the debug output itself.  The debug output
-        from the device driver interferes with normal serial port operation
-        and prevents NSH from receiving data.  There is no issue when the
-        debug output is suppressed and card insertial and removal works as
-        expected (at least on the HSMCI1 microSD slot).
-      2013-8-14: I found an error in the way that the HSCMI clocking was
-        configured (a SAM3/4 cloning error).  Need to retest both HSMCI0/1
-        with the corrected clocking.
+      2013-9-11: Basic HSCMI0/1 functionality (with DMA) has been verified.
 
-      2013-8-11: Added description to add OHCI to the configuration.
+      OHCI
       2013-8-16: The OCHI configuration is now basically functional.
         Testing is not yet extensive, however:
-        a) I have lots of DEBUG output enabled.  There could be issues
-           when I re-test with debug options disabled.
-        b) I have tested only control and bulk endpoints.  I still need
+        a) I have tested only control and bulk endpoints.  I still need
            to test interrupt endpoints.
-        c) I have tested only the Mass Storage Class (MSC) and not CDC/ACM.
-        d) OHCI will support 3 downstream points, but I currently have only
-           one enabled.
 
-      2013-8-20:  Added description to add EHCI to the configuration.  At
-        present, however, EHCI is still a work in progress and not ready for
-        prime time.
+      EHCI
       2013-8-26:
         The hand-off of full speed devices to OHCI does not work. In this
         case, OHCI gets the port, but the port is reset, lost by OHCI and
         returned to EHCI.  EHCI sees the full-speed port and hands it off to
         OHCI and this sequence continues forever.
-      2013-8-28: EHCI is partially functional.  It is able to mount a high-
-        speed USB FLASH drive using the Mass Storage Class (MSC) interface.
+      2013-8-28: EHCI is partially functional.
 
-      2013-8-31: Added description to add UDPHS high-speed USB device
-        support.
-      2013-9-5: The UDPHS driver is basically functional, subject to more
-        testing.
+      UDPHS
+      2013-9-5: The UDPHS driver is basically functional.
+
+      I2C
+      2013-9-12:  I have been unusuccessful getting the external serial
+        AT24 EEPROM to work.  I am pretty sure that this is a problem with
+        my external AT24 board (the TWI0 bus hangs when the AT24 is plugged
+        in).  I will skip the AT24 integration since it is not on the critical
+        path at the moment.
+      2013-9-12:  The I2C tool, however, seems to work well.  It succesfully
+        enumerates the devices on the bus and successfully exchanges a few
+        commands.  The real test of the come later when a real I2C device is
+        integrated.
 
   ostest:
     This configuration directory, performs a simple OS test using
