@@ -4,7 +4,7 @@
  *  Copyright (C) 2012 Century Systems
  *  Author: Takeyoshi Kikuchi <kikuchi@centurysys.co.jp>
  *
- *  Last Modified: 2013/09/11 14:33:48 kikuchi
+ *  Last Modified: 2013/09/13 09:43:34 kikuchi
  ****************************************************************************/
 
 #include <stdio.h>
@@ -19,11 +19,6 @@
 #ifdef CONFIG_STM32_SPI2
 #  include <nuttx/spi/spi.h>
 #  include <nuttx/mtd.h>
-
-#  ifdef CONFIG_FS_NXFFS
-#    include <sys/mount.h>
-#    include <nuttx/fs/nxffs.h>
-#  endif
 #endif
 
 #include "common.h"
@@ -40,7 +35,7 @@ static void usage(void)
 
 int spimount_main(int argc, char **argv)
 {
-#if defined(CONFIG_STM32_SPI2) && defined(CONFIG_FS_NXFFS)
+#if defined(CONFIG_STM32_SPI2)
     int ret;
     struct spi_dev_s *spi;
     struct mtd_dev_s *mtd;
@@ -70,30 +65,10 @@ int spimount_main(int argc, char **argv)
     }
 
     ret = ftl_initialize(1, mtd);
+
     return ret;
-
-    ret = nxffs_initialize(mtd);
-
-    if (ret < 0) {
-        info("%s: NXFFS initialization failed: %d (%s)\n",
-             argv[0], ret, strerror(ret));
-        return ret;
-    }
-
-    /* Mount the file system at /mnt/spifi */
-    info("Mounting SPI-Flash to %s\n", argv[1]);
-    ret = mount(NULL, argv[1], "nxffs", 0, NULL);
-
-    if (ret < 0) {
-        info("%s: Failed to mount the NXFFS volume to %s: %d (%s)\n",
-             argv[0], argv[1], errno, strerror(errno));
-        return ret;
-    }
-
-    info("Mount succeeded.\n");
-    return OK;
 #else
-    info("%s: need to set CONFIG_STM32_SPI2=y and CONFIG_FS_NXFFS=y\n", argv[0]);
+    info("%s: need to set CONFIG_STM32_SPI2=y\n", argv[0]);
     return ERROR;
 #endif
 }

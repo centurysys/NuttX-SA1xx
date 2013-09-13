@@ -1596,10 +1596,6 @@ FAR struct spi_dev_s *up_spiinitialize(int port)
           stm32_configgpio(GPIO_SPI1_SCK);
           stm32_configgpio(GPIO_SPI1_MISO);
           stm32_configgpio(GPIO_SPI1_MOSI);
-#ifdef CONFIG_ARCH_BOARD_SA1XX
-          /* Configure SPI2 pin: NSS */
-          stm32_configgpio(GPIO_SPI2_NSS);
-#endif
 
           /* Set up default configuration: Master, 8-bit, etc. */
 
@@ -1624,6 +1620,10 @@ FAR struct spi_dev_s *up_spiinitialize(int port)
           stm32_configgpio(GPIO_SPI2_SCK);
           stm32_configgpio(GPIO_SPI2_MISO);
           stm32_configgpio(GPIO_SPI2_MOSI);
+#ifdef CONFIG_ARCH_BOARD_SA1XX
+          /* Configure SPI2 pin: NSS */
+          stm32_configgpio(GPIO_SPI2_NSS);
+#endif
 
           /* Set up default configuration: Master, 8-bit, etc. */
 
