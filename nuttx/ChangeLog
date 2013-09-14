@@ -5542,4 +5542,16 @@
 	* arch/arm/src/sama5/chip/sam_emac.h and sam_gmac.h:  Register
 	  definition files for the SAMA5 EMAC and GMAC peripherals
 	  (incomplete on the initial commit) (2013-9-12).
+	* arch/arm/src/stm32/stm32_can.c:  Make filter register accessible
+	  for CAN1 and CAN2. Patch provided by Lorenz Meier (2013-9-13).
+	* nuttx/include/nuttx/usb/cdcacm.h:  Fix backward conditional
+	  compilation in the CDC/ACM driver with regard to remote
+	  wakeup and self-powered capabilites.  Provided by Lorenz Meier
+	  (2013-9-13)
+	* fs/romfs/fs_romfsutil.c: Fix for filenames > 15 characters.
+	  Provided by Lorenz Meier (2013-9-13).
+	* arch/arm/src/stm32/Kconfig: Fix STM32 UART7/8 kconfig names
+	  and UART DMA.  Provided by Lorenz Meier (2013-9-13).
+	* configs/maple:  Board configuration for the LeafLabs Maple
+	  and Maple Mini boards.  From Librae (2013-9-13).
 
