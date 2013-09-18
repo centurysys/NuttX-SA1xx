@@ -38,13 +38,14 @@
  ****************************************************************************/
 
 #include <nuttx/config.h>
+
 #include <debug.h>
 #include "sam_ethernet.h"
 
 #ifdef CONFIG_NET
 
 /****************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 
 /****************************************************************************
@@ -62,6 +63,68 @@
 /****************************************************************************
  * Private Functions
  ****************************************************************************/
+
+/****************************************************************************
+ * Function: up_gmac_initialize
+ *
+ * Description:
+ *   Initialize the GMAC driver
+ *
+ * Parameters:
+ *   None.
+ *
+ * Returned Value:
+ *   None.
+ *
+ ****************************************************************************/
+
+#ifdef CONFIG_SAMA5_GMAC
+static inline void up_gmac_initialize(void)
+{
+  int ret;
+
+  /* Initialize the GMAC driver */
+
+  ret = sam_gmac_initialize();
+  if (ret < 0)
+    {
+      nlldbg("ERROR: sam_gmac_initialize failed: %d\n", ret);
+    }
+}
+#else
+#  define up_gmac_initialize()
+#endif
+
+/****************************************************************************
+ * Function: up_emac_initialize
+ *
+ * Description:
+ *   Initialize the EMAC driver
+ *
+ * Parameters:
+ *   None.
+ *
+ * Returned Value:
+ *   None.
+ *
+ ****************************************************************************/
+
+#ifdef CONFIG_SAMA5_EMAC
+static inline void up_emac_initialize(void)
+{
+  int ret;
+
+  /* Initialize the EMAC driver */
+
+  ret = sam_emac_initialize();
+  if (ret < 0)
+    {
+      nlldbg("ERROR: sam_gmac_initialize failed: %d\n", ret);
+    }
+}
+#else
+#  define up_emac_initialize()
+#endif
 
 /****************************************************************************
  * Public Functions
@@ -88,29 +151,15 @@
 
 void up_netinitialize(void)
 {
-  /* Initialize the GMAC driver */
+  /* The first device registered with be ETH0 and the second ETH1 */
 
-#ifdef CONFIG_SAMA5_GMAC
-  ret = sam_gmac_initialize();
-  if (ret < 0)
-    {
-      nlldbg("ERROR: sam_gmac_initialize failed: %d\n", ret);
-      return ret;
-    }
+#ifdef CONFIG_SAMA5_GMAC_ISETH0
+  up_gmac_initialize();
+  up_emac_initialize();
+#else
+  up_emac_initialize();
+  up_gmac_initialize();
 #endif
-
-/* Initialize the EMAC driver */
-
-#ifdef CONFIG_SAMA5_EMAC
-  ret = sam_emac_initialize();
-  if (ret < 0)
-    {
-      nlldbg("ERROR: sam_gmac_initialize failed: %d\n", ret);
-      return ret;
-    }
-#endif
-
-  return OK;
 }
 
 #endif /* CONFIG_NET && CONFIG_SAMA5_EMAC */
