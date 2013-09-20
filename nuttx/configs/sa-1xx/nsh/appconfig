@@ -85,9 +85,8 @@ endif
 CONFIGURED_APPS += sa-1xx/atcmd
 CONFIGURED_APPS += sa-1xx/eth_phydebug
 CONFIGURED_APPS += sa-1xx/dhcpc
-CONFIGURED_APPS += sa-1xx/spiflash
 CONFIGURED_APPS += sa-1xx/mtdutil
-CONFIGURED_APPS += sa-1xx/xbee_bridge
+#CONFIGURED_APPS += sa-1xx/xbee_bridge
 #CONFIGURED_APPS += sa-1xx/xbeelib
 
 # SSL library & client application
