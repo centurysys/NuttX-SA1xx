@@ -1220,6 +1220,22 @@ Configurations
         -rw-rw-rw-    1503 sz-1.log
         -rw-rw-rw-     613 .bashrc
 
+       Or, if a (supported) USB keyboard is connected, a /dev/kbda device
+       will appear:
+
+       nsh> ls /dev
+       /dev:
+        console
+        kbda
+        mtdblock0
+        null
+        ttyS0
+
+       /dev/kbda is a read-only serial device.  Reading from /dev/kbda will
+       get keyboard input as ASCII data (other encodings are possible):
+
+       nsh> cat /dev/kbda
+
     The following features are *not* enabled in the demo configuration but
     might be of some use to you:
 
@@ -1250,7 +1266,7 @@ Configurations
         buffered USB debug data once every second:
 
         Application Configuration -> NSH LIbrary:
-          CONFIG_NSH_USBDEV_TRACE=n               : No builtin tracing from NSH
+          CONFIG_NSH_USBDEV_TRACE=n               : No builtin tracing from NSH (USB device only)
           CONFIG_NSH_ARCHINIT=y                   : Automatically start the USB monitor
 
         Application Configuration -> System NSH Add-Ons:
