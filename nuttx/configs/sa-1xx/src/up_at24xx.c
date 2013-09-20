@@ -44,6 +44,7 @@
 
 #include <nuttx/i2c.h>
 #include <nuttx/mtd.h>
+#include <nuttx/fs/fs.h>
 
 #include "stm32.h"
 #include "stm32_i2c.h"
@@ -95,6 +96,8 @@ int stm32_at24xxinitialize(void)
     }
 
     ret = ftl_initialize(0, mtd);
+
+    ret = bchdev_register("/dev/mtdblock0", "/dev/mtd0", false);
 
     return ret;
 }
