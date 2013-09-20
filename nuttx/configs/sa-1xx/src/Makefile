@@ -70,6 +70,10 @@ ifeq ($(CONFIG_STM32_SDIO),y)
 CSRCS		+= up_sdio.c
 endif
 
+ifeq ($(CONFIG_STM32_ETHMAC),y)
+CSRCS		+= up_ethernet.c
+endif
+
 COBJS		= $(CSRCS:.c=$(OBJEXT))
 
 SRCS		= $(ASRCS) $(CSRCS)

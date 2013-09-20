@@ -94,19 +94,25 @@ int nsh_netinit(void)
 #if defined(CONFIG_NSH_DHCPC)
  FAR void *handle;
 #endif
-#if defined(CONFIG_NSH_DHCPC) || defined(CONFIG_NSH_NOMAC)
+#if defined(CONFIG_NSH_DHCPC) || defined(CONFIG_NSH_NOMAC) || \
+  (defined(CONFIG_STM32_ETHMAC) && defined(CONFIG_ARCH_BOARD_SA1XX))
  uint8_t mac[IFHWADDRLEN];
 #endif
 
 /* Many embedded network interfaces must have a software assigned MAC */
 
 #ifdef CONFIG_NSH_NOMAC
+#  ifdef CONFIG_ARCH_BOARD_SA1XX
+ extern void sa1xx_ethernetmac(uint8_t *mac);
+  sa1xx_ethernetmac(mac);
+#  else
   mac[0] = 0x00;
   mac[1] = 0xe0;
   mac[2] = 0xde;
   mac[3] = 0xad;
   mac[4] = 0xbe;
   mac[5] = 0xef;
+#  endif
   uip_setmacaddr("eth0", mac);
 #endif
 
