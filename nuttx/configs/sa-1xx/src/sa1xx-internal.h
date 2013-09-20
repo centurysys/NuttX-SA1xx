@@ -131,5 +131,9 @@ void weak_function stm32_usbinitialize(void);
 
 int stm32_at24xxinitialize(void);
 
+#ifdef CONFIG_STM32_SPI2
+int sa1xx_spiflash_initialize(void);
+#endif
+
 #endif /* __ASSEMBLY__ */
 #endif /* __CONFIGS_SA1XX_SRC_SA1XX_INTERNAL_H */

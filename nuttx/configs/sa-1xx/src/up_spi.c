@@ -43,6 +43,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <sched.h>
+#include <errno.h>
 #include <debug.h>
 
 #include <nuttx/spi/spi.h>
@@ -149,6 +150,36 @@ void stm32_spi2select(FAR struct spi_dev_s *dev, enum spi_dev_e devid, bool sele
 uint8_t stm32_spi2status(FAR struct spi_dev_s *dev, enum spi_dev_e devid)
 {
     return SPI_STATUS_PRESENT;
+}
+
+int sa1xx_spiflash_initialize(void)
+{
+    int ret;
+    struct spi_dev_s *spi;
+    struct mtd_dev_s *mtd;
+
+    /* Configure SPI-based devices */
+
+    /* Get the SPI port */
+    spi = up_spiinitialize(2);
+
+    if (!spi) {
+        spidbg("%s: Failed to initialize SPI port 2\n", __FUNCTION__);
+        return -ENODEV;
+    }
+
+    /* Now bind the SPI interface to the N25Q064 SPI FLASH driver */
+    spidbg("Initializing N25Q064 SPI-Flash...\n");
+    mtd = n25q_initialize(spi);
+
+    if (!mtd) {
+        spidbg("%s: Failed to bind SPI port 2 to the SPI FLASH driver\n", __FUNCTION__);
+        return -ENODEV;
+    }
+
+    ret = ftl_initialize(1, mtd);
+
+    return ret;
 }
 #endif
 #endif /* CONFIG_STM32_SPI2 */

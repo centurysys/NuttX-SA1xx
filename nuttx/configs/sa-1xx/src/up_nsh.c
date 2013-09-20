@@ -155,6 +155,10 @@ int nsh_archinitialize(void)
 
     ret = stm32_at24xxinitialize();
 
+#ifdef CONFIG_STM32_SPI2
+    ret = sa1xx_spiflash_initialize();
+#endif
+
     /* Mount the SDIO-based MMC/SD block driver */
 
 #ifdef CONFIG_STM32_SDIO
