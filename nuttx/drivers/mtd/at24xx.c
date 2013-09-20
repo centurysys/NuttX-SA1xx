@@ -102,6 +102,7 @@
 #elif CONFIG_AT24XX_SIZE == 16
 #  define AT24XX_NPAGES     128
 #  define AT24XX_PAGESIZE   16
+#  define AT24XX_ADDR8
 #endif
 
 /* For applications where a file system is used on the AT24, the tiny page sizes
@@ -229,17 +230,28 @@ static ssize_t at24c_bread(FAR struct mtd_dev_s *dev, off_t startblock,
       nblocks = priv->npages - startblock;
     }
 
+#ifndef AT24XX_ADDR8
   I2C_SETADDRESS(priv->dev,priv->addr,7);
+#endif
   I2C_SETFREQUENCY(priv->dev,100000);
 
   while (blocksleft-- > 0)
     {
       uint16_t offset = startblock * priv->pagesize;
       uint8_t buf[2];
+      int buflen;
+#ifndef AT24XX_ADDR8
       buf[1] = offset & 0xff;
       buf[0] = (offset >> 8) & 0xff;
+      buflen = 2;
+#else
+      buf[1] = priv->addr | ((offset >> 8) & 0x07);
+      buf[0] = offset & 0xff;
+      I2C_SETADDRESS(priv->dev,buf[1],7);
+      buflen = 1;
+#endif
 
-      while (I2C_WRITE(priv->dev, buf, 2) < 0)
+      while (I2C_WRITE(priv->dev, buf, buflen) < 0)
         {
           fvdbg("wait\n");
           usleep(1000);
@@ -270,6 +282,7 @@ static ssize_t at24c_bwrite(FAR struct mtd_dev_s *dev, off_t startblock, size_t 
   FAR struct at24c_dev_s *priv = (FAR struct at24c_dev_s *)dev;
   size_t blocksleft;
   uint8_t buf[AT24XX_PAGESIZE+2];
+  int buflen;
 
 #if CONFIG_AT24XX_MTD_BLOCKSIZE > AT24XX_PAGESIZE
   startblock *= (CONFIG_AT24XX_MTD_BLOCKSIZE / AT24XX_PAGESIZE);
@@ -287,24 +300,39 @@ static ssize_t at24c_bwrite(FAR struct mtd_dev_s *dev, off_t startblock, size_t 
       nblocks = priv->npages - startblock;
     }
 
+#ifndef AT24XX_ADDR8
+  buflen = 2;
+#else
+  buflen = 1;
+#endif
+
   fvdbg("startblock: %08lx nblocks: %d\n", (long)startblock, (int)nblocks);
+
+#ifndef AT24XX_ADDR8
   I2C_SETADDRESS(priv->dev, priv->addr, 7);
+#endif
   I2C_SETFREQUENCY(priv->dev, 100000);
 
   while (blocksleft-- > 0)
     {
       uint16_t offset = startblock * priv->pagesize;
-      while (I2C_WRITE(priv->dev, (uint8_t *)&offset, 2) < 0)
+      while (I2C_WRITE(priv->dev, (uint8_t *)&offset, buflen) < 0)
         {
           fvdbg("wait\n");
           usleep(1000);
         }
 
+#ifndef AT24XX_ADDR8
       buf[1] = offset & 0xff;
       buf[0] = (offset >> 8) & 0xff;
-      memcpy(&buf[2], buffer, priv->pagesize);
+#else
+      buf[1] = priv->addr | ((offset >> 8) & 0x07);
+      buf[0] = offset & 0xff;
+      I2C_SETADDRESS(priv->dev,buf[1],7);
+#endif
+      memcpy(&buf[buflen], buffer, priv->pagesize);
 
-      I2C_WRITE(priv->dev, buf, priv->pagesize + 2);
+      I2C_WRITE(priv->dev, buf, priv->pagesize + buflen);
       startblock++;
       buffer += priv->pagesize;
     }
