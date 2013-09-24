@@ -43,6 +43,8 @@
 #include <errno.h>
 #include <net/ethernet.h>
 
+#include "sa1xx-internal.h"
+
 #if defined(CONFIG_STM32_ETHMAC)
 
 /************************************************************************************
@@ -66,6 +68,9 @@
 
 void sa1xx_ethernetmac(uint8_t *mac)
 {
+#if defined(CONFIG_I2C) && defined(CONFIG_STM32_I2C2)
+	sa1xx_get_parameter("macaddr", (char *) mac, 6, 0);
+#else
   /* provisional */
   mac[0] = 0x00;
   mac[1] = 0x80;
@@ -73,6 +78,7 @@ void sa1xx_ethernetmac(uint8_t *mac)
   mac[3] = 0x00;
   mac[4] = 0xbe;
   mac[5] = 0xef;
+#endif
 }
 
 #endif /* CONFIG_STM32_ETHMAC */

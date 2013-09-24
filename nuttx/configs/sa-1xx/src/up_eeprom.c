@@ -218,7 +218,7 @@ static struct eeprom_param *find_param(char *paramname)
  *   Get parameter from EEPROM
  ************************************************************************************/
 
-int sa1xx_get_parameter(char *paramname, char *buf, int size)
+int sa1xx_get_parameter(char *paramname, char *buf, int size, int convert)
 {
 	struct eeprom_param *p;
 	int res, i;
@@ -234,13 +234,20 @@ int sa1xx_get_parameter(char *paramname, char *buf, int size)
 	res = read_eeprom(tmp, p->offset, p->len);
 
 	if (p->type == T_MACADDR) {
-		for (i = 0; i < 6; i++) {
-			sprintf(&buf[i * 2], "%02x", (int) tmp[i]);
+		if (convert != 0) {
+			for (i = 0; i < 6; i++) {
+				sprintf(&buf[i * 2], "%02x", (int) tmp[i]);
+			}
+			res = res * 2;
+			buf[i * 2] = '\0';
+		} else {
+			memcpy(buf, tmp, p->len);
 		}
-		res = res * 2;
-		buf[i * 2] = '\0';
 	} else if (p->type == T_INT) {
-		res = sprintf(buf, "%d", *(int *) tmp);
+		if (convert != 0)
+			res = sprintf(buf, "%d", *(int *) tmp);
+		else
+			strncpy(buf, tmp, p->len);
 	} else {
 		strncpy(buf, tmp, p->len);
 	}

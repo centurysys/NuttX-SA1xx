@@ -132,7 +132,7 @@ void weak_function stm32_usbinitialize(void);
 #if defined(CONFIG_I2C) && defined(CONFIG_STM32_I2C2)
 int stm32_at24xxinitialize(void);
 
-int sa1xx_get_parameter(char *paramname, char *buf, int size);
+int sa1xx_get_parameter(char *paramname, char *buf, int size, int convert);
 int sa1xx_set_parameter(char *paramname, char *buf, int size);
 void sa1xx_print_paramnames(void);
 #endif

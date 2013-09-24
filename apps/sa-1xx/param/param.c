@@ -4,7 +4,7 @@
  *  Copyright (C) 2013 Century Systems
  *  Author: Takeyoshi Kikuchi <kikuchi@centurysys.co.jp>
  *
- *  Last Modified: 2013/09/24 15:27:57 kikuchi
+ *  Last Modified: 2013/09/24 16:15:11 kikuchi
  ****************************************************************************/
 
 #include <stdio.h>
@@ -40,7 +40,7 @@ static int get_param(const char *param_name)
 	char val[16];
 	int len, res;
 
-	res = sa1xx_get_parameter(param_name, val, 16);
+	res = sa1xx_get_parameter(param_name, val, 16, 1);
 
 	if (res > 0) {
 		val[res] = '\0';
@@ -62,7 +62,7 @@ static int set_param(const char *param_name, char *val)
 	res = sa1xx_set_parameter(param_name, val, strlen(val) - 1);
 
 	if (res > 0) {
-		res = sa1xx_get_parameter(param_name, val_new, 16);
+		res = sa1xx_get_parameter(param_name, val_new, 16, 1);
 
 		if (res > 0) {
 			val_new[res] = '\0';
