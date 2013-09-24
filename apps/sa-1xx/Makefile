@@ -37,13 +37,11 @@
 
 # Sub-directories
 
-#SUBDIRS = atcmd eth_phydebug dhcpc mtdutil xbeelib xbee_bridge ssl_client
-SUBDIRS = atcmd eth_phydebug dhcpc mtdutil xbee_bridge ssl_client eepromtest param
+SUBDIRS = atcmd eth_phydebug dhcpc xbee_bridge ssl_client
 
 # Sub-directories that might need context setup
 
-#CNTXTDIRS = atcmd eth_phydebug dhcpc mtdutil xbeelib xbee_bridge ssl_client
-CNTXTDIRS = atcmd eth_phydebug dhcpc mtdutil xbee_bridge ssl_client eepromtest param
+CNTXTDIRS = atcmd eth_phydebug dhcpc xbee_bridge ssl_client
 
 all: nothing
 .PHONY: nothing context depend clean distclean
