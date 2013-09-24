@@ -74,6 +74,12 @@ ifeq ($(CONFIG_STM32_ETHMAC),y)
 CSRCS		+= up_ethernet.c
 endif
 
+ifeq ($(CONFIG_I2C),y)
+  ifeq ($(CONFIG_STM32_I2C2),y)
+  CSRCS	+= up_eeprom.c
+  endif
+endif
+
 COBJS		= $(CSRCS:.c=$(OBJEXT))
 
 SRCS		= $(ASRCS) $(CSRCS)
