@@ -108,6 +108,7 @@ static struct eeprom_param param_idx[] = {
 		6, T_MACADDR,
 		"Ethernet MAC address"
 	},
+#if 0
 	{
 		"manufacture_year",
 		param_offset(manufacture_date.year),
@@ -126,6 +127,7 @@ static struct eeprom_param param_idx[] = {
 		2, T_STRING,
 		"ManufactureDate (Day)"
 	},
+#endif
 	{
 		"manufacture_date",
 		param_offset(manufacture_date),
