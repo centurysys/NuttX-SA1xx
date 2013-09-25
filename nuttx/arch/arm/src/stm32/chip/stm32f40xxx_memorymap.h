@@ -63,7 +63,8 @@
 
 #define STM32_BOOT_BASE      0x00000000     /* 0x00000000-0x000fffff: Aliased boot memory */
                                             /* 0x00100000-0x07ffffff: Reserved */
-#define STM32_FLASH_BASE     0x08000000     /* 0x08000000-0x080fffff: FLASH memory */
+#define STM32_FLASH_BASE     0x08020000     /* 0x08000000-0x0801ffff: FLASH (mixed size) */
+                                            /* 0x08020000-0x080fffff: FLASH memory */
                                             /* 0x08100000-0x0fffffff: Reserved */
 #define STM32_CCMRAM_BASE    0x10000000     /* 0x10000000-0x1000ffff: 64Kb CCM data RAM */
                                             /* 0x10010000-0x1ffeffff: Reserved */

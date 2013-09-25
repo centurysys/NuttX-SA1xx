@@ -136,7 +136,7 @@ int nsh_archinitialize(void)
 #endif
 
 #if defined(CONFIG_GRAN) && defined(CONFIG_GRAN_SINGLE)
-    /* Initialize GRAN HEAP, size: 64bytes, align: 8bytes */
+    /* Initialize GRAN HEAP, size: 64Kibytes, align: 8bytes */
     memset(g_gran_heap, 0, CCM_SIZE);
     ret = gran_initialize(g_gran_heap, CCM_SIZE, 6, 3);
 

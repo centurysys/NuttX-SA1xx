@@ -90,7 +90,7 @@ bool up_progmem_isuniform(void);
  *
  ****************************************************************************/
 
-uint16_t up_progmem_pagesize(uint16_t page);
+uint32_t up_progmem_pagesize(uint16_t page);
 
 /****************************************************************************
  * Name: up_progmem_getpage
