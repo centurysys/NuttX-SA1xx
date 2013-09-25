@@ -105,7 +105,7 @@ ifeq ($(CONFIG_STM32_BUILDROOT),y)
   MAXOPTIMIZATION = -Os
 endif
 
-LDSCRIPT = ld.script
+LDSCRIPT = ld.script.ipl
 
 ifeq ($(WINTOOL),y)
   # Windows-native toolchains
