@@ -141,5 +141,13 @@ void sa1xx_print_paramnames(void);
 int sa1xx_spiflash_initialize(void);
 #endif
 
+#ifndef info
+#define info(fmt, arg...) do {sched_lock(); lowsyslog(fmt, ##arg); sched_unlock();} while (0)
+#endif
+
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+#endif
+
 #endif /* __ASSEMBLY__ */
 #endif /* __CONFIGS_SA1XX_SRC_SA1XX_INTERNAL_H */
