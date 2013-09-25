@@ -87,6 +87,7 @@ CONFIGURED_APPS += sa-1xx/eth_phydebug
 CONFIGURED_APPS += sa-1xx/dhcpc
 #CONFIGURED_APPS += sa-1xx/xbee_bridge
 #CONFIGURED_APPS += sa-1xx/xbeelib
+CONFIGURED_APPS += sa-1xx/sysreset
 
 # SSL library & client application
 #CONFIGURED_APPS += axTLS

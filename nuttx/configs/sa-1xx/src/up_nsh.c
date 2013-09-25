@@ -135,6 +135,11 @@ int nsh_archinitialize(void)
     int ret;
 #endif
 
+#ifdef CONFIG_SA1XX_BOOTLOADER
+    extern void stm32_jump_to_app(void);
+    stm32_jump_to_app();
+#endif
+
 #if defined(CONFIG_GRAN) && defined(CONFIG_GRAN_SINGLE)
     /* Initialize GRAN HEAP, size: 64Kibytes, align: 8bytes */
     memset(g_gran_heap, 0, CCM_SIZE);

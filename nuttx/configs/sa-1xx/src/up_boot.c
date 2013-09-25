@@ -54,7 +54,7 @@
  * Definitions
  ************************************************************************************/
 
-#define FLASH_START ((void *) 0x08020000)
+#define FLASH_START (0x08020000)
 #define FLASH_SIZE  (0x20000 * 7)
 #define FLASH_END   (FLASH_START + FLASH_SIZE)
 #define SRAM_START  0x20000000
@@ -71,7 +71,7 @@ typedef void (*app_entry)(void);
  ************************************************************************************/
 
 #ifdef CONFIG_SA1XX_BOOTLOADER
-static void stm32_jump_to_app(void *vec);
+void stm32_jump_to_app(void);
 #endif
 
 /************************************************************************************
@@ -88,9 +88,6 @@ void stm32_boardinitialize(void)
 {
     uint32_t regval;
 
-#ifdef CONFIG_SA1XX_BOOTLOADER
-    stm32_jump_to_app(FLASH_START);
-#endif
     /* Configure SPI chip selects if 1) SPI is not disabled, and 2) the weak function
      * stm32_spiinitialize() has been brought into the link.
      */
@@ -127,28 +124,31 @@ void stm32_boardinitialize(void)
 static void set_MSP(uint32_t stack)
 {
 	__asm__ volatile("MSR msp, %0\n\t" : : "r" (stack));
-} __attribute__ ((naked))
+}
 
-static void stm32_jump_to_app(void *vec)
+void stm32_jump_to_app(void)
 {
 	app_entry func;
 	uint32_t entry, stack;
 
-	stack = *((uint32_t *) vec);
-	entry = *(((uint32_t *) vec) + 1);
+	sched_lock();
+
+	stack = *((uint32_t *) FLASH_START);
+	entry = *(((uint32_t *) FLASH_START) + 1);
 
 	if ((stack >= SRAM_START && stack < SRAM_END) &&
 		(entry >= FLASH_START && entry < FLASH_END)) {
-		info("jump to user application...\n");
+		info("\njump to user application...\n");
 
 		func = (app_entry) entry;
 		irqsave();
 		set_MSP(stack);
-		putreg32((uint32_t) vec, NVIC_VECTAB);
+		putreg32((uint32_t) FLASH_START, NVIC_VECTAB);
 		func();
 		for(;;);
 	}
 
-	info("bootloader.\n");
+	printf("\nbootloader.\n");
+	sched_unlock();
 }
 #endif

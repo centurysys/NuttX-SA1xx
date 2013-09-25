@@ -446,7 +446,9 @@ static const struct cmdmap_s g_cmdmap[] =
  * in the NSH greeting.
  */
 
-#if CONFIG_VERSION_MAJOR != 0 || CONFIG_VERSION_MINOR != 0
+#ifdef CONFIG_NSH_GREETING_VERBOSE
+const char g_nshgreeting[] = "\nNuttShell (NSH) NuttX (Build time: " __DATE__ " - " __TIME__ ")""\n";
+#elif CONFIG_VERSION_MAJOR != 0 || CONFIG_VERSION_MINOR != 0
 const char g_nshgreeting[]       = "\nNuttShell (NSH) NuttX-" CONFIG_VERSION_STRING "\n";
 #else
 const char g_nshgreeting[]       = "\nNuttShell (NSH)\n";
@@ -465,7 +467,11 @@ const char g_loginfailure[]      = "Login failed!\n";
 
 /* The NSH prompt */
 
+#ifndef CONFIG_NSH_PROMPT
 const char g_nshprompt[]         = "nsh> ";
+#else
+const char g_nshprompt[]         = CONFIG_NSH_PROMPT "> ";
+#endif
 
 /* Common, message formats */
 
