@@ -51,8 +51,8 @@
 
 static void free_getprogmeminfo(struct mallinfo * mem)
 {
-  uint16_t page = 0, stpage = 0xFFFF;
-  uint16_t pagesize = 0;
+  uint16_t page = 0, stpage = 0xFFFF, npages;
+  uint32_t pagesize = 0;
   int status;
 
   mem->arena    = 0;
@@ -60,12 +60,15 @@ static void free_getprogmeminfo(struct mallinfo * mem)
   mem->uordblks = 0;
   mem->mxordblk = 0;
 
-  for (status=0, page=0; status >= 0; page++)
+  npages = up_progmem_npages();
+
+  for (status=0, page=0; status >= 0 && page <= npages; page++)
     {
       status = up_progmem_ispageerased(page);
       pagesize = up_progmem_pagesize(page);
 
-      mem->arena += pagesize;
+      if (page < npages)
+        mem->arena += pagesize;
 
       /* Is this beginning of new free space section */
 
@@ -76,7 +79,8 @@ static void free_getprogmeminfo(struct mallinfo * mem)
         }
       else if (status != 0)
         {
-          mem->uordblks += pagesize;
+          if (page < npages)
+            mem->uordblks += pagesize;
 
           if (stpage != 0xFFFF && up_progmem_isuniform())
             {
