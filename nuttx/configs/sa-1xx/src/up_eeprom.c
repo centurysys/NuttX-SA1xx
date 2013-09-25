@@ -194,7 +194,7 @@ static int read_eeprom(char *buf, int offset, int len)
 	return ret;
 }
 
-static struct eeprom_param *find_param(char *paramname)
+static struct eeprom_param *find_param(const char *paramname)
 {
 	int i;
 	struct eeprom_param *p;
@@ -220,7 +220,7 @@ static struct eeprom_param *find_param(char *paramname)
  *   Get parameter from EEPROM
  ************************************************************************************/
 
-int sa1xx_get_parameter(char *paramname, char *buf, int size, int convert)
+int sa1xx_get_parameter(const char *paramname, char *buf, int size, int convert)
 {
 	struct eeprom_param *p;
 	int res, i;
@@ -264,7 +264,7 @@ int sa1xx_get_parameter(char *paramname, char *buf, int size, int convert)
  *   Set parameter to EEPROM
  ************************************************************************************/
 
-int sa1xx_set_parameter(char *paramname, char *buf, int size)
+int sa1xx_set_parameter(const char *paramname, char *buf, int size)
 {
 	struct eeprom_param *p;
 	int res, i;

@@ -4,7 +4,7 @@
  *  Copyright (C) 2013 Century Systems
  *  Author: Takeyoshi Kikuchi <kikuchi@centurysys.co.jp>
  *
- *  Last Modified: 2013/09/24 16:15:11 kikuchi
+ *  Last Modified: 2013/09/25 18:13:17 kikuchi
  ****************************************************************************/
 
 #include <stdio.h>
@@ -38,7 +38,7 @@ static void usage(void)
 static int get_param(const char *param_name)
 {
 	char val[16];
-	int len, res;
+	int res;
 
 	res = sa1xx_get_parameter(param_name, val, 16, 1);
 
@@ -57,7 +57,7 @@ static int get_param(const char *param_name)
 static int set_param(const char *param_name, char *val)
 {
 	char val_new[16];
-	int len, res;
+	int res;
 
 	res = sa1xx_set_parameter(param_name, val, strlen(val) - 1);
 
@@ -75,7 +75,7 @@ static int set_param(const char *param_name, char *val)
 
 int param_main(int argc, char **argv)
 {
-	int res, i;
+	int res;
 
 	if (argc < 2) {
 		usage();
