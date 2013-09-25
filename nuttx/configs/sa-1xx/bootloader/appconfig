@@ -66,3 +66,5 @@ endif
 # SA-1xx specific
 CONFIGURED_APPS += sa-1xx/dhcpc
 CONFIGURED_APPS += sa-1xx/param
+
+CONFIGURED_APPS += system/free
