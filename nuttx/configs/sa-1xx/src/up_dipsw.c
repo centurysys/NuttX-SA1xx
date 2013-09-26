@@ -100,12 +100,12 @@ uint8_t up_dipsw(void)
 
     /* Check that state of each switch */
     for (i = 0; i < NUM_DIPSW; i++) {
-        /* A LOW value means that the switch is on.
+        /* A HIGH value means that the switch is on.
          */
-        bool sw_off = stm32_gpioread(g_dipsw[i]);
+        bool sw_on = stm32_gpioread(g_dipsw[i]);
 
         /* Accumulate the set of depressed keys */
-        if (!sw_off)
+        if (sw_on)
             ret |= (1 << i);
     }
 
