@@ -238,6 +238,13 @@
 
 #define BUTTON_INIT_BIT  (1 << BUTTON_INIT)
 
+/* DIPSW definitions ***************************************************************/
+/* The SA-1xx supports one dipsw (4bit): */
+
+#define DIPSW_INIT        0
+
+#define NUM_DIPSW         4
+
 /* Alternate function pin selections ************************************************/
 
 /* UART1: console
