@@ -280,6 +280,16 @@ FAR struct mtd_dev_s *at25_initialize(FAR struct spi_dev_s *dev);
 FAR struct mtd_dev_s *m25p_initialize(FAR struct spi_dev_s *dev);
 
 /****************************************************************************
+ * Name: n25q_initialize
+ *
+ * Description:
+ *   Initializes the for SPI-based Flash
+ *
+ ****************************************************************************/
+
+FAR struct mtd_dev_s *n25q_initialize(FAR struct spi_dev_s *spi);
+
+/****************************************************************************
  * Name: rammtd_initialize
  *
  * Description:
