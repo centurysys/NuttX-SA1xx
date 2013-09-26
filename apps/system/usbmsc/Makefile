@@ -1,7 +1,7 @@
 ############################################################################
-# apps/examples/composite/Makefile
+# apps/system/usbmsc/Makefile
 #
-#   Copyright (C) 2012 Gregory Nutt. All rights reserved.
+#   Copyright (C) 2008, 2010-2012 Gregory Nutt. All rights reserved.
 #   Author: Gregory Nutt <gnutt@nuttx.org>
 #
 # Redistribution and use in source and binary forms, with or without
@@ -37,10 +37,10 @@
 -include $(TOPDIR)/Make.defs
 include $(APPDIR)/Make.defs
 
-# USB device mass storage example
+# USB device mass storage add-on
 
 ASRCS		=
-CSRCS		= composite_main.c
+CSRCS		= usbmsc_main.c
 
 AOBJS		= $(ASRCS:.S=$(OBJEXT))
 COBJS		= $(CSRCS:.c=$(OBJEXT))
@@ -62,13 +62,16 @@ ROOTDEPPATH	= --dep-path .
 
 # USB storage built-in application info
 
-APPNAME1	= conn
-PRIORITY1	= SCHED_PRIORITY_DEFAULT
-STACKSIZE1	= 2048
+CONFIG_SYSTEM_USBMSC_CMD_STACKSIZE ?= 768
+CONFIG_SYSTEM_USBMSC_CMD_PRIORITY ?= SCHED_PRIORITY_DEFAULT
 
-APPNAME2	= disconn
-PRIORITY2	= SCHED_PRIORITY_DEFAULT
-STACKSIZE2	= 2048
+APPNAME1	= msconn
+PRIORITY1	= $(CONFIG_SYSTEM_USBMSC_CMD_PRIORITY)
+STACKSIZE1	= $(CONFIG_SYSTEM_USBMSC_CMD_STACKSIZE)
+
+APPNAME2	= msdis
+PRIORITY2	= $(CONFIG_SYSTEM_USBMSC_CMD_PRIORITY)
+STACKSIZE2	= $(CONFIG_SYSTEM_USBMSC_CMD_STACKSIZE)
 
 # Common build
 

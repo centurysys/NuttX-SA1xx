@@ -1,7 +1,7 @@
 /****************************************************************************
- * examples/usbmsc/usbmsc.h
+ * system/cdcacm/cdcacm.h
  *
- *   Copyright (C) 2008-2009, 2012 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2012 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,67 +33,80 @@
  *
  ****************************************************************************/
 
-#ifndef __EXAMPLES_USBSTORAGE_USBMSC_H
-#define __EXAMPLES_USBSTORAGE_USBMSC_H
+#ifndef __SYSTEM_CDCACM_CDCACM_H
+#define __SYSTEM_CDCACM_CDCACM_H
 
 /****************************************************************************
  * Included Files
  ****************************************************************************/
 
 #include <nuttx/config.h>
+
 #include <stdlib.h>
+
+#include <nuttx/usb/usbdev_trace.h>
 
 /****************************************************************************
  * Pre-Processor Definitions
  ****************************************************************************/
-
 /* Configuration ************************************************************/
+/* Prerequisites */
 
-#ifndef CONFIG_EXAMPLES_USBMSC_NLUNS
-#  define CONFIG_EXAMPLES_USBMSC_NLUNS 1
+#ifndef CONFIG_USBDEV
+#  error "CONFIG_USBDEV is not defined"
 #endif
 
-#ifndef CONFIG_EXAMPLES_USBMSC_DEVMINOR1
-#  define CONFIG_EXAMPLES_USBMSC_DEVMINOR1 0
+#ifndef CONFIG_CDCACM
+#  error "CONFIG_CDCACM is not defined"
 #endif
 
-#ifndef CONFIG_EXAMPLES_USBMSC_DEVPATH1
-#  define CONFIG_EXAMPLES_USBMSC_DEVPATH1 "/dev/mmcsd0"
+#ifndef CONFIG_NSH_BUILTIN_APPS
+#  error "This add-on can only be built as an NSH built-in application"
 #endif
 
-#if CONFIG_EXAMPLES_USBMSC_NLUNS > 1
-#  ifndef CONFIG_EXAMPLES_USBMSC_DEVMINOR2
-#    error "CONFIG_EXAMPLES_USBMSC_DEVMINOR2 for LUN=2"
-#  endif
-#  ifndef CONFIG_EXAMPLES_USBMSC_DEVPATH2
-#    error "CONFIG_EXAMPLES_USBMSC_DEVPATH2 for LUN=2"
-#  endif
-#  if CONFIG_EXAMPLES_USBMSC_NLUNS > 2
-#    ifndef CONFIG_EXAMPLES_USBMSC_DEVMINOR3
-#      error "CONFIG_EXAMPLES_USBMSC_DEVMINOR2 for LUN=3"
-#    endif
-#    ifndef CONFIG_EXAMPLES_USBMSC_DEVPATH3
-#      error "CONFIG_EXAMPLES_USBMSC_DEVPATH3 for LUN=3"
-#    endif
-#    if CONFIG_EXAMPLES_USBMSC_NLUNS > 3
-#      error "CONFIG_EXAMPLES_USBMSC_NLUNS must be {1,2,3}"
-#    endif
-#  else
-#    undef CONFIG_EXAMPLES_USBMSC_DEVMINOR3
-#    undef CONFIG_EXAMPLES_USBMSC_DEVPATH3
-#  endif
+/* Default configuration values */
+
+#ifndef CONFIG_SYSTEM_CDCACM_DEVMINOR
+#  define CONFIG_SYSTEM_CDCACM_DEVMINOR 0
+#endif
+
+/* Trace Configuration ******************************************************/
+
+#ifdef CONFIG_SYSTEM_CDCACM_TRACEINIT
+#  define TRACE_INIT_BITS       (TRACE_INIT_BIT)
 #else
-#  undef CONFIG_EXAMPLES_USBMSC_DEVMINOR2
-#  undef CONFIG_EXAMPLES_USBMSC_DEVPATH2
-#  undef CONFIG_EXAMPLES_USBMSC_DEVMINOR3
-#  undef CONFIG_EXAMPLES_USBMSC_DEVPATH3
+#  define TRACE_INIT_BITS       (0)
 #endif
 
-#if defined(CONFIG_NSH_BUILTIN_APPS) && defined(CONFIG_SCHED_WAITPID)
-#  ifndef CONFIG_EXAMPLES_USBMSC_DAEMON_STACKSIZE
-#    define CONFIG_EXAMPLES_USBMSC_DAEMON_STACKSIZE 2048
-#  endif
+#define TRACE_ERROR_BITS        (TRACE_DEVERROR_BIT|TRACE_CLSERROR_BIT)
+
+#ifdef CONFIG_SYSTEM_CDCACM_TRACECLASS
+#  define TRACE_CLASS_BITS      (TRACE_CLASS_BIT|TRACE_CLASSAPI_BIT|TRACE_CLASSSTATE_BIT)
+#else
+#  define TRACE_CLASS_BITS      (0)
 #endif
+
+#ifdef CONFIG_SYSTEM_CDCACM_TRACETRANSFERS
+#  define TRACE_TRANSFER_BITS   (TRACE_OUTREQQUEUED_BIT|TRACE_INREQQUEUED_BIT|TRACE_READ_BIT|\
+                                 TRACE_WRITE_BIT|TRACE_COMPLETE_BIT)
+#else
+#  define TRACE_TRANSFER_BITS   (0)
+#endif
+
+#ifdef CONFIG_SYSTEM_CDCACM_TRACECONTROLLER
+#  define TRACE_CONTROLLER_BITS (TRACE_EP_BIT|TRACE_DEV_BIT)
+#else
+#  define TRACE_CONTROLLER_BITS (0)
+#endif
+
+#ifdef CONFIG_SYSTEM_CDCACM_TRACEINTERRUPTS
+#  define TRACE_INTERRUPT_BITS  (TRACE_INTENTRY_BIT|TRACE_INTDECODE_BIT|TRACE_INTEXIT_BIT)
+#else
+#  define TRACE_INTERRUPT_BITS  (0)
+#endif
+
+#define TRACE_BITSET            (TRACE_INIT_BITS|TRACE_ERROR_BITS|TRACE_CLASS_BITS|\
+                                 TRACE_TRANSFER_BITS|TRACE_CONTROLLER_BITS|TRACE_INTERRUPT_BITS)
 
 /* Debug ********************************************************************/
 
@@ -119,62 +132,34 @@
  * Public Types
  ****************************************************************************/
 
-/* All global variables used by this example are packed into a structure in
+/* All global variables used by this add-on are packed into a structure in
  * order to avoid name collisions.
  */
 
-#if defined(CONFIG_NSH_BUILTIN_APPS) || defined(CONFIG_EXAMPLES_USBMSC_DEBUGMM)
-struct usbmsc_state_s
+struct cdcacm_state_s
 {
-  /* This is the handle that references to this particular USB storage driver
-   * instance.  It is only needed if the USB mass storage device example is
+  /* This is the handle that references to this particular USB CDC/ACM driver
+   * instance.  It is only needed if the USB CDC/ACM device add-on is
    * built using CONFIG_NSH_BUILTIN_APPS.  In this case, the value
-   * of the driver handle must be remembered between the 'msconn' and 'msdis'
+   * of the driver handle must be remembered between the 'sercon' and 'msdis'
    * commands.
    */
 
-#ifdef CONFIG_NSH_BUILTIN_APPS
-  FAR void *mshandle;
-#endif
-
-  /* Heap usage samples.  These are useful for checking USB storage memory
-   * usage and for tracking down memoryh leaks.
-   */
-
-#ifdef CONFIG_EXAMPLES_USBMSC_DEBUGMM
-  struct mallinfo mmstart;    /* Memory usage before the connection */
-  struct mallinfo mmprevious; /* The last memory usage sample */
-  struct mallinfo mmcurrent;  /* The current memory usage sample */
-#endif
+  FAR void *handle;
 };
-#endif
 
 /****************************************************************************
  * Public Data
  ****************************************************************************/
 
-/* All global variables used by this example are packed into a structure in
+/* All global variables used by this add-on are packed into a structure in
  * order to avoid name collisions.
  */
 
-#if defined(CONFIG_NSH_BUILTIN_APPS) || defined(CONFIG_EXAMPLES_USBMSC_DEBUGMM)
-extern struct usbmsc_state_s g_usbmsc;
-#endif
+extern struct cdcacm_state_s g_cdcacm;
 
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
 
-/****************************************************************************
- * Name: usbmsc_archinitialize
- *
- * Description:
- *   Perform architecture specific initialization.  This function must
- *   configure the block device to export via USB.  This function must be
- *   provided by architecture-specific logic in order to use this example.
- *
- ****************************************************************************/
-
-extern int usbmsc_archinitialize(void);
-
-#endif /* __EXAMPLES_USBSTORAGE_USBMSC_H */
+#endif /* __SYSTEM_CDCACM_CDCACM_H */
