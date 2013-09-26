@@ -67,5 +67,8 @@ endif
 CONFIGURED_APPS += sa-1xx/dhcpc
 CONFIGURED_APPS += sa-1xx/param
 CONFIGURED_APPS += sa-1xx/flashtest
+CONFIGURED_APPS += sa-1xx/sysreset
+CONFIGURED_APPS += sa-1xx/sensor
+CONFIGURED_APPS += sa-1xx/dipsw
 
 CONFIGURED_APPS += system/free
