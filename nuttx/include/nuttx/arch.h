@@ -1098,6 +1098,45 @@ void relays_powermodes(uint32_t relays_stat);
 #endif
 
 /****************************************************************************
+ * Name: up_dipswinit
+ *
+ * Description:
+ *   up_dipswinit() must be called to initialize button resources.  After
+ *   that, up_dipsw() may be called to collect the current state of all
+ *   buttons.
+ *
+ *   NOTE: This interface may or may not be supported by board-specific
+ *   logic.  If the board supports button interfaces, then CONFIG_ARCH_DIPSW
+ *   will be defined.
+ *
+ ****************************************************************************/
+
+#ifdef CONFIG_ARCH_DIPSW
+void up_dipswinit(void);
+#endif
+
+/****************************************************************************
+ * Name: up_dipsw
+ *
+ * Description:
+ *   After up_dipswinit() has been called, up_dipsw() may be called to
+ *   collect the state of all dipsws.  up_dipsw() returns an 8-bit bit set
+ *   with each bit associated with a dipsw.  A bit set to "1" means that the
+ *   dipsw is ON-state; a bit set to "0" means that the dipsw is OFF-state.
+ *   The correspondence of the each dipsw bit and physical dipsw is board-
+ *   specific.
+ *
+ *   NOTE: This interface may or may not be supported by board-specific
+ *   logic.  If the board supports button interfaces, then CONFIG_ARCH_DIPSW
+ *   will be defined
+ *
+ ****************************************************************************/
+
+#ifdef CONFIG_ARCH_DIPSW
+uint8_t up_dipsw(void);
+#endif
+
+/****************************************************************************
  * Debug interfaces exported by the architecture-specific logic
  ****************************************************************************/
 

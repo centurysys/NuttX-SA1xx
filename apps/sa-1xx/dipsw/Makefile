@@ -1,8 +1,9 @@
 ############################################################################
-# configs/sa-1xx/src/Makefile
+# apps/sa-1xx/dipsw/Makefile
 #
-#   Copyright (C) 2011 Gregory Nutt. All rights reserved.
-#   Author: Gregory Nutt <gnutt@nuttx.org>
+#   Copyright (C) 2013 Century Systems. All rights reserved.
+#   Author: Takeyoshi Kikuchi <kikuchi@centurysys.co.jp>
+#           Gregory Nutt <gnutt@nuttx.org>
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -33,86 +34,88 @@
 #
 ############################################################################
 
+# TODO, this makefile should run make under the app dirs, instead of
+# sourcing the Make.defs!
+
+-include $(TOPDIR)/.config
 -include $(TOPDIR)/Make.defs
+include $(APPDIR)/Make.defs
 
-CFLAGS		+= -I$(TOPDIR)/sched
+ARCH_SRCDIR	= $(TOPDIR)/arch/$(CONFIG_ARCH)/src
 
-ASRCS		= 
+CFLAGS += -I$(ARCH_SRCDIR)/chip -I$(ARCH_SRCDIR)/common -I$(ARCH_SRCDIR)/armv7-m
+CFLAGS += -I$(APPDIR)/sa-1xx/include
+
+ifeq ($(WINTOOL),y)
+INCDIROPT	= -w
+endif
+
+# Hello Application
+# TODO: appname can be automatically extracted from the directory name
+
+APPNAME		= dipsw
+PRIORITY	= SCHED_PRIORITY_DEFAULT
+STACKSIZE	= 2048
+
+ASRCS		=
+CSRCS		= dipsw.c
+
 AOBJS		= $(ASRCS:.S=$(OBJEXT))
-
-CSRCS		= up_boot.c up_spi.c up_buttons.c up_dipsw.c up_userleds.c up_at24xx.c
-
-ifeq ($(CONFIG_HAVE_CXX),y)
-CSRCS		+= up_cxxinitialize.c
-endif
-
-ifeq ($(CONFIG_I2C_LM75),y)
-CSRCS		+= up_lm75.c
-endif
-
-ifeq ($(CONFIG_CAN),y)
-CSRCS		+= up_can.c
-endif
-
-ifeq ($(CONFIG_NSH_ARCHINIT),y)
-CSRCS		+= up_nsh.c
-endif
-
-ifeq ($(CONFIG_ARCH_FPU),y)
-CSRCS		+= up_ostest.c
-endif
-
-ifeq ($(CONFIG_WATCHDOG),y)
-CSRCS		+= up_watchdog.c
-endif
-
-ifeq ($(CONFIG_STM32_SDIO),y)
-CSRCS		+= up_sdio.c
-endif
-
-ifeq ($(CONFIG_STM32_ETHMAC),y)
-CSRCS		+= up_ethernet.c
-endif
-
-ifeq ($(CONFIG_I2C),y)
-  ifeq ($(CONFIG_STM32_I2C2),y)
-  CSRCS	+= up_eeprom.c
-  endif
-endif
-
 COBJS		= $(CSRCS:.c=$(OBJEXT))
 
 SRCS		= $(ASRCS) $(CSRCS)
 OBJS		= $(AOBJS) $(COBJS)
 
-ARCH_SRCDIR	= $(TOPDIR)/arch/$(CONFIG_ARCH)/src
-ifeq ($(WINTOOL),y)
-  CFLAGS	+= -I "${shell cygpath -w $(ARCH_SRCDIR)/chip}" \
-		   -I "${shell cygpath -w $(ARCH_SRCDIR)/common}" \
-		   -I "${shell cygpath -w $(ARCH_SRCDIR)/armv7-m}"
+ifeq ($(CONFIG_WINDOWS_NATIVE),y)
+  BIN		= ..\..\libapps$(LIBEXT)
 else
-  CFLAGS	+= -I$(ARCH_SRCDIR)/chip -I$(ARCH_SRCDIR)/common -I$(ARCH_SRCDIR)/armv7-m
+ifeq ($(WINTOOL),y)
+  BIN		= ..\\..\\libapps$(LIBEXT)
+else
+  BIN		= ../../libapps$(LIBEXT)
+endif
 endif
 
-all: libboard$(LIBEXT)
+ROOTDEPPATH	= --dep-path .
+
+# Common build
+
+VPATH		= 
+
+all:	.built
+.PHONY: context depend clean distclean
 
 $(AOBJS): %$(OBJEXT): %.S
 	$(call ASSEMBLE, $<, $@)
 
-$(COBJS) $(LINKOBJS): %$(OBJEXT): %.c
+$(COBJS): %$(OBJEXT): %.c
 	$(call COMPILE, $<, $@)
 
-libboard$(LIBEXT): $(OBJS)
-	$(call ARCHIVE, $@, $(OBJS))
+.built: $(OBJS)
+	$(call ARCHIVE, $(BIN), $(OBJS))
+	$(Q) touch .built
+
+# Register application
+
+ifeq ($(CONFIG_NSH_BUILTIN_APPS),y)
+$(BUILTIN_REGISTRY)$(DELIM)$(APPNAME)_main.bdat: $(DEPCONFIG) Makefile
+	$(call REGISTER,$(APPNAME),$(PRIORITY),$(STACKSIZE),$(APPNAME)_main)
+
+context: $(BUILTIN_REGISTRY)$(DELIM)$(APPNAME)_main.bdat
+else
+context:
+endif
+
+# Create dependencies
 
 .depend: Makefile $(SRCS)
-	$(Q) $(MKDEP) $(CC) -- $(CFLAGS) -- $(SRCS) >Make.dep
+	$(Q) $(MKDEP) $(ROOTDEPPATH) "$(CC)" -- $(CFLAGS) -- $(SRCS) >Make.dep
 	$(Q) touch $@
 
 depend: .depend
 
 clean:
-	$(call DELFILE, libboard$(LIBEXT))
+	$(call DELFILE, .built)
 	$(call CLEAN)
 
 distclean: clean

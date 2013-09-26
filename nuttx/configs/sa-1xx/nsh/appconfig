@@ -89,6 +89,7 @@ CONFIGURED_APPS += sa-1xx/dhcpc
 #CONFIGURED_APPS += sa-1xx/xbeelib
 CONFIGURED_APPS += sa-1xx/sysreset
 CONFIGURED_APPS += sa-1xx/sensor
+CONFIGURED_APPS += sa-1xx/dipsw
 
 # SSL library & client application
 #CONFIGURED_APPS += axTLS
