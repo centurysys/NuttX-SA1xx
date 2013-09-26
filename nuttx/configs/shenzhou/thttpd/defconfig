@@ -497,12 +497,12 @@ CONFIG_HAVE_CXX=y
 #
 # USB CDC/ACM Class Driver Example
 #
-# CONFIG_EXAMPLES_CDCACM is not set
+# CONFIG_SYSTEM_CDCACM is not set
 
 #
 # USB composite Class Driver Example
 #
-# CONFIG_EXAMPLES_COMPOSITE is not set
+# CONFIG_SYSTEM_COMPOSITE is not set
 
 #
 # DHCP Server Example
@@ -706,7 +706,7 @@ CONFIG_EXAMPLES_NSH=y
 #
 # USB Mass Storage Class Example
 #
-# CONFIG_EXAMPLES_USBMSC is not set
+# CONFIG_SYSTEM_USBMSC is not set
 
 #
 # USB Serial Terminal Example
