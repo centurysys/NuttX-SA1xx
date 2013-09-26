@@ -130,25 +130,34 @@ void stm32_jump_to_app(void)
 {
 	app_entry func;
 	uint32_t entry, stack;
+	uint8_t dipsw;
 
 	sched_lock();
 
-	stack = *((uint32_t *) FLASH_START);
-	entry = *(((uint32_t *) FLASH_START) + 1);
+	up_dipswinit();
+	dipsw = up_dipsw();
 
-	if ((stack >= SRAM_START && stack < SRAM_END) &&
-		(entry >= FLASH_START && entry < FLASH_END)) {
-		info("\njump to user application...\n");
+	if ((dipsw & 0x01) == 0) {
+		stack = *((uint32_t *) FLASH_START);
+		entry = *(((uint32_t *) FLASH_START) + 1);
 
-		func = (app_entry) entry;
-		irqsave();
-		set_MSP(stack);
-		putreg32((uint32_t) FLASH_START, NVIC_VECTAB);
-		func();
-		for(;;);
+		if ((stack >= SRAM_START && stack < SRAM_END) &&
+			(entry >= FLASH_START && entry < FLASH_END)) {
+			info("\njump to user application...\n");
+
+			func = (app_entry) entry;
+			irqsave();
+			set_MSP(stack);
+			putreg32((uint32_t) FLASH_START, NVIC_VECTAB);
+			func();
+			for(;;);
+		} else {
+			printf("\nbootloader.\n");
+		}
+	} else {
+		printf("\force bootloader mode (DIPSW-1 is On).\n");
 	}
 
-	printf("\nbootloader.\n");
 	sched_unlock();
 }
 #endif
