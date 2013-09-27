@@ -94,7 +94,7 @@
 /* Number of buffer for TX */
 
 #ifndef CONFIG_SAMA5_EMAC_NTXBUFFERS
-#  define CONFIG_SAMA5_EMAC_NTXBUFFERS  32
+#  define CONFIG_SAMA5_EMAC_NTXBUFFERS  8
 #endif
 
 #undef CONFIG_SAMA5_EMAC_NBC
@@ -294,11 +294,13 @@ static struct sam_emac_s g_emac;
 /* Preallocated data */
 /* TX descriptors list */
 
-static struct emac_txdesc_s g_txdesc[TX_BUFFERS] __attribute__((aligned(8)));
+static struct emac_txdesc_s g_txdesc[CONFIG_SAMA5_EMAC_NTXBUFFERS]
+              __attribute__((aligned(8)));
 
 /* RX descriptors list */
 
-static struct emac_rxdesc_s g_rxdesc[RX_BUFFERS]__attribute__((aligned(8)));
+static struct emac_rxdesc_s g_rxdesc[CONFIG_SAMA5_EMAC_NRXBUFFERS]
+              __attribute__((aligned(8)));
 
 /* Transmit Buffers
  *
@@ -1305,7 +1307,7 @@ static int sam_emac_interrupt(int irq, void *context)
   tsr = sam_getreg(priv, SAM_EMAC_TSR);
   imr = sam_getreg(priv, SAM_EMAC_IMR);
 
-  pending = isr & ~(imr | 0xffc300);
+  pending = isr & ~(imr | EMAC_INT_UNUSED);
   nllvdbg("isr: %08x pending: %08x\n", isr, pending);
 
   /* Check for the completion of a transmission.  This should be done before
@@ -2157,10 +2159,12 @@ static int sam_autonegotiate(struct sam_emac_s *priv)
   nllvdbg("PHYID2: %04x PHY address: %02x\n", phyid2, priv->phyaddr);
 
   if (phyid1 == MII_OUI_MSB &&
-     ((phyid2 & MII_PHYID2_OUI) >> 10) == MII_OUI_LSB)
+     ((phyid2 & MII_PHYID2_OUI_MASK) >> MII_PHYID2_OUI_SHIFT) == MII_OUI_LSB)
     {
-      nllvdbg("  Vendor Model Number:   %04x\n", ((phyid2 >> 4) & 0x3f));
-      nllvdbg("  Model Revision Number: %04x\n", (phyid2 & 7));
+      nllvdbg("  Vendor Model Number:   %04x\n",
+             (phyid2 & MII_PHYID2_MODEL_MASK) >> MII_PHYID2_MODEL_SHIFT);
+      nllvdbg("  Model Revision Number: %04x\n",
+             (phyid2 & MII_PHYID2_REV_MASK) >> MII_PHYID2_REV_SHIFT);
     }
   else
     {
@@ -2567,6 +2571,12 @@ static void sam_txreset(struct sam_emac_s *priv)
 
   txdesc[CONFIG_SAMA5_EMAC_NTXBUFFERS - 1].status =
     EMACTXD_STA_USED | EMACTXD_STA_WRAP;
+
+  /* Flush the entire TX descriptor table to RAM */
+
+  cp15_clean_dcache((uintptr_t)txdesc,
+                    (uintptr_t)txdesc +
+                    CONFIG_SAMA5_EMAC_NTXBUFFERS * sizeof(struct emac_txdesc_s));
 
   /* Set the Transmit Buffer Queue Pointer Register */
 
