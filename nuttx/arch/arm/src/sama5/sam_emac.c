@@ -1247,9 +1247,31 @@ static void sam_txdone(struct sam_emac_s *priv)
 
       if ((txdesc->status & EMACTXD_STA_USED) == 0)
         {
-          /* Yes ... break out of the loop now */
+          /* Yes.. the descriptor is still in use.  However, I have seen a
+           * case (only repeatable on start-up) where the USED bit is never
+           * set.  Yikes!  If we have encountered the first still busy
+           * descriptor, then we should also have TQBD equal to the descriptor
+           * address.  If it is not, then treat is as used anyway.
+           */
 
-          break;
+#if 0 /* The issue does not exist in the current configuration, but may return */
+#warning REVISIT
+          if (priv->txtail == 0 &&
+              sam_physramaddr((uintptr_t)txdesc) != sam_getreg(priv, SAM_EMAC_TBQP))
+            {
+              txdesc->status = (uint32_t)EMACTXD_STA_USED;
+              cp15_clean_dcache((uintptr_t)txdesc,
+                                (uintptr_t)txdesc + sizeof(struct emac_txdesc_s));
+            }
+          else
+#endif
+            {
+              /* Otherwise, the descriptor is truly in use.  Break out of the
+               * loop now.
+               */
+
+              break;
+            }
         }
 
       /* Increment the tail index */
@@ -2036,7 +2058,7 @@ static int sam_phyread(struct sam_emac_s *priv, uint8_t phyaddr,
   /* Write the PHY Maintenance register */
 
   regval = EMAC_MAN_DATA(0) | EMAC_MAN_CODE | EMAC_MAN_REGA(regaddr) |
-           EMAC_MAN_PHYA(priv->phyaddr) | EMAC_MAN_READ | EMAC_MAN_SOF;
+           EMAC_MAN_PHYA(phyaddr) | EMAC_MAN_READ | EMAC_MAN_SOF;
   sam_putreg(priv, SAM_EMAC_MAN, regval);
 
   /* Wait until the PHY is again idle */
@@ -2091,7 +2113,7 @@ static int sam_phywrite(struct sam_emac_s *priv, uint8_t phyaddr,
   /* Write the PHY Maintenance register */
 
   regval = EMAC_MAN_DATA(phyval) | EMAC_MAN_CODE | EMAC_MAN_REGA(regaddr) |
-           EMAC_MAN_PHYA(priv->phyaddr) | EMAC_MAN_WRITE| EMAC_MAN_SOF;
+           EMAC_MAN_PHYA(phyaddr) | EMAC_MAN_WRITE| EMAC_MAN_SOF;
   sam_putreg(priv, SAM_EMAC_MAN, regval);
 
   /* Wait until the PHY is again IDLE */
