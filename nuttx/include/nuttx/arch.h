@@ -1097,6 +1097,22 @@ void relays_resetmodes(uint32_t relays_stat);
 void relays_powermodes(uint32_t relays_stat);
 #endif
 
+/************************************************************************************
+ * Digital-IN control functions
+ *
+ * Description:
+ *   Non-standard functions for digital-in control.
+ *
+ ************************************************************************************/
+
+#ifdef CONFIG_ARCH_DINS
+void up_dininit(void);
+uint8_t up_dins(void);
+#  ifdef CONFIG_ARCH_IRQDINS
+xcpt_t up_irqdin(int id, xcpt_t irqhandler);
+#  endif
+#endif
+
 /****************************************************************************
  * Name: up_dipswinit
  *
