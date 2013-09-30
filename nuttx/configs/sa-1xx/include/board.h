@@ -245,6 +245,11 @@
 
 #define NUM_DIPSW         4
 
+/* DOUT/Relay definitions ***********************************************************/
+
+#define NUM_RELAYS        2
+
+
 /* Alternate function pin selections ************************************************/
 
 /* UART1: console
@@ -486,6 +491,30 @@ EXTERN uint8_t up_buttons(void);
 
 #if defined(CONFIG_I2C) && defined(CONFIG_I2C_LM75) && defined(CONFIG_STM32_I2C2)
 EXTERN int stm32_lm75initialize(FAR const char *devpath);
+#endif
+
+/************************************************************************************
+ * Relay control functions
+ *
+ * Description:
+ *   Non-standard functions for relay/DOUT control from the SA-1xx board.
+ *
+ *   NOTE:  These must match the prototypes in include/nuttx/arch.h
+ *
+ ************************************************************************************/
+
+#ifdef CONFIG_ARCH_RELAYS
+EXTERN void up_relaysinit(void);
+EXTERN void relays_setstat(int relays, bool stat);
+EXTERN bool relays_getstat(int relays);
+EXTERN void relays_setstats(uint32_t relays_stat);
+EXTERN uint32_t relays_getstats(void);
+EXTERN void relays_onoff(int relays, uint32_t mdelay);
+EXTERN void relays_onoffs(uint32_t relays_stat, uint32_t mdelay);
+EXTERN void relays_resetmode(int relays);
+EXTERN void relays_powermode(int relays);
+EXTERN void relays_resetmodes(uint32_t relays_stat);
+EXTERN void relays_powermodes(uint32_t relays_stat);
 #endif
 
 #undef EXTERN
