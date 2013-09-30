@@ -827,6 +827,7 @@ static void nsh_releaseargs(struct cmdarg_s *arg)
   FAR struct nsh_vtbl_s *vtbl = arg->vtbl;
   int i;
 
+#if CONFIG_NFILE_STREAMS > 0
   /* If the output was redirected, then file descriptor should
    * be closed.  The created task has its one, independent copy of
    * the file descriptor
@@ -836,6 +837,7 @@ static void nsh_releaseargs(struct cmdarg_s *arg)
     {
       (void)close(arg->fd);
     }
+#endif
 
   /* Released the cloned vtbl instance */
 
@@ -1303,9 +1305,11 @@ int nsh_parse(FAR struct nsh_vtbl_s *vtbl, char *cmdline)
   FAR char *argv[MAX_ARGV_ENTRIES];
   FAR char *saveptr;
   FAR char *cmd;
+#if CONFIG_NFILE_STREAMS > 0
   FAR char *redirfile = NULL;
-  int       fd = -1;
   int       oflags = 0;
+#endif
+  int       fd = -1;
   int       argc;
   int       ret;
 
@@ -1315,7 +1319,9 @@ int nsh_parse(FAR struct nsh_vtbl_s *vtbl, char *cmdline)
 #ifndef CONFIG_NSH_DISABLEBG
   vtbl->np.np_bg       = false;
 #endif
+#if CONFIG_NFILE_STREAMS > 0
   vtbl->np.np_redirect = false;
+#endif
 
   /* Parse out the command at the beginning of the line */
 
@@ -1394,6 +1400,7 @@ int nsh_parse(FAR struct nsh_vtbl_s *vtbl, char *cmdline)
     }
 #endif
 
+#if CONFIG_NFILE_STREAMS > 0
   /* Check if the output was re-directed using > or >> */
 
   if (argc > 2)
@@ -1418,6 +1425,7 @@ int nsh_parse(FAR struct nsh_vtbl_s *vtbl, char *cmdline)
           argc                -= 2;
         }
     }
+#endif
 
   /* Check if the maximum number of arguments was exceeded */
 
@@ -1486,7 +1494,11 @@ int nsh_parse(FAR struct nsh_vtbl_s *vtbl, char *cmdline)
    */
 
 #if defined(CONFIG_NSH_BUILTIN_APPS) && (!defined(CONFIG_NSH_FILE_APPS) || !defined(CONFIG_FS_BINFS))
+#if CONFIG_NFILE_STREAMS > 0
   ret = nsh_builtin(vtbl, argv[0], argv, redirfile, oflags);
+#else
+  ret = nsh_builtin(vtbl, argv[0], argv, NULL, 0);
+#endif
   if (ret >= 0)
     {
       /* nsh_builtin() returned 0 or 1.  This means that the builtin
@@ -1494,12 +1506,14 @@ int nsh_parse(FAR struct nsh_vtbl_s *vtbl, char *cmdline)
        * successfully).  So certainly it is not an NSH command.
        */
 
+#if CONFIG_NFILE_STREAMS > 0
       /* Free the redirected output file path */
 
       if (redirfile)
         {
           nsh_freefullpath(redirfile);
         }
+#endif
 
       /* Save the result:  success if 0; failure if 1 */
 
@@ -1512,6 +1526,7 @@ int nsh_parse(FAR struct nsh_vtbl_s *vtbl, char *cmdline)
 
 #endif
 
+#if CONFIG_NFILE_STREAMS > 0
   /* Redirected output? */
 
   if (vtbl->np.np_redirect)
@@ -1532,6 +1547,7 @@ int nsh_parse(FAR struct nsh_vtbl_s *vtbl, char *cmdline)
           goto errout;
         }
     }
+#endif
 
   /* Handle the case where the command is executed in background.
    * However is app is to be started as builtin new process will
@@ -1567,12 +1583,14 @@ int nsh_parse(FAR struct nsh_vtbl_s *vtbl, char *cmdline)
           goto errout_with_redirect;
         }
 
+#if CONFIG_NFILE_STREAMS > 0
       /* Handle redirection of output via a file descriptor */
 
       if (vtbl->np.np_redirect)
         {
           (void)nsh_redirect(bkgvtbl, fd, NULL);
         }
+#endif
 
       /* Get the execution priority of this task */
 
@@ -1640,12 +1658,14 @@ int nsh_parse(FAR struct nsh_vtbl_s *vtbl, char *cmdline)
     {
       uint8_t save[SAVE_SIZE];
 
+#if CONFIG_NFILE_STREAMS > 0
       /* Handle redirection of output via a file descriptor */
 
       if (vtbl->np.np_redirect)
         {
           nsh_redirect(vtbl, fd, save);
         }
+#endif
 
       /* Then execute the command in "foreground" -- i.e., while the user waits
        * for the next prompt.  nsh_execute will return:
@@ -1656,6 +1676,7 @@ int nsh_parse(FAR struct nsh_vtbl_s *vtbl, char *cmdline)
 
       ret = nsh_execute(vtbl, argc, argv);
 
+#if CONFIG_NFILE_STREAMS > 0
       /* Restore the original output.  Undirect will close the redirection
        * file descriptor.
        */
@@ -1664,6 +1685,7 @@ int nsh_parse(FAR struct nsh_vtbl_s *vtbl, char *cmdline)
         {
           nsh_undirect(vtbl, save);
         }
+#endif
 
       /* Mark errors so that it is possible to test for non-zero return values
        * in nsh scripts.
@@ -1683,11 +1705,14 @@ int nsh_parse(FAR struct nsh_vtbl_s *vtbl, char *cmdline)
 
 #ifndef CONFIG_NSH_DISABLEBG
 errout_with_redirect:
+#if CONFIG_NFILE_STREAMS > 0
   if (vtbl->np.np_redirect)
     {
       close(fd);
     }
 #endif
+#endif
+
 errout:
   return nsh_saveresult(vtbl, true);
 }
