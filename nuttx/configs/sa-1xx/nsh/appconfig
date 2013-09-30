@@ -62,7 +62,7 @@ endif
 # Applications configured as an NX built-in commands
 
 #ifeq ($(CONFIG_CAN),y)
-#CONFIGURED_APPS += examples/can
+CONFIGURED_APPS += examples/can
 #endif
 
 ifeq ($(CONFIG_I2C),y)
