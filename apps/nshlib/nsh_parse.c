@@ -519,7 +519,11 @@ static inline void help_cmdlist(FAR struct nsh_vtbl_s *vtbl)
       nsh_output(vtbl, "  ");
       for (j = 0, k = i; j < CMDS_PER_LINE && k < NUM_CMDS; j++, k += NUM_CMD_ROWS)
         {
+#ifdef CONFIG_NOPRINTF_FIELDWIDTH
+          nsh_output(vtbl, "%s\t", g_cmdmap[k].cmd);
+#else
           nsh_output(vtbl, "%-12s", g_cmdmap[k].cmd);
+#endif
         }
 
       nsh_output(vtbl, "\n");
@@ -1308,8 +1312,8 @@ int nsh_parse(FAR struct nsh_vtbl_s *vtbl, char *cmdline)
 #if CONFIG_NFILE_STREAMS > 0
   FAR char *redirfile = NULL;
   int       oflags = 0;
-#endif
   int       fd = -1;
+#endif
   int       argc;
   int       ret;
 
@@ -1656,9 +1660,9 @@ int nsh_parse(FAR struct nsh_vtbl_s *vtbl, char *cmdline)
   else
 #endif
     {
+#if CONFIG_NFILE_STREAMS > 0
       uint8_t save[SAVE_SIZE];
 
-#if CONFIG_NFILE_STREAMS > 0
       /* Handle redirection of output via a file descriptor */
 
       if (vtbl->np.np_redirect)

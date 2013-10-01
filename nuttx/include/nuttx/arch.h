@@ -1176,6 +1176,16 @@ int up_putc(int ch);
 
 int up_getc(void);
 
+/****************************************************************************
+ * Name: up_puts
+ *
+ * Description:
+ *   Output a string on the console
+ *
+ ****************************************************************************/
+
+void up_puts(FAR const char *str);
+
 #ifdef __cplusplus
 }
 #endif
