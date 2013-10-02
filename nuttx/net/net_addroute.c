@@ -1,5 +1,5 @@
 /****************************************************************************
- * arch/arm/src/sama5/sam_adc.h
+ * net/net_addroute.c
  *
  *   Copyright (C) 2013 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
@@ -33,87 +33,89 @@
  *
  ****************************************************************************/
 
-#ifndef __ARCH_ARM_SRC_SAMA5_SAM_ADC_H
-#define __ARCH_ARM_SRC_SAMA5_SAM_ADC_H
-
 /****************************************************************************
  * Included Files
  ****************************************************************************/
 
 #include <nuttx/config.h>
-#include "chip/sam_adc.h"
 
-#if defined(CONFIG_SAMA5_ADC) && defined(CONFIG_SAMA5_TOUCHSCREEN)
+#include <stdint.h>
+#include <string.h>
+#include <errno.h>
 
-/****************************************************************************
- * Pre-processor Definitions
- ****************************************************************************/
-/* Configuration ************************************************************/
+#include <nuttx/net/route.h>
 
-/****************************************************************************
- * Public Types
- ****************************************************************************/
+#include "net_internal.h"
+
+#if defined(CONFIG_NET) && defined(CONFIG_NET_ROUTE)
 
 /****************************************************************************
  * Public Data
  ****************************************************************************/
 
-#undef EXTERN
-#if defined(__cplusplus)
-#define EXTERN extern "C"
-extern "C"
+/****************************************************************************
+ * Private Functions
+ ****************************************************************************/
+
+/****************************************************************************
+ * Function: net_available
+ *
+ * Description:
+ *   Return 1 if the route is available
+ *
+ * Parameters:
+ *   route - The next route to examine
+ *   arg   - The new route entry (cast to void*)
+ *
+ * Returned Value:
+ *   OK on success; Negated errno on failure.
+ *
+ ****************************************************************************/
+
+static int net_available(FAR struct net_route_s *route, FAR void *arg)
 {
-#else
-#define EXTERN extern
-#endif
+  if (!route->inuse)
+    {
+      memcpy(route, arg, sizeof(struct net_route_s));
+      return 1;
+    }
+
+  return 0;
+}
 
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
 
 /****************************************************************************
- * Name: sam_tsd_register
+ * Function: net_addroute
  *
  * Description:
- *   Configure the SAMA5 touchscreen.  This will register the driver as
- *   /dev/inputN where N is the minor device number
+ *   Add a new route to the routing table
  *
- * Input Parameters:
- *   dev   - The ADC device handle received from sam_adc_initialize()
- *   minor - The input device minor number
+ * Parameters:
  *
  * Returned Value:
- *   Zero is returned on success.  Otherwise, a negated errno value is
- *   returned to indicate the nature of the failure.
+ *   OK on success; Negated errno on failure.
  *
  ****************************************************************************/
 
-struct sam_adc_s;
-int sam_tsd_register(FAR struct sam_adc_s *adc, int minor);
+int net_addroute(uip_ipaddr_t target, uip_ipaddr_t netmask,
+                 uip_ipaddr_t gateway, int devno)
+{
+  struct net_route_s route;
 
-/****************************************************************************
- * Interfaces exported from the touchscreen to the ADC driver
- ****************************************************************************/
-/****************************************************************************
- * Name: sam_tsd_interrupt
- *
- * Description:
- *   Handles ADC interrupts associated with touchscreen channels
- *
- * Input parmeters:
- *   pending - Current set of pending interrupts being handled
- *
- * Returned Value:
- *   None
- *
- ****************************************************************************/
+  /* Format the new route table entry */
 
-void sam_tsd_interrupt(uint32_t pending);
+  route.inuse = true;
+  route.minor = devno;
+  uip_ipaddr_copy(route.target, target);
+  uip_ipaddr_copy(route.netmask, netmask);
+  uip_ipaddr_copy(route.gateway, gateway);
 
-#undef EXTERN
-#ifdef __cplusplus
+  /* Then add the new entry to the table */
+
+  return net_foreachroute(net_available, &route) ? OK : -EAGAIN;
 }
-#endif
 
-#endif /* CONFIG_SAMA5_ADC && CONFIG_SAMA5_TOUCHSCREEN */
-#endif /* __ARCH_ARM_SRC_SAMA5_SAM_ADC_H */
+#endif /* CONFIG_NET && CONFIG_NET_ROUTE */

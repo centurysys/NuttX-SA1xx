@@ -1,8 +1,9 @@
 ############################################################################
-# net/Makefile
+# configs/spark/src/Makefile
 #
-#   Copyright (C) 2007, 2008, 2011-2013 Gregory Nutt. All rights reserved.
+#   Copyright (C) 2013 Gregory Nutt. All rights reserved.
 #   Author: Gregory Nutt <gnutt@nuttx.org>
+#           Librae <librae8226@gmail.com>
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -35,99 +36,62 @@
 
 -include $(TOPDIR)/Make.defs
 
-ifeq ($(CONFIG_NET),y)
+CFLAGS		+= -I$(TOPDIR)/sched
 
-# Basic networking support
-
-SOCK_ASRCS =
-SOCK_CSRCS = bind.c connect.c getsockname.c recv.c recvfrom.c socket.c \
-		  sendto.c net_sockets.c net_close.c net_dup.c net_dup2.c net_clone.c \
-		  net_vfcntl.c
-
-# TCP/IP support
-
-ifeq ($(CONFIG_NET_TCP),y)
-SOCK_CSRCS += send.c listen.c accept.c net_monitor.c
-endif
-
-# Socket options
-
-ifeq ($(CONFIG_NET_SOCKOPTS),y)
-SOCK_CSRCS += setsockopt.c getsockopt.c
-ifneq ($(CONFIG_DISABLE_CLOCK),y)
-SOCK_CSRCS += net_timeo.c net_dsec2timeval.c net_timeval2dsec.c
-ifneq ($(CONFIG_NET_SLIP),y)
-SOCK_CSRCS += net_arptimer.c
-endif
-endif
-endif
-
-# Routing table support
-
-ifeq ($(CONFIG_NET_ROUTE),y)
-SOCK_CSRCS += net_addroute.c net_delroute.c net_findroute.c net_foreachroute.c
-endif
-
-# Support for network access using streams
-
-ifneq ($(CONFIG_NFILE_STREAMS),0)
-SOCK_CSRCS += net_checksd.c
-endif
-
-# Support for sendfile()
-
-ifeq ($(CONFIG_NET_SENDFILE),y)
-SOCK_CSRCS += net_sendfile.c
-endif
-
-# Support for operations on network devices
-
-NETDEV_ASRCS =
-NETDEV_CSRCS = netdev_register.c netdev_ioctl.c net_poll.c netdev_txnotify.c \
-		  netdev_findbyname.c netdev_findbyaddr.c netdev_count.c \
-		  netdev_foreach.c netdev_unregister.c netdev_sem.c
-
-ifeq ($(CONFIG_NET_RXAVAIL),y)
-NETDEV_CSRCS += netdev_rxnotify.c
-endif
-
-include uip/Make.defs
-endif
-
-ASRCS		= $(SOCK_ASRCS) $(NETDEV_ASRCS) $(UIP_ASRCS)
+ASRCS		=
 AOBJS		= $(ASRCS:.S=$(OBJEXT))
 
-CSRCS		= $(SOCK_CSRCS) $(NETDEV_CSRCS) $(UIP_CSRCS)
+CSRCS		= up_boot.c up_leds.c up_usbdev.c
+
+ifeq ($(CONFIG_NX_LCDDRIVER),y)
+endif
+
+ifeq ($(CONFIG_NSH_ARCHINIT),y)
+endif
+
+ifeq ($(CONFIG_INPUT),y)
+endif
+
+ifeq ($(CONFIG_USBMSC),y)
+endif
+
+ifeq ($(CONFIG_WATCHDOG),y)
+	CSRCS		+= up_watchdog.c
+endif
+
 COBJS		= $(CSRCS:.c=$(OBJEXT))
 
 SRCS		= $(ASRCS) $(CSRCS)
 OBJS		= $(AOBJS) $(COBJS)
 
-BIN		= libnet$(LIBEXT)
+ARCH_SRCDIR	= $(TOPDIR)/arch/$(CONFIG_ARCH)/src
+ifeq ($(WINTOOL),y)
+	CFLAGS	+= -I "${shell cygpath -w $(ARCH_SRCDIR)/chip}" \
+		   -I "${shell cygpath -w $(ARCH_SRCDIR)/common}" \
+		   -I "${shell cygpath -w $(ARCH_SRCDIR)/armv7-m}"
+	else
+	CFLAGS	+= -I$(ARCH_SRCDIR)/chip -I$(ARCH_SRCDIR)/common -I$(ARCH_SRCDIR)/armv7-m
+endif
 
-VPATH		= uip
-
-all:	$(BIN)
+all: libboard$(LIBEXT)
 
 $(AOBJS): %$(OBJEXT): %.S
 	$(call ASSEMBLE, $<, $@)
 
-$(COBJS): %$(OBJEXT): %.c
+$(COBJS) $(LINKOBJS): %$(OBJEXT): %.c
 	$(call COMPILE, $<, $@)
 
-$(BIN): $(OBJS)
+libboard$(LIBEXT): $(OBJS)
 	$(call ARCHIVE, $@, $(OBJS))
 
 .depend: Makefile $(SRCS)
-ifeq ($(CONFIG_NET),y)
-	$(Q) $(MKDEP) --dep-path . --dep-path uip "$(CC)" -- $(CFLAGS) -- $(SRCS) >Make.dep
-endif
+	$(Q) $(MKDEP) $(CC) -- $(CFLAGS) -- $(SRCS) >Make.dep
 	$(Q) touch $@
 
 depend: .depend
 
 clean:
-	$(call DELFILE, $(BIN))
+	$(call DELFILE, libboard$(LIBEXT))
 	$(call CLEAN)
 
 distclean: clean

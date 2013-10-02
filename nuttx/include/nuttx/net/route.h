@@ -1,5 +1,5 @@
 /****************************************************************************
- * arch/arm/src/sama5/sam_adc.h
+ * include/nuttx/net/route.h
  *
  *   Copyright (C) 2013 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
@@ -33,71 +33,50 @@
  *
  ****************************************************************************/
 
-#ifndef __ARCH_ARM_SRC_SAMA5_SAM_ADC_H
-#define __ARCH_ARM_SRC_SAMA5_SAM_ADC_H
+#ifndef __INCLUDE_NUTTX_NET_ROUTE_H
+#define __INCLUDE_NUTTX_NET_ROUTE_H
 
 /****************************************************************************
  * Included Files
  ****************************************************************************/
 
 #include <nuttx/config.h>
-#include "chip/sam_adc.h"
+#include <nuttx/net/uip/uip.h>
 
-#ifdef CONFIG_SAMA5_ADC
+#ifdef CONFIG_NET_ROUTE
 
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
 /* Configuration ************************************************************/
 
-#ifndef CONFIG_SCHED_WORKQUEUE
-#  error Work queue support is required (CONFIG_SCHED_WORKQUEUE)
-#endif
-
-#ifndef CONFIG_DEBUG
-#  undef CONFIG_SAMA5_ADC_REGDEBUG
-#endif
-
-/* ADC channels 0-3 or 0-4 are not available to the ADC driver if touchscreen
- * support is enabled.
- */
-
-#ifdef CONFIG_SAMA5_TOUCHSCREEN
-#  undef CONFIG_SAMA5_ADC_CHAN0
-#  undef CONFIG_SAMA5_ADC_CHAN1
-#  undef CONFIG_SAMA5_ADC_CHAN2
-#  undef CONFIG_SAMA5_ADC_CHAN3
-#  ifdef CONFIG_SAMA5_TOUCHSCREEN_5WIRE
-#    undef CONFIG_SAMA5_ADC_CHAN4
-#  endif
-#endif
-
-/* Do we have any ADC channels enabled?  If not, then the ADC driver may
- * still need to exist to support the touchscreen.
- */
-
-#undef SAMA5_ADC_HAVE_CHANNELS
-#if defined(CONFIG_SAMA5_ADC_CHAN0) || defined(CONFIG_SAMA5_ADC_CHAN1) || \
-    defined(CONFIG_SAMA5_ADC_CHAN2) || defined(CONFIG_SAMA5_ADC_CHAN3) || \
-    defined(CONFIG_SAMA5_ADC_CHAN4) || defined(CONFIG_SAMA5_ADC_CHAN5) || \
-    defined(CONFIG_SAMA5_ADC_CHAN6) || defined(CONFIG_SAMA5_ADC_CHAN7) || \
-    defined(CONFIG_SAMA5_ADC_CHAN8) || defined(CONFIG_SAMA5_ADC_CHAN9) || \
-    defined(CONFIG_SAMA5_ADC_CHAN10) || defined(CONFIG_SAMA5_ADC_CHAN11)
-#  define SAMA5_ADC_HAVE_CHANNELS 1
-#elif !defined(CONFIG_SAMA5_TOUCHSCREEN)
-#  error "No ADC channels nor touchscreen"
+#ifndef CONFIG_NET_MAXROUTES
+#  define CONFIG_NET_MAXROUTES 4
 #endif
 
 /****************************************************************************
  * Public Types
  ****************************************************************************/
+/* This structure describes one entry in the routing table */
+
+struct net_route_s
+{
+  bool         inuse;    /* TRUE: This entry contains a valid route */
+  uint8_t      minor;    /* Ethernet device minor */
+  uip_ipaddr_t target;   /* The destination network */
+  uip_ipaddr_t netmask;  /* The network address mask */
+  uip_ipaddr_t gateway;  /* Route packets via a gateway */
+};
+
+/* Type of the call out function pointer provided to net_foreachroute() */
+
+typedef int (*route_handler_t)(FAR struct net_route_s *route, FAR void *arg);
 
 /****************************************************************************
  * Public Data
  ****************************************************************************/
 
-#undef EXTERN
-#if defined(__cplusplus)
+#ifdef __cplusplus
 #define EXTERN extern "C"
 extern "C"
 {
@@ -105,81 +84,79 @@ extern "C"
 #define EXTERN extern
 #endif
 
+/* This is the routing table */
+
+EXTERN struct net_route_s g_routes[CONFIG_NET_MAXROUTES];
+
 /****************************************************************************
- * Public Functions
+ * Public Function Prototypes
  ****************************************************************************/
 
 /****************************************************************************
- * Name: sam_adcinitialize
+ * Function: net_addroute
  *
  * Description:
- *   Initialize the ADC
+ *   Add a new route to the routing table
+ *
+ * Parameters:
  *
  * Returned Value:
- *   Valid can device structure reference on succcess; a NULL on failure
+ *   OK on success; Negated errno on failure.
  *
  ****************************************************************************/
 
-struct sam_adc_s;
-FAR struct sam_adc_s *sam_adcinitialize(void);
+int net_addroute(uip_ipaddr_t target, uip_ipaddr_t netmask,
+                 uip_ipaddr_t gateway, int devno);
 
 /****************************************************************************
- * Interfaces exported from the ADC to the touchscreen driver
- ****************************************************************************/
-
-/****************************************************************************
- * Name: sam_adc_lock
+ * Function: net_delroute
  *
  * Description:
- *   Get exclusive access to the ADC interface
+ *   Remove an existing route from the routing table
+ *
+ * Parameters:
+ *
+ * Returned Value:
+ *   OK on success; Negated errno on failure.
  *
  ****************************************************************************/
 
-void sam_adc_lock(FAR struct sam_adc_s *priv);
+int net_delroute(uip_ipaddr_t target, uip_ipaddr_t netmask);
 
 /****************************************************************************
- * Name: sam_adc_unlock
+ * Function: net_findroute
  *
  * Description:
- *   Relinquish the lock on the ADC interface
+ *   Given an IP address, return a copy of the routing table contents
+ *
+ * Parameters:
+ *
+ * Returned Value:
+ *   OK on success; Negated errno on failure.
  *
  ****************************************************************************/
 
-void sam_adc_unlock(FAR struct sam_adc_s *priv);
+int net_findroute(uip_ipaddr_t target, FAR struct net_route_s *route);
 
 /****************************************************************************
- * Name: sam_adc_getreg
+ * Function: net_foreachroute
  *
  * Description:
- *   Read any 32-bit register using an absolute address.
+ *   Traverse the route table
+ *
+ * Parameters:
+ *
+ * Returned Value:
+ *   OK on success; Negated errno on failure.
  *
  ****************************************************************************/
 
-#ifdef CONFIG_SAMA5_ADC_REGDEBUG
-uint32_t sam_adc_getreg(FAR struct sam_adc_s *priv, uintptr_t address);
-#else
-#  define sam_adc_getreg(handle,addr) getreg32(addr)
-#endif
-
-/****************************************************************************
- * Name: sam_adc_putreg
- *
- * Description:
- *   Write to any 32-bit register using an absolute address.
- *
- ****************************************************************************/
-
-#ifdef CONFIG_SAMA5_ADC_REGDEBUG
-void sam_adc_putreg(FAR struct sam_adc_s *priv, uintptr_t address,
-                    uint32_t regval);
-#else
-#  define sam_adc_putreg(handle,addr,val) putreg32(val,addr)
-#endif
+int net_foreachroute(route_handler_t handler, FAR void *arg);
 
 #undef EXTERN
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* CONFIG_SAMA5_ADC */
-#endif /* __ARCH_ARM_SRC_SAMA5_SAM_ADC_H */
+#endif /* CONFIG_NET_ROUTE */
+#endif /* __INCLUDE_NUTTX_NET_ROUTE_H */

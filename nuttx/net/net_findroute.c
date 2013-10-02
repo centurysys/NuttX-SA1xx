@@ -1,5 +1,5 @@
 /****************************************************************************
- * arch/arm/src/sama5/sam_adc.h
+ * net/net_delroute.c
  *
  *   Copyright (C) 2013 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
@@ -33,87 +33,101 @@
  *
  ****************************************************************************/
 
-#ifndef __ARCH_ARM_SRC_SAMA5_SAM_ADC_H
-#define __ARCH_ARM_SRC_SAMA5_SAM_ADC_H
-
 /****************************************************************************
  * Included Files
  ****************************************************************************/
 
 #include <nuttx/config.h>
-#include "chip/sam_adc.h"
 
-#if defined(CONFIG_SAMA5_ADC) && defined(CONFIG_SAMA5_TOUCHSCREEN)
+#include <stdint.h>
+#include <string.h>
+#include <errno.h>
 
-/****************************************************************************
- * Pre-processor Definitions
- ****************************************************************************/
-/* Configuration ************************************************************/
+#include <nuttx/net/route.h>
+
+#include "net_internal.h"
+
+#if defined(CONFIG_NET) && defined(CONFIG_NET_ROUTE)
 
 /****************************************************************************
  * Public Types
  ****************************************************************************/
 
+struct route_match_s
+{
+  uip_ipaddr_t target;           /* The target IP address to match */
+  FAR struct net_route_s *route; /* The location to return the route */
+};
+
 /****************************************************************************
- * Public Data
+ * Private Functions
  ****************************************************************************/
 
-#undef EXTERN
-#if defined(__cplusplus)
-#define EXTERN extern "C"
-extern "C"
+/****************************************************************************
+ * Function: net_match
+ *
+ * Description:
+ *   Return 1 if the route is available
+ *
+ * Parameters:
+ *   route - The next route to examine
+ *   arg   - The match values (cast to void*)
+ *
+ * Returned Value:
+ *   0 if the entry is not a match; 1 if the entry matched and was cleared.
+ *
+ ****************************************************************************/
+
+static int net_match(FAR struct net_route_s *route, FAR void *arg)
 {
-#else
-#define EXTERN extern
-#endif
+  FAR struct route_match_s *match = ( FAR struct route_match_s *)arg;
+
+  /* To match, the entry has to be in use, the masked target addresses must
+   * be the same.  In the event of multiple matches, only the first is
+   * returned.
+   */
+
+  if (route->inuse &&
+      uip_ipaddr_maskcmp(route->target, match->target, route->netmask))
+    {
+      /* They match.. clear the route table entry */
+
+      memcpy(match->route, route, sizeof(struct net_route_s));
+      return 1;
+    }
+
+  return 0;
+}
 
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
 
 /****************************************************************************
- * Name: sam_tsd_register
+ * Function: net_findroute
  *
  * Description:
- *   Configure the SAMA5 touchscreen.  This will register the driver as
- *   /dev/inputN where N is the minor device number
+ *   Given an IP address, return a copy of the routing table contents
  *
- * Input Parameters:
- *   dev   - The ADC device handle received from sam_adc_initialize()
- *   minor - The input device minor number
+ * Parameters:
  *
  * Returned Value:
- *   Zero is returned on success.  Otherwise, a negated errno value is
- *   returned to indicate the nature of the failure.
+ *   OK on success; Negated errno on failure.
  *
  ****************************************************************************/
 
-struct sam_adc_s;
-int sam_tsd_register(FAR struct sam_adc_s *adc, int minor);
+int net_findroute(uip_ipaddr_t target, FAR struct net_route_s *route)
+{
+  struct route_match_s match;
 
-/****************************************************************************
- * Interfaces exported from the touchscreen to the ADC driver
- ****************************************************************************/
-/****************************************************************************
- * Name: sam_tsd_interrupt
- *
- * Description:
- *   Handles ADC interrupts associated with touchscreen channels
- *
- * Input parmeters:
- *   pending - Current set of pending interrupts being handled
- *
- * Returned Value:
- *   None
- *
- ****************************************************************************/
+  /* Set up the comparison structure */
 
-void sam_tsd_interrupt(uint32_t pending);
+  uip_ipaddr_copy(match.target, target);
+  match.route = route;
 
-#undef EXTERN
-#ifdef __cplusplus
+  /* Then remove the entry from the routing table */
+
+  return net_foreachroute(net_match, &match) ? OK : -ENOENT;
 }
-#endif
 
-#endif /* CONFIG_SAMA5_ADC && CONFIG_SAMA5_TOUCHSCREEN */
-#endif /* __ARCH_ARM_SRC_SAMA5_SAM_ADC_H */
+#endif /* CONFIG_NET && CONFIG_NET_ROUTE */

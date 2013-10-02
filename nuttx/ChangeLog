@@ -5688,4 +5688,11 @@
 	  now functional.  From Max Holtzberg (2013-9-30).
 	* tools/define.sh:  'cut' long because as it once did.  Script
 	  adapted to observed behavior (2013-9-30).
+	* include/nuttx/net/route.h and net/net_*route.c:  Partial
+	  implementation of a routing table. Not yet hooked into the
+	  build system (2013-10-1)
+	* include/net/route.h:  Defines the application interface to
+	  the routing table (2013-10-2).
+	* configs/spark:  Add configuratino for the Spark Core.  The
+	  initial check-in is basically the Maple Mini board (2013-10-2).
 

@@ -1,5 +1,5 @@
 /****************************************************************************
- * arch/arm/src/sama5/sam_adc.h
+ * net/net_foreachroute.c
  *
  *   Copyright (C) 2013 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
@@ -33,87 +33,66 @@
  *
  ****************************************************************************/
 
-#ifndef __ARCH_ARM_SRC_SAMA5_SAM_ADC_H
-#define __ARCH_ARM_SRC_SAMA5_SAM_ADC_H
-
 /****************************************************************************
  * Included Files
  ****************************************************************************/
 
 #include <nuttx/config.h>
-#include "chip/sam_adc.h"
 
-#if defined(CONFIG_SAMA5_ADC) && defined(CONFIG_SAMA5_TOUCHSCREEN)
+#include <stdint.h>
+#include <errno.h>
 
-/****************************************************************************
- * Pre-processor Definitions
- ****************************************************************************/
-/* Configuration ************************************************************/
+#include <arch/irq.h>
+#include <nuttx/net/route.h>
 
-/****************************************************************************
- * Public Types
- ****************************************************************************/
+#include "net_internal.h"
+
+#if defined(CONFIG_NET) && defined(CONFIG_NET_ROUTE)
 
 /****************************************************************************
  * Public Data
  ****************************************************************************/
 
-#undef EXTERN
-#if defined(__cplusplus)
-#define EXTERN extern "C"
-extern "C"
-{
-#else
-#define EXTERN extern
-#endif
+/* This is the routing table */
+
+struct net_route_s g_routes[CONFIG_NET_MAXROUTES];
 
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
 
 /****************************************************************************
- * Name: sam_tsd_register
+ * Function: net_foreachroute
  *
  * Description:
- *   Configure the SAMA5 touchscreen.  This will register the driver as
- *   /dev/inputN where N is the minor device number
+ *   Traverse the route table
  *
- * Input Parameters:
- *   dev   - The ADC device handle received from sam_adc_initialize()
- *   minor - The input device minor number
+ * Parameters:
  *
  * Returned Value:
- *   Zero is returned on success.  Otherwise, a negated errno value is
- *   returned to indicate the nature of the failure.
+ *   0 if in use; 1 if avaialble and the new entry was added
  *
  ****************************************************************************/
 
-struct sam_adc_s;
-int sam_tsd_register(FAR struct sam_adc_s *adc, int minor);
+int net_foreachroute(route_handler_t handler, FAR void *arg)
+{
+  uip_lock_t save;
+  int ret = 0;
+  int i;
 
-/****************************************************************************
- * Interfaces exported from the touchscreen to the ADC driver
- ****************************************************************************/
-/****************************************************************************
- * Name: sam_tsd_interrupt
- *
- * Description:
- *   Handles ADC interrupts associated with touchscreen channels
- *
- * Input parmeters:
- *   pending - Current set of pending interrupts being handled
- *
- * Returned Value:
- *   None
- *
- ****************************************************************************/
+  /* Prevent concurrent access to the routing table */
 
-void sam_tsd_interrupt(uint32_t pending);
+  save = uip_lock();
 
-#undef EXTERN
-#ifdef __cplusplus
+  for (i = 0; i < CONFIG_NET_MAXROUTES && ret == 0; i++)
+    {
+      ret = handler(&g_routes[i], arg);
+    }
+
+  /* Unlock uIP */
+
+  uip_unlock(save);
+  return ret;
 }
-#endif
 
-#endif /* CONFIG_SAMA5_ADC && CONFIG_SAMA5_TOUCHSCREEN */
-#endif /* __ARCH_ARM_SRC_SAMA5_SAM_ADC_H */
+#endif /* CONFIG_NET && CONFIG_NET_ROUTE */

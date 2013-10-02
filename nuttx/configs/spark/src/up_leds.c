@@ -1,8 +1,9 @@
 /****************************************************************************
- * arch/arm/src/sama5/sam_adc.h
+ * configs/spark/src/up_leds.c
  *
  *   Copyright (C) 2013 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
+ *           Librae <librae8226@gmail.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,87 +34,119 @@
  *
  ****************************************************************************/
 
-#ifndef __ARCH_ARM_SRC_SAMA5_SAM_ADC_H
-#define __ARCH_ARM_SRC_SAMA5_SAM_ADC_H
-
 /****************************************************************************
  * Included Files
  ****************************************************************************/
 
 #include <nuttx/config.h>
-#include "chip/sam_adc.h"
 
-#if defined(CONFIG_SAMA5_ADC) && defined(CONFIG_SAMA5_TOUCHSCREEN)
+#include <stdint.h>
+#include <stdbool.h>
+#include <debug.h>
+
+#include <arch/board/board.h>
+
+#include "chip.h"
+#include "up_arch.h"
+#include "up_internal.h"
+#include "stm32.h"
+#include "spark.h"
 
 /****************************************************************************
- * Pre-processor Definitions
- ****************************************************************************/
-/* Configuration ************************************************************/
-
-/****************************************************************************
- * Public Types
+ * Definitions
  ****************************************************************************/
 
-/****************************************************************************
- * Public Data
- ****************************************************************************/
+/* CONFIG_DEBUG_LEDS enables debug output from this file (needs CONFIG_DEBUG
+ * with CONFIG_DEBUG_VERBOSE too)
+ */
 
-#undef EXTERN
-#if defined(__cplusplus)
-#define EXTERN extern "C"
-extern "C"
-{
+#ifdef CONFIG_DEBUG_LEDS
+#  define leddbg  lldbg
+#  define ledvdbg llvdbg
 #else
-#define EXTERN extern
+#  define leddbg(x...)
+#  define ledvdbg(x...)
 #endif
+
+/****************************************************************************
+ * Private Data
+ ****************************************************************************/
+
+/****************************************************************************
+ * Private Functions
+ ****************************************************************************/
+
+static inline void set_led(bool v)
+{
+  ledvdbg("Turn LED %s\n", v? "on":"off");
+  stm32_gpiowrite(GPIO_LED, v);
+}
 
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
 
 /****************************************************************************
- * Name: sam_tsd_register
- *
- * Description:
- *   Configure the SAMA5 touchscreen.  This will register the driver as
- *   /dev/inputN where N is the minor device number
- *
- * Input Parameters:
- *   dev   - The ADC device handle received from sam_adc_initialize()
- *   minor - The input device minor number
- *
- * Returned Value:
- *   Zero is returned on success.  Otherwise, a negated errno value is
- *   returned to indicate the nature of the failure.
- *
+ * Name: up_ledinit
  ****************************************************************************/
 
-struct sam_adc_s;
-int sam_tsd_register(FAR struct sam_adc_s *adc, int minor);
+#ifdef CONFIG_ARCH_LEDS
+void up_ledinit(void)
+{
+  /* Configure LED GPIO for output */
 
-/****************************************************************************
- * Interfaces exported from the touchscreen to the ADC driver
- ****************************************************************************/
-/****************************************************************************
- * Name: sam_tsd_interrupt
- *
- * Description:
- *   Handles ADC interrupts associated with touchscreen channels
- *
- * Input parmeters:
- *   pending - Current set of pending interrupts being handled
- *
- * Returned Value:
- *   None
- *
- ****************************************************************************/
-
-void sam_tsd_interrupt(uint32_t pending);
-
-#undef EXTERN
-#ifdef __cplusplus
+  stm32_configgpio(GPIO_LED);
 }
-#endif
 
-#endif /* CONFIG_SAMA5_ADC && CONFIG_SAMA5_TOUCHSCREEN */
-#endif /* __ARCH_ARM_SRC_SAMA5_SAM_ADC_H */
+/****************************************************************************
+ * Name: up_ledon
+ ****************************************************************************/
+
+void up_ledon(int led)
+{
+  ledvdbg("up_ledon(%d)\n", led);
+  switch (led)
+    {
+    case LED_STARTED:
+    case LED_HEAPALLOCATE:
+      /* As the board provides only one soft controllable LED, we simply turn
+       * it on when the board boots
+       */
+
+      set_led(true);
+      break;
+
+    case LED_PANIC:
+      /* For panic state, the LED is blinking */
+
+      set_led(true);
+      break;
+
+    default:
+      break;
+    }
+}
+
+/****************************************************************************
+ * Name: up_ledoff
+ ****************************************************************************/
+
+void up_ledoff(int led)
+{
+  ledvdbg("up_ledoff(%d)\n", led);
+
+  switch (led)
+    {
+    case LED_STARTED:
+    case LED_PANIC:
+      /* For panic state, the LED is blinking */
+
+      set_led(false);
+      break;
+
+    default:
+      break;
+    }
+}
+
+#endif /* CONFIG_ARCH_LEDS */

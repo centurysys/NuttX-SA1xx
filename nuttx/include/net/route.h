@@ -1,5 +1,5 @@
 /****************************************************************************
- * arch/arm/src/sama5/sam_adc.h
+ * include/net/route.h
  *
  *   Copyright (C) 2013 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
@@ -33,33 +33,57 @@
  *
  ****************************************************************************/
 
-#ifndef __ARCH_ARM_SRC_SAMA5_SAM_ADC_H
-#define __ARCH_ARM_SRC_SAMA5_SAM_ADC_H
+#ifndef __INCLUDE_NET_ROUTE_H
+#define __INCLUDE_NET_ROUTE_H
 
 /****************************************************************************
  * Included Files
  ****************************************************************************/
 
 #include <nuttx/config.h>
-#include "chip/sam_adc.h"
 
-#if defined(CONFIG_SAMA5_ADC) && defined(CONFIG_SAMA5_TOUCHSCREEN)
+#include <sys/socket.h>
+
+#include <nuttx/net/ioctl.h>
+
+#ifdef CONFIG_NET_ROUTE
 
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
-/* Configuration ************************************************************/
 
 /****************************************************************************
  * Public Types
  ****************************************************************************/
 
+struct ifnet
+{
+  uint16_t           if_index;   /* Interface number */
+  uint16_t           if_mtu;     /* MTU of interface */
+  struct sockaddr_in if_addr;    /* Address of interface */
+  struct sockaddr_in if_netmask; /* Netmask of if_addr */
+};
+
+/* This structure describes the route information passed with the SIOCADDRT
+ * and SIOCDELRT ioctl commands (see include/nuttx/net/ioctl.h).
+ */
+
+struct ortentry
+{
+  uint32_t           rt_hash;    /* To speed lookups */
+  struct sockaddr    rt_dst;     /* Key */
+  struct sockaddr    rt_gateway; /* Value */
+  uint16_t           rt_flags;   /* Up/down?, host/net */
+  uint16_t           rt_refcnt;  /* Number of held references */
+  uint32_t           rt_use;     /* Raw number of packets forwarded */
+  struct ifnet      *rt_ifp;     /* The answer: interface to use */
+};
+
 /****************************************************************************
  * Public Data
  ****************************************************************************/
 
-#undef EXTERN
-#if defined(__cplusplus)
+#ifdef __cplusplus
 #define EXTERN extern "C"
 extern "C"
 {
@@ -68,52 +92,13 @@ extern "C"
 #endif
 
 /****************************************************************************
- * Public Functions
+ * Public Function Prototypes
  ****************************************************************************/
-
-/****************************************************************************
- * Name: sam_tsd_register
- *
- * Description:
- *   Configure the SAMA5 touchscreen.  This will register the driver as
- *   /dev/inputN where N is the minor device number
- *
- * Input Parameters:
- *   dev   - The ADC device handle received from sam_adc_initialize()
- *   minor - The input device minor number
- *
- * Returned Value:
- *   Zero is returned on success.  Otherwise, a negated errno value is
- *   returned to indicate the nature of the failure.
- *
- ****************************************************************************/
-
-struct sam_adc_s;
-int sam_tsd_register(FAR struct sam_adc_s *adc, int minor);
-
-/****************************************************************************
- * Interfaces exported from the touchscreen to the ADC driver
- ****************************************************************************/
-/****************************************************************************
- * Name: sam_tsd_interrupt
- *
- * Description:
- *   Handles ADC interrupts associated with touchscreen channels
- *
- * Input parmeters:
- *   pending - Current set of pending interrupts being handled
- *
- * Returned Value:
- *   None
- *
- ****************************************************************************/
-
-void sam_tsd_interrupt(uint32_t pending);
 
 #undef EXTERN
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* CONFIG_SAMA5_ADC && CONFIG_SAMA5_TOUCHSCREEN */
-#endif /* __ARCH_ARM_SRC_SAMA5_SAM_ADC_H */
+#endif /* CONFIG_NET_ROUTE */
+#endif /* __INCLUDE_NET_ROUTE_H */
