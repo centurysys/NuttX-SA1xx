@@ -1,5 +1,5 @@
 /****************************************************************************
- * include/net/route.h
+ * net/net_route.h
  *
  *   Copyright (C) 2013 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
@@ -33,40 +33,44 @@
  *
  ****************************************************************************/
 
-#ifndef __INCLUDE_NET_ROUTE_H
-#define __INCLUDE_NET_ROUTE_H
+#ifndef __NET_NET_ROUTE_H
+#define __NET_NET_ROUTE_H
 
 /****************************************************************************
  * Included Files
  ****************************************************************************/
 
 #include <nuttx/config.h>
-
-#include <sys/socket.h>
-
-#include <nuttx/net/ioctl.h>
+#include <nuttx/net/uip/uip.h>
 
 #ifdef CONFIG_NET_ROUTE
 
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
+/* Configuration ************************************************************/
+
+#ifndef CONFIG_NET_MAXROUTES
+#  define CONFIG_NET_MAXROUTES 4
+#endif
 
 /****************************************************************************
  * Public Types
  ****************************************************************************/
+/* This structure describes one entry in the routing table */
 
-/* This structure describes the route information passed with the SIOCADDRT
- * and SIOCDELRT ioctl commands (see include/nuttx/net/ioctl.h).
- */
-
-struct rtentry
+struct net_route_s
 {
-  uint16_t rt_ifno;                        /* Interface number, e.g., the 0 in "eth0" */
-  FAR struct sockaddr_storage *rt_target;  /* Target address */
-  FAR struct sockaddr_storage *rt_netmask; /* Network mask defining the sub-net */
-  FAR struct sockaddr_storage *rt_gateway; /* Gateway address associated with the hop */
+  bool         inuse;    /* TRUE: This entry contains a valid route */
+  uint8_t      minor;    /* Ethernet device minor */
+  uip_ipaddr_t target;   /* The destination network */
+  uip_ipaddr_t netmask;  /* The network address mask */
+  uip_ipaddr_t gateway;  /* Route packets via a gateway */
 };
+
+/* Type of the call out function pointer provided to net_foreachroute() */
+
+typedef int (*route_handler_t)(FAR struct net_route_s *route, FAR void *arg);
 
 /****************************************************************************
  * Public Data
@@ -80,6 +84,10 @@ extern "C"
 #define EXTERN extern
 #endif
 
+/* This is the routing table */
+
+EXTERN struct net_route_s g_routes[CONFIG_NET_MAXROUTES];
+
 /****************************************************************************
  * Public Function Prototypes
  ****************************************************************************/
@@ -88,44 +96,62 @@ extern "C"
  * Function: net_addroute
  *
  * Description:
- *   Add a new route to the routing table.  This is just a convenience
- *   wrapper for the SIOCADDRT ioctl call.
+ *   Add a new route to the routing table
  *
  * Parameters:
- *   sockfd   - Any socket descriptor
- *   target   - Target address (required)
- *   netmask  - Network mask defining the sub-net (required)
- *   gateway  - Gateway address associated with the hop (optional)
- *   ifno     - Interface number, e.g., the 0 in "eth0"
  *
  * Returned Value:
- *   OK on success; -1 on failure with the errno variable set appropriately.
+ *   OK on success; Negated errno on failure.
  *
  ****************************************************************************/
 
-int addroute(int sockfd, FAR struct sockaddr_storage *target,
-             FAR struct sockaddr_storage *netmask,
-             FAR struct sockaddr_storage *gateway, int ifno);
+int net_addroute(uip_ipaddr_t target, uip_ipaddr_t netmask,
+                 uip_ipaddr_t gateway, int devno);
 
 /****************************************************************************
  * Function: net_delroute
  *
  * Description:
- *   Add a new route to the routing table.  This is just a convenience
- *   wrapper for the SIOCADDRT ioctl call.
+ *   Remove an existing route from the routing table
  *
  * Parameters:
- *   sockfd   - Any socket descriptor
- *   target   - Target address (required)
- *   netmask  - Network mask defining the sub-net (required)
  *
  * Returned Value:
- *   OK on success; -1 on failure with the errno variable set appropriately.
+ *   OK on success; Negated errno on failure.
  *
  ****************************************************************************/
 
-int delroute(int sockfd, FAR struct sockaddr_storage *target,
-             FAR struct sockaddr_storage *netmask);
+int net_delroute(uip_ipaddr_t target, uip_ipaddr_t netmask);
+
+/****************************************************************************
+ * Function: net_findroute
+ *
+ * Description:
+ *   Given an IP address, return a copy of the routing table contents
+ *
+ * Parameters:
+ *
+ * Returned Value:
+ *   OK on success; Negated errno on failure.
+ *
+ ****************************************************************************/
+
+int net_findroute(uip_ipaddr_t target, FAR struct net_route_s *route);
+
+/****************************************************************************
+ * Function: net_foreachroute
+ *
+ * Description:
+ *   Traverse the route table
+ *
+ * Parameters:
+ *
+ * Returned Value:
+ *   OK on success; Negated errno on failure.
+ *
+ ****************************************************************************/
+
+int net_foreachroute(route_handler_t handler, FAR void *arg);
 
 #undef EXTERN
 #ifdef __cplusplus
@@ -133,4 +159,4 @@ int delroute(int sockfd, FAR struct sockaddr_storage *target,
 #endif
 
 #endif /* CONFIG_NET_ROUTE */
-#endif /* __INCLUDE_NET_ROUTE_H */
+#endif /* __NET_NET_ROUTE_H */

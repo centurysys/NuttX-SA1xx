@@ -1,5 +1,5 @@
 /****************************************************************************
- * include/nuttx/net/route.h
+ * arch/arm/src/sama5/sam_tsd.h
  *
  *   Copyright (C) 2013 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
@@ -33,50 +33,37 @@
  *
  ****************************************************************************/
 
-#ifndef __INCLUDE_NUTTX_NET_ROUTE_H
-#define __INCLUDE_NUTTX_NET_ROUTE_H
+#ifndef __ARCH_ARM_SRC_SAMA5_SAM_TSD_H
+#define __ARCH_ARM_SRC_SAMA5_SAM_TSD_H
 
 /****************************************************************************
  * Included Files
  ****************************************************************************/
 
 #include <nuttx/config.h>
-#include <nuttx/net/uip/uip.h>
+#include "chip/sam_adc.h"
 
-#ifdef CONFIG_NET_ROUTE
+#if defined(CONFIG_SAMA5_ADC) && defined(CONFIG_SAMA5_TSD)
 
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
 /* Configuration ************************************************************/
 
-#ifndef CONFIG_NET_MAXROUTES
-#  define CONFIG_NET_MAXROUTES 4
+#ifdef CONFIG_SAMA_TSD_RXP
+#  define CONFIG_SAMA_TSD_RXP 6
 #endif
 
 /****************************************************************************
  * Public Types
  ****************************************************************************/
-/* This structure describes one entry in the routing table */
-
-struct net_route_s
-{
-  bool         inuse;    /* TRUE: This entry contains a valid route */
-  uint8_t      minor;    /* Ethernet device minor */
-  uip_ipaddr_t target;   /* The destination network */
-  uip_ipaddr_t netmask;  /* The network address mask */
-  uip_ipaddr_t gateway;  /* Route packets via a gateway */
-};
-
-/* Type of the call out function pointer provided to net_foreachroute() */
-
-typedef int (*route_handler_t)(FAR struct net_route_s *route, FAR void *arg);
 
 /****************************************************************************
  * Public Data
  ****************************************************************************/
 
-#ifdef __cplusplus
+#undef EXTERN
+#if defined(__cplusplus)
 #define EXTERN extern "C"
 extern "C"
 {
@@ -84,79 +71,53 @@ extern "C"
 #define EXTERN extern
 #endif
 
-/* This is the routing table */
-
-EXTERN struct net_route_s g_routes[CONFIG_NET_MAXROUTES];
-
 /****************************************************************************
- * Public Function Prototypes
+ * Public Functions
  ****************************************************************************/
 
 /****************************************************************************
- * Function: net_addroute
+ * Name: sam_tsd_register
  *
  * Description:
- *   Add a new route to the routing table
+ *   Configure the SAMA5 touchscreen.  This will register the driver as
+ *   /dev/inputN where N is the minor device number
  *
- * Parameters:
+ * Input Parameters:
+ *   dev   - The ADC device handle received from sam_adc_initialize()
+ *   minor - The input device minor number
  *
  * Returned Value:
- *   OK on success; Negated errno on failure.
+ *   Zero is returned on success.  Otherwise, a negated errno value is
+ *   returned to indicate the nature of the failure.
  *
  ****************************************************************************/
 
-int net_addroute(uip_ipaddr_t target, uip_ipaddr_t netmask,
-                 uip_ipaddr_t gateway, int devno);
+struct sam_adc_s;
+int sam_tsd_register(FAR struct sam_adc_s *adc, int minor);
 
 /****************************************************************************
- * Function: net_delroute
- *
- * Description:
- *   Remove an existing route from the routing table
- *
- * Parameters:
- *
- * Returned Value:
- *   OK on success; Negated errno on failure.
- *
+ * Interfaces exported from the touchscreen to the ADC driver
  ****************************************************************************/
-
-int net_delroute(uip_ipaddr_t target, uip_ipaddr_t netmask);
-
 /****************************************************************************
- * Function: net_findroute
+ * Name: sam_tsd_interrupt
  *
  * Description:
- *   Given an IP address, return a copy of the routing table contents
+ *   Handles ADC interrupts associated with touchscreen channels
  *
- * Parameters:
+ * Input parmeters:
+ *   pending - Current set of pending interrupts being handled
  *
  * Returned Value:
- *   OK on success; Negated errno on failure.
+ *   None
  *
  ****************************************************************************/
 
-int net_findroute(uip_ipaddr_t target, FAR struct net_route_s *route);
-
-/****************************************************************************
- * Function: net_foreachroute
- *
- * Description:
- *   Traverse the route table
- *
- * Parameters:
- *
- * Returned Value:
- *   OK on success; Negated errno on failure.
- *
- ****************************************************************************/
-
-int net_foreachroute(route_handler_t handler, FAR void *arg);
+void sam_tsd_interrupt(uint32_t pending);
 
 #undef EXTERN
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* CONFIG_NET_ROUTE */
-#endif /* __INCLUDE_NUTTX_NET_ROUTE_H */
+#endif /* CONFIG_SAMA5_ADC && CONFIG_SAMA5_TSD */
+#endif /* __ARCH_ARM_SRC_SAMA5_SAM_TSD_H */

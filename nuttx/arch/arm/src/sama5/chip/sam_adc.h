@@ -50,7 +50,9 @@
  ****************************************************************************************/
 /* General definitions ******************************************************************/
 
-#define SAM_ADC_NCHANNELS          12     /* 12 ADC Channels */
+#define SAM_ADC_NCHANNELS          12       /* 12 ADC Channels */
+#define SAM_ADC_MAXPERCLK          66000000 /* Maximum peripheral clock frequency */
+#define SAM_ADC_CLOCKMAX           20000000 /* Maximum ADC Clock Frequency (Hz) */
 
 /* ADC register offsets ****************************************************************/
 
@@ -263,6 +265,10 @@
 #define ADC_CH10                   (1 << 10) /* Bit 10: Channel 10 Enable */
 #define ADC_CH11                   (1 << 11) /* Bit 11: Channel 11 Enable */
 
+#define TSD_4WIRE_ALL              (0x0000000f)
+#define TSD_5WIRE_ALL              (0x0000001f)
+#define ADC_CHALL                  (0x00000fff)
+
 /* Last Converted Data Register */
 
 #define ADC_LCDR_DATA_SHIFT        (0)       /* Bits 0-11: Last Data Converted */
@@ -301,6 +307,8 @@
 #define ADC_INT_PEN                (1 << 29) /* Bit 29: Pen Contact Interrupt */
 #define ADC_INT_NOPEN              (1 << 30) /* Bit 30: No Pen Contact Interrupt */
 #define ADC_SR_PENS                (1 << 31) /* Bit 31: Pen detect Status (SR only) */
+
+#define ADC_INT_ALL                (0xe7f00fff)
 
 /* Overrun Status Register */
 
@@ -390,6 +398,7 @@
 #define ADC_COR_OFF9               (1 << 9)  /* Bit 9:  Offset for channel 9 */
 #define ADC_COR_OFF10              (1 << 10) /* Bit 10: Offset for channel 10 */
 #define ADC_COR_OFF11              (1 << 11) /* Bit 11: Offset for channel 11 */
+
 #define ADC_COR_DIFF(n)            (1 << ((n)+16))
 #define ADC_COR_DIFF0              (1 << 16) /* Bit 16: Offset for channel 0 */
 #define ADC_COR_DIFF1              (1 << 17) /* Bit 17: Offset for channel 1 */
@@ -448,7 +457,7 @@
 #  define ADC_TSMR_TSSCTIM(n)      ((uint32_t)(n) << ADC_TSMR_TSSCTIM_SHIFT)
 #define ADC_TSMR_NOTSDMA           (1 << 22) /* Bit 22: No TouchScreen DMA */
 #define ADC_TSMR_PENDET            (1 << 24) /* Bit 24: Pen Contact Detection Enable */
-#define ADC_TSMR_PENDBC_SHIFT      (28)       /* Bit 28-31: Pen Detect Debouncing Period */
+#define ADC_TSMR_PENDBC_SHIFT      (28)      /* Bit 28-31: Pen Detect Debouncing Period */
 #define ADC_TSMR_PENDBC_MASK       (15 << ADC_TSMR_PENDBC_SHIFT)
 #  define ADC_TSMR_PENDBC(n)       ((uint32_t)(n) << ADC_TSMR_PENDBC_SHIFT)
 
@@ -465,7 +474,7 @@
 #define ADC_YPOSR_YPOS_MASK        (0xfff << ADC_YPOSR_YPOS_SHIFT)
 #define ADC_YPOSR_YSCALE_SHIFT     (16)      /* Bit 16-27: Scale of YPOS */
 #define ADC_YPOSR_YSCALE_MASK      (0xfff << ADC_YPOSR_YSCALE_SHIFT)
-0xfff
+
 /* Touchscreen Pressure Register */
 
 #define ADC_PRESSR_Z1_SHIFT        (0)       /* Bit 0-11: Data of Z1 Measurement */

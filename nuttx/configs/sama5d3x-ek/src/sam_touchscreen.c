@@ -1,5 +1,5 @@
-/****************************************************************************
- * arch/arm/src/sama5/sam_adc.h
+/************************************************************************************
+ * configs/sama5d3-ek/src/sam_touchscreen.c
  *
  *   Copyright (C) 2013 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
@@ -31,55 +31,65 @@
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- ****************************************************************************/
-
-#ifndef __ARCH_ARM_SRC_SAMA5_SAM_ADC_H
-#define __ARCH_ARM_SRC_SAMA5_SAM_ADC_H
+ ************************************************************************************/
 
 /****************************************************************************
  * Included Files
  ****************************************************************************/
 
 #include <nuttx/config.h>
-#include "chip/sam_adc.h"
 
-#if defined(CONFIG_SAMA5_ADC) && defined(CONFIG_SAMA5_TOUCHSCREEN)
+#include <debug.h>
+
+#include "sam_adc.h"
+#include "sam_tsd.h"
+#include "sama5d3x-ek.h"
+
+#ifdef CONFIG_SAMA5_TSD
 
 /****************************************************************************
- * Pre-processor Definitions
+ * Pre-Processor Definitions
  ****************************************************************************/
 /* Configuration ************************************************************/
 
-/****************************************************************************
- * Public Types
- ****************************************************************************/
-
-/****************************************************************************
- * Public Data
- ****************************************************************************/
-
-#undef EXTERN
-#if defined(__cplusplus)
-#define EXTERN extern "C"
-extern "C"
-{
-#else
-#define EXTERN extern
+#ifndef CONFIG_INPUT
+#  error "Touchscreen support requires CONFIG_INPUT"
 #endif
+
+#ifndef CONFIG_SAMA5_TSD_DEVMINOR
+#  define CONFIG_SAMA5_TSD_DEVMINOR 0
+#endif
+
+/****************************************************************************
+ * Private Types
+ ****************************************************************************/
+
+/****************************************************************************
+ * Private Function Prototypes
+ ****************************************************************************/
+
+/****************************************************************************
+ * Private Data
+ ****************************************************************************/
+
+/****************************************************************************
+ * Private Functions
+ ****************************************************************************/
 
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
 
 /****************************************************************************
- * Name: sam_tsd_register
+ * Name: arch_tcinitialize
  *
  * Description:
- *   Configure the SAMA5 touchscreen.  This will register the driver as
- *   /dev/inputN where N is the minor device number
+ *   Each board that supports a touchscreen device must provide this
+ *   function.  This function is called by application-specific, setup logic
+ *   to configure the touchscreen device.  This function will register the
+ *   driver as /dev/inputN where N is the minor device number.
  *
  * Input Parameters:
- *   dev   - The ADC device handle received from sam_adc_initialize()
  *   minor - The input device minor number
  *
  * Returned Value:
@@ -88,32 +98,66 @@ extern "C"
  *
  ****************************************************************************/
 
-struct sam_adc_s;
-int sam_tsd_register(FAR struct sam_adc_s *adc, int minor);
+int arch_tcinitialize(int minor)
+{
+  struct sam_adc_s *adc;
+  static bool initialized = false;
+  FAR struct spi_dev_s *dev;
+  int ret;
+
+  idbg("initialized:%d minor:%d\n", initialized, minor);
+  DEBUGASSERT(minor == 0);
+
+  /* Since there is no uninitialized logic, this initialization can be
+   * performed only one time.
+   */
+
+  if (!initialized)
+    {
+      /* Initialize the ADC driver */
+
+      adc = sam_adcinitialize();
+      if (!adc)
+        {
+          idbg("ERROR: Failed to initialize the ADC driver\n");
+          return -ENODEV;
+        }
+
+      /* Initialize and register the SPI touchscreen device */
+
+      ret = sam_tsd_register(adc, CONFIG_SAMA5_TSD_DEVMINOR);
+      if (ret < 0)
+        {
+          idbg("ERROR: Failed to register touchscreen device /dev/input%d: %d\n",
+               CONFIG_SAMA5_TSD_DEVMINOR, ret);
+          return -ENODEV;
+        }
+
+      initialized = true;
+    }
+
+  return OK;
+}
 
 /****************************************************************************
- * Interfaces exported from the touchscreen to the ADC driver
- ****************************************************************************/
-/****************************************************************************
- * Name: sam_tsd_interrupt
+ * Name: arch_tcuninitialize
  *
  * Description:
- *   Handles ADC interrupts associated with touchscreen channels
+ *   Each board that supports a touchscreen device must provide this function.
+ *   This function is called by application-specific, setup logic to
+ *   uninitialize the touchscreen device.
  *
- * Input parmeters:
- *   pending - Current set of pending interrupts being handled
+ * Input Parameters:
+ *   None
  *
  * Returned Value:
- *   None
+ *   None.
  *
  ****************************************************************************/
 
-void sam_tsd_interrupt(uint32_t pending);
-
-#undef EXTERN
-#ifdef __cplusplus
+void arch_tcuninitialize(void)
+{
+  /* No support for un-initializing the touchscreen  yet */
 }
-#endif
 
-#endif /* CONFIG_SAMA5_ADC && CONFIG_SAMA5_TOUCHSCREEN */
-#endif /* __ARCH_ARM_SRC_SAMA5_SAM_ADC_H */
+#endif /* CONFIG_INPUT_ADS7843E */
