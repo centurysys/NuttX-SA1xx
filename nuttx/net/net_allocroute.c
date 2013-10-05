@@ -1,5 +1,5 @@
 /****************************************************************************
- * include/net/route.h
+ * net/net_allocroute.c
  *
  *   Copyright (C) 2013 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
@@ -33,103 +33,143 @@
  *
  ****************************************************************************/
 
-#ifndef __INCLUDE_NET_ROUTE_H
-#define __INCLUDE_NET_ROUTE_H
-
 /****************************************************************************
  * Included Files
  ****************************************************************************/
 
 #include <nuttx/config.h>
 
-#include <sys/socket.h>
+#include <stdint.h>
+#include <errno.h>
+#include <assert.h>
 
-#include <nuttx/net/ioctl.h>
+#include <arch/irq.h>
 
-#ifdef CONFIG_NET_ROUTE
+#include "net_internal.h"
+#include "net_route.h"
 
-/****************************************************************************
- * Pre-processor Definitions
- ****************************************************************************/
-
-/****************************************************************************
- * Public Types
- ****************************************************************************/
-
-/* This structure describes the route information passed with the SIOCADDRT
- * and SIOCDELRT ioctl commands (see include/nuttx/net/ioctl.h).
- */
-
-struct rtentry
-{
-  FAR struct sockaddr_storage *rt_target;  /* Address of the network */
-  FAR struct sockaddr_storage *rt_netmask; /* Network mask defining the sub-net */
-  FAR struct sockaddr_storage *rt_router; /* Gateway address associated with the hop */
-};
+#if defined(CONFIG_NET) && defined(CONFIG_NET_ROUTE)
 
 /****************************************************************************
  * Public Data
  ****************************************************************************/
 
-#ifdef __cplusplus
-#define EXTERN extern "C"
-extern "C"
+/* This is the routing table */
+
+sq_queue_t g_routes;
+
+/****************************************************************************
+ * Private Data
+ ****************************************************************************/
+
+/* This is a list of free routing table entries */
+
+static sq_queue_t g_freeroutes;
+
+/* This is an array of pre-allocated network routes */
+
+static struct net_route_s g_preallocroutes[CONFIG_NET_MAXROUTES];
+
+/****************************************************************************
+ * Public Functions
+ ****************************************************************************/
+
+/****************************************************************************
+ * Function: net_initroute
+ *
+ * Description:
+ *   Initialize to the routing table
+ *
+ * Parameters:
+ *   None
+ *
+ * Returned Value:
+ *   None
+ *
+ * Assumptions:
+ *   Called early in initialization so that no special protection is needed.
+ *
+ ****************************************************************************/
+
+void net_initroute(void)
 {
-#else
-#define EXTERN extern
-#endif
+  int i;
 
-/****************************************************************************
- * Public Function Prototypes
- ****************************************************************************/
+  /* Initialize the routing table and the free list */
 
-/****************************************************************************
- * Function: net_addroute
- *
- * Description:
- *   Add a new route to the routing table.  This is just a convenience
- *   wrapper for the SIOCADDRT ioctl call.
- *
- * Parameters:
- *   sockfd   - Any socket descriptor
- *   target   - Target address on external network(required)
- *   netmask  - Network mask defining the external network (required)
- *   router   - Router address that on our network that can forward to the
- *              external network.
- *
- * Returned Value:
- *   OK on success; -1 on failure with the errno variable set appropriately.
- *
- ****************************************************************************/
+  sq_init(&g_routes);
+  sq_init(&g_freeroutes);
 
-int addroute(int sockfd, FAR struct sockaddr_storage *target,
-             FAR struct sockaddr_storage *netmask,
-             FAR struct sockaddr_storage *router);
+  /* All all of the pre-allocated routing table entries to a free list */
 
-/****************************************************************************
- * Function: net_delroute
- *
- * Description:
- *   Add a new route to the routing table.  This is just a convenience
- *   wrapper for the SIOCADDRT ioctl call.
- *
- * Parameters:
- *   sockfd   - Any socket descriptor
- *   target   - Target address on the remote network (required)
- *   netmask  - Network mask defining the external network (required)
- *
- * Returned Value:
- *   OK on success; -1 on failure with the errno variable set appropriately.
- *
- ****************************************************************************/
-
-int delroute(int sockfd, FAR struct sockaddr_storage *target,
-             FAR struct sockaddr_storage *netmask);
-
-#undef EXTERN
-#ifdef __cplusplus
+  for (i = 0; i < CONFIG_NET_MAXROUTES; i++)
+    {
+      sq_addlast((FAR sq_entry_t *)&g_preallocroutes[i],
+                 (FAR sq_queue_t *)&g_freeroutes);
+    }    
 }
-#endif
 
-#endif /* CONFIG_NET_ROUTE */
-#endif /* __INCLUDE_NET_ROUTE_H */
+/****************************************************************************
+ * Function: net_allocroute
+ *
+ * Description:
+ *   Allocate one route by removing it from the free list
+ *
+ * Parameters:
+ *   None
+ *
+ * Returned Value:
+ *   On success, a pointer to the newly allocated route table entry is
+ *   returned; NULL is returned on failure.
+ *
+ ****************************************************************************/
+
+FAR struct net_route_s *net_allocroute(void)
+{
+  FAR struct net_route_s *route;
+  uip_lock_t save;
+
+  /* Get exclusive address to the networking data structures */
+
+  save = uip_lock();
+
+  /* Then add the new entry to the table */
+
+  route = (FAR struct net_route_s *)
+    sq_remfirst((FAR sq_queue_t *)&g_freeroutes);
+
+  uip_unlock(save);
+  return route;
+}
+
+/****************************************************************************
+ * Function: net_allocroute
+ *
+ * Description:
+ *   Free one route by adding it from the free list
+ *
+ * Parameters:
+ *   route - The route to be freed
+ *
+ * Returned Value:
+ *   None
+ *
+ ****************************************************************************/
+
+void net_freeroute(FAR struct net_route_s *route)
+{
+  uip_lock_t save;
+
+  DEBUGASSERT(route);
+
+  /* Get exclusive address to the networking data structures */
+
+  save = uip_lock();
+
+  /* Then add the new entry to the table */
+
+  sq_addlast((FAR sq_entry_t *)route, (FAR sq_queue_t *)&g_freeroutes);
+  uip_unlock(save);
+}
+
+#endif /* CONFIG_NET && CONFIG_NET_ROUTE */
