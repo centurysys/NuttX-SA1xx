@@ -5708,4 +5708,15 @@
 	  route, then it will simply return that single device.  The
 	  ARP logic will use the default router address associated with
 	  the interface in this case (2013-10-5).
- 
+	* net/netdev_router.c and net/uip/uip-arp.c:  When the target IP address
+	  does not lie on the device's networker when we have a routing table,
+	  looking the the correct router IP address to use in the ARP request.
+	  In that case, we want the MAC address of the router, not of the the
+	  target endpoint (2013-10-5).
+	* net/netdev_rxnotify.c and others: Use the new signature of rxnotify
+	  caused by the routing table.  From Max Holtzberg (2013-10-6).
+	* arch/arm/src/sama5/sam_lcdc.c and .h: Empty "skeleton" file that
+	  will eventually become an LCDC driver for the SAMA5 (2013-10-6).
+	* net/net_close.c, net/uip/uip_tcpcon, and include/nuttx/net/uip/uip-tcp.h:
+	  Make net_close() nonblocking and free unestablished connections if no
+	  free connections available.  From Max Holtzberg (2013-10-6).

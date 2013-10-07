@@ -79,7 +79,7 @@ struct route_match_s
 
 static int net_match(FAR struct net_route_s *route, FAR void *arg)
 {
-  FAR struct route_match_s *match = ( FAR struct route_match_s *)arg;
+  FAR struct route_match_s *match = (FAR struct route_match_s *)arg;
 
   /* To match, the masked target addresses must be the same.  In the event
    * of multiple matches, only the first is returned.  There not (yet) any
@@ -124,7 +124,7 @@ static int net_match(FAR struct net_route_s *route, FAR void *arg)
 #ifdef CONFIG_NET_IPv6
 int net_router(uip_ipaddr_t target, uip_ipaddr_t router)
 #else
-int net_router(uip_ipaddr_t target, uip_ipaddr_t *router)
+int net_router(uip_ipaddr_t target, FAR uip_ipaddr_t *router)
 #endif
 {
   struct route_match_s match;
@@ -135,14 +135,28 @@ int net_router(uip_ipaddr_t target, uip_ipaddr_t *router)
   memset(&match, 0, sizeof(struct route_match_s));
   uip_ipaddr_copy(match.target, target);
 
-  /* Then remove the entry from the routing table */
+  /* Find an router entry with the routing table that can forward to this
+   * address
+   */
 
-  ret = net_foreachroute(net_match, &match) ? OK : -ENOENT;
+  ret = net_foreachroute(net_match, &match);
+  if (ret > 0)
+    {
+      /* We found a route.  Return the router address. */
+
 #ifdef CONFIG_NET_IPv6
-  uip_ipaddr_copy(router, match.target);
+      uip_ipaddr_copy(router, match.target);
 #else
-  uip_ipaddr_copy(*router, match.target);
+      uip_ipaddr_copy(*router, match.target);
 #endif
+      ret = OK;
+    }
+  else
+    {
+      /* There is no route for this address */
+
+      ret = -ENOENT;
+    }
 
   return ret;
 }
