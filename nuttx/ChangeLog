@@ -5729,6 +5729,32 @@
 	* configs/arduino-due/Kconfig and include/board.h:  Add configuration
 	  to select revision 3 of the Arduino Due which has some small
 	  but important differences.  Suggested by gdi@embedders.org.
+	* arch/arm/src/sama5/sam_allocateheap.c, Kconfig, chip/sama5d3_memorymap.h:
+	  Add support so that subsets of the total DRAM (and other external
+	  memory) can be added to the heap, leaving other memory reserved for
+	  other purposes (like LCDC framebuffers) (2013-10-10).
+	* arch/arm/src/sama5/sam_lcd.c:  Change how DMA descriptors are
+	  allocated.  My reading of the SAMA5 MATRIX is that the LCDC will
+	  be unable to DMA from internal SRAM (2012-10-10).
+	* arch/arm/src/sama5/Kconfig and configs/sama5d3x-ek/nx/defconfig:  The
+	  default LCD resolution is now RGB565.  Added output resolution selection
+	  which can be different from the software resolution (2013-10-10.
+	* arch/arm/src/sama5/sam_lcd.c wait before modifying register if the LCDC
+	  is re-synchronizing (SIF). Use start-up configuration settings from
+	  Barebox.  They still don't work (2013-10-10).
+	* net/net_monitor.c: Notify the socket layer if a connection is lost
+	  before the monitoring callback has been registered.  From Max
+	  Holtzberg (2013-10-11).
+	* net/recvfrom.c, sendto.c, uip/uip_input.c, uip/uip_udpcallback.c,
+	  uip/uip_udpconn.c, uip/uip_udpinput.c:  Changed the meaning of the
+	  uip_*input functions. They now return success when a packet is
+	  dropped; This is needed for the ENCX24J600 driver that must make
+	  a decision to return the packet or not:  It should not retai
+	  dropped packets. From Max Holtzberg (2013-10-11).
+	* drivers/net/encx24j600.c and Kconfig: ENCX24J600: Improved descriptor
+	  handling, free packets on rx abort interrupt. From Max Holtzberg
+	  (2013-10-11).
+	* arch/arm/src/sama4/sam_lcd.c and configs/sama5d3x-ek/include/board.h:
+	  Fix PWM precealler divider.  This eliminiates the backlight flicker
+	 (2013-10-11).
 
-D
-	  differences 
