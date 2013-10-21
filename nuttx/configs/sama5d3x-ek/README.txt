@@ -353,7 +353,9 @@ Creating and Using NORBOOT
        cd <nuttx>
        make distclean
 
-  2. Install and build the norboot configuration:
+  2. Install and build the norboot configuration.  This steps will establish
+     the norboot configuration and setup the PATH variable in order to do
+     the build:
 
        cd tools
        ./configure.sh sama5d3x-ek/<subdir>
@@ -363,6 +365,17 @@ Creating and Using NORBOOT
      Before sourcing the setenv.sh file above, you should examine it and
      perform edits as necessary so that TOOLCHAIN_BIN is the correct path
      to the directory than holds your toolchain binaries.
+
+     NOTE:  Be aware that the default norboot also disables the watchdog.
+     Since you will not be able to re-enable the watchdog later, you may
+     need to set CONFIG_SAMA5_WDT=y in the NuttX configuration file.
+
+     Then make norboot:
+
+       make
+
+     This will result in an ELF binary called 'nuttx' and also HEX and
+     binary versions called 'nuttx.hex' and 'nuttx.bin'.
 
   3. Rename the binaries.  Since you will need two versions of NuttX:  this
      norboot version that runs in internal SRAM and another under test in
@@ -402,9 +415,11 @@ Creating and Using NORBOOT
        (gdb) mon go                   # And jump into NOR flash
 
       The norboot program can also be configured to jump directly into
-      NOR FLASH without requiring the final halt and go, but since I
-      have been debugging the early boot sequence, the above sequence has
-      been most convenient for me.
+      NOR FLASH without requiring the final halt and go by setting
+      CONFIG_SAMA5_NOR_START=y in the NuttX configuration.  However,
+      since I have been debugging the early boot sequence, the above
+      sequence has been most convenient for me since it allows me to
+      step into the program in NOR.
 
     STATUS:
       2013-7-30:  I have been unable to execute this configuration from NOR
@@ -925,6 +940,9 @@ Configurations
       to the SAMA5D3-EK.  Since it now passes that test, the configuration
       has little further use other than for reference.
 
+  There may be issues with some of these configurations.  See the details
+  before of the status of individual configurations.
+
   Now for the gory details:
 
   demo:
@@ -995,11 +1013,23 @@ Configurations
 
        System Type->Heap Configuration
          CONFIG_SAMA5_DDRCS_HEAP=y             : Add the SDRAM to the heap
+         CONFIG_SAMA5_DDRCS_HEAP_OFFSET=0
+         CONFIG_SAMA5_DDRCS_HEAP_SIZE=268435456
 
        Memory Management
          CONFIG_MM_REGIONS=2                   : Two heap memory regions:  ISRAM and SDRAM
 
-    5. The Embest or Ronetix CPU module includes an Atmel AT25DF321A,
+    5. The Real Time Clock/Calendar RTC) is enabled.  These are the relevant
+       settings:
+
+        System Type:
+          CONFIG_SAMA5_RTC=y                   : Enable the RTC driver
+
+        Drivers (these values will be selected automatically):
+          CONFIG_RTC=y                         : Use the RTC for system time
+          CONFIG_RTC_DATETIME=y                : RTC supports data/time
+
+    6. The Embest or Ronetix CPU module includes an Atmel AT25DF321A,
        32-megabit, 2.7-volt SPI serial flash.  Support for that serial
        FLASH can is enabled in this configuration.  These are the relevant
        configuration settings:
@@ -1054,7 +1084,7 @@ Configurations
        NOTE:  It appears that if Linux runs out of NAND, it will destroy the
        contents of the AT25.
 
-    6. Support for HSMCI car slots. The SAMA5D3x-EK provides a two SD memory
+    7. Support for HSMCI car slots. The SAMA5D3x-EK provides a two SD memory
        card slots:  (1) a full size SD card slot (J7 labeled MCI0), and (2)
        a microSD memory card slot (J6 labeled MCI1).  The full size SD card
        slot connects via HSMCI0; the microSD connects vi HSMCI1.  Relevant
@@ -1128,7 +1158,7 @@ Configurations
           volume when it is removed.  But those callbacks are not used in
           this configuration.
 
-    7. Support the USB high-speed device (UDPHS) driver is enabled.
+    8. Support the USB high-speed device (UDPHS) driver is enabled.
        These are the relevant NuttX configuration settings:
 
        Device Drivers -> USB Device Driver Support
@@ -1187,7 +1217,7 @@ Configurations
              first have to use mkrd to create the RAM disk and mkfatfs to put
              a FAT file system on it.
 
-    8. The USB high-speed EHCI and the low-/full- OHCI host drivers are supported
+    9. The USB high-speed EHCI and the low-/full- OHCI host drivers are supported
        in this configuration.
 
        Here are the relevant configuration options that enable EHCI support:
@@ -1260,10 +1290,29 @@ Configurations
 
        nsh> cat /dev/kbda
 
+    10. Support SAMA5D3 TRNG peripheral is enabled so that it provides
+        /dev/random.  The following configuration settings are relevant:
+
+        System Type:
+          CONFIG_SAMA5_TRNG=y                 : Enable the TRNG peripheral
+
+        Drivers (automatically selected):
+          CONFIG_DEV_RANDOM=y                 : Enable /dev/random
+
     The following features are *not* enabled in the demo configuration but
     might be of some use to you:
 
-    9.  Debugging USB.  There is normal console debug output available that
+    10. The RTC supports an alarm that may be enable with the following settings.
+        However, there is nothing in the system that currently makes use of this
+        alarm.
+
+        Drivers:
+          CONFIG_RTC_ALARM=y                   : Enable the RTC alarm
+
+        Library Routines
+         CONFIG_SCHED_WORKQUEUE=y              : Alarm needs work queue support
+
+    11. Debugging USB.  There is normal console debug output available that
         can be enabled with CONFIG_DEBUG + CONFIG_DEBUG_USB.  However, USB
         operation is very time critical and enabling this debug output WILL
         interfere with some operation.  USB tracing is a less invasive way
@@ -1376,8 +1425,19 @@ Configurations
     under debug control.
 
     NOTES:
+
     1. This program derives from the hello configuration.  All of the
        notes there apply to this configuration as well.
+
+    2. The default norboot program initializes the NOR memory,
+       displays a message and halts.  The norboot program can also be
+       configured to jump directly into NOR FLASH without requiring the
+       final halt and go by setting CONFIG_SAMA5_NOR_START=y in the
+       NuttX configuration.
+
+    3. Be aware that the default norboot also disables the watchdog.
+       Since you will not be able to re-enable the watchdog later, you may
+       need to set CONFIG_SAMA5_WDT=y in the NuttX configuration file.
 
     STATUS:
       2013-7-19:  This configuration (as do the others) run at 396MHz.
@@ -1444,22 +1504,24 @@ Configurations
        configuration file:
 
        System Type->ATSAMA5 Peripheral Support
-       CONFIG_SAMA5_MPDDRC=y                   : Enable the DDR controller
+         CONFIG_SAMA5_MPDDRC=y                 : Enable the DDR controller
 
        System Type->External Memory Configuration
-       CONFIG_SAMA5_DDRCS=y                    : Tell the system that DRAM is at the DDR CS
-       CONFIG_SAMA5_DDRCS_SIZE=268435456       : 2Gb DRAM -> 256GB
-       CONFIG_SAMA5_DDRCS_LPDDR2=y             : Its DDR2
-       CONFIG_SAMA5_MT47H128M16RT=y            : This is the type of DDR2
+         CONFIG_SAMA5_DDRCS=y                  : Tell the system that DRAM is at the DDR CS
+         CONFIG_SAMA5_DDRCS_SIZE=268435456     : 2Gb DRAM -> 256GB
+         CONFIG_SAMA5_DDRCS_LPDDR2=y           : Its DDR2
+         CONFIG_SAMA5_MT47H128M16RT=y          : This is the type of DDR2
 
        Now that you have SDRAM enabled, what are you going to do with it?  One
        thing you can is add it to the heap
 
        System Type->Heap Configuration
-       CONFIG_SAMA5_DDRCS_HEAP=y               : Add the SDRAM to the heap
+         CONFIG_SAMA5_DDRCS_HEAP=y             : Add the SDRAM to the heap
+         CONFIG_SAMA5_DDRCS_HEAP_OFFSET=0
+         CONFIG_SAMA5_DDRCS_HEAP_SIZE=268435456
 
        Memory Management
-       CONFIG_MM_REGIONS=2                     : Two memory regions:  ISRAM and SDRAM
+         CONFIG_MM_REGIONS=2                   : Two memory regions:  ISRAM and SDRAM
 
        Another thing you could do is to enable the RAM test built-in
        application:
@@ -1469,15 +1531,15 @@ Configurations
        it can be tested without crashing programs using the memory:
 
        System Type->Heap Configuration
-       CONFIG_SAMA5_DDRCS_HEAP=n               : Don't add the SDRAM to the heap
+         CONFIG_SAMA5_DDRCS_HEAP=n             : Don't add the SDRAM to the heap
 
        Memory Management
-       CONFIG_MM_REGIONS=1                     : One memory regions:  ISRAM
+         CONFIG_MM_REGIONS=1                   : One memory regions:  ISRAM
 
        Then enable the RAM test built-in application:
 
        Application Configuration->System NSH Add-Ons->Ram Test
-       CONFIG_SYSTEM_RAMTEST=y
+         CONFIG_SYSTEM_RAMTEST=y
 
        In this configuration, the SDRAM is not added to heap and so is not
        excessible to the applications.  So the RAM test can be freely
@@ -2124,6 +2186,71 @@ Configurations
 
         Defaults should be okay for all related settings.
 
+    17. The Real Time Clock/Calendar RTC) may be enabled with these settings:
+
+        System Type:
+          CONFIG_SAMA5_RTC=y                   : Enable the RTC driver
+
+        Drivers (these values will be selected automatically):
+          CONFIG_RTC=y                         : Use the RTC for system time
+          CONFIG_RTC_DATETIME=y                : RTC supports data/time
+
+        The RTC supports an alarm that may be enable with the following settings.
+        However, there is nothing in the system that currently makes use of this
+        alarm.
+
+        Drivers:
+          CONFIG_RTC_ALARM=y                   : Enable the RTC alarm
+
+        Library Routines
+         CONFIG_SCHED_WORKQUEUE=y              : Alarm needs work queue support
+
+    18. This example can be configured to exercise the watchdog timer test
+        (apps/examples/watchdog).  This can be selected with the following
+        settings in the NuttX configuration file:
+
+        System Type:
+          CONFIG_SAMA5_WDT=y                  : Enable the WDT peripheral
+                                              : Defaults in "RTC Configuration" should be OK
+
+        Drivers (this will automatically be selected):
+          CONFIG_WATCHDOG=y                   : Enables watchdog timer driver support
+
+        Application Configuration -> Eamples
+          CONFIG_EXAMPLES_WATCHDOG=y          : Enable apps/examples/watchdog
+
+        The WDT timer is driven off the slow, 32768Hz clock divided by 128.
+        As a result, the watchdog a maximum timeout value of 16 seconds.  The
+        SAMA5 WDT may also only be programmed one time; the processor must be
+        reset before the WDT can be reprogrammed.
+
+        The SAMA5 always boots with the watchdog timer enabled at its maximum
+        timeout (16 seconds).  In the normal case where no watchdog timer driver
+        has been configured, the watchdog timer is disabled as part of the start
+        up logic.  But, since we are permitted only one opportunity to program
+        the WDT, we cannot disable the watchdog time if CONFIG_SAMA5_WDT=y.  So,
+        be forewarned:  You have only 16 seconds to run your watchdog timer test!
+
+        NOTE:  If you are using the norboot program to run from FLASH as I did,
+        beware that the default version also disables the watchdog.  You will
+        need a special version of norboot with CONFIG_SAMA5_WDT=y.
+
+    19. This example can be configured to enable the SAMA5 TRNG peripheral so
+        that it provides /dev/random.  The following configuration will enable
+        the TRNG, /dev/random, and the simple test of /dev/random at
+        apps/examples/ranadom:
+
+        System Type:
+          CONFIG_SAMA5_TRNG=y                 : Enable the TRNG peripheral
+
+        Drivers (automatically selected):
+          CONFIG_DEV_RANDOM=y                 : Enable /dev/random
+
+        Applications -> Examples
+          CONFIG_EXAMPLES_RANDOM=y            : Enable apps/examples/random
+          CONFIG_EXAMPLES_MAXSAMPLES=64       : Default settings are probably OK
+          CONFIG_EXAMPLES_NSAMPLES=8
+
     STATUS:
 
       PCK FREQUENCY
@@ -2269,6 +2396,40 @@ Configurations
 
        $ cd ~/nuttx-git/nuttx
        $ make
+
+    STATUS:
+    2013-10-18.  This example kind of works, but there are still far too
+    many outstanding issues:
+
+    a) It runs of the SAMA5D31 and SAMA5D34, but not on the SAMA5D33.  This
+       board is from a different manufacturer and there may be some SDRAM-
+       related issues?
+    b) There appears to be an SDRAM noise issue on the SAMA5D31 and SAMA5D34.
+       I suspect that the SDRAM setup is non-optimal.  The symptom is that
+       writing into frame buffer (in SDRAM) occasionally corrupts the DMA
+       descriptors (also in SDRAM)  When the bad DMA descriptors are
+       fetched, the channel shuts down and the display goes black.  This
+       problem could also be cause by a bad write outside of the framebuffer,
+       but was not the case in the few examples that I studied.
+    c) There are some occasional start up issues.  It appears that the LCDC
+       is programed incorrectly and groups of pixels in the images are
+       reversed (producing an odd serrated look to the images).
+    d) I think that there may be more issues if GRAPHICS and INPUT debug is
+       off.  I have not tested with DEBUG off.
+    e) The biggest problem is the touchscreen accuracy.  The touchscreen
+       seems stable during calibration, but the first thing that this
+       example requires is a touch in the far, far, upper left corner of
+       the display.  In that region, I cannot get reliable touch measurements
+       and so I cannot get past the opening display.
+    f) The NxWM example was designed tiny displays.  On this large 800x480
+       display, the icons are too tiny to be usable.  I have created a large
+       320x320 logo for the opening screen and added image scaling to expand
+       the images in the taskbar.  The expanded images are not great.  If I
+       ever get past the opening screen, the same problems will exist in the
+       application toolbar and in the start winow.  These icons are not yet
+       scaled.
+
+    Bottom line:  Not ready for prime time.
 
   ostest:
 

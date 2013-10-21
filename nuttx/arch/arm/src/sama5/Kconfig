@@ -100,6 +100,13 @@ config SAMA5_PIT
 config SAMA5_WDT
 	bool "Watchdog timer Interrupt (WDT)"
 	default n
+	select WATCHDOG
+
+config SAMA5_RTC
+	bool "Real time clock calendar (RTC)"
+	default n
+	select RTC
+	select RTC_DATETIME
 
 config SAMA5_HSMC
 	bool "Static Memory Controller (HSMC)"
@@ -193,6 +200,8 @@ config SAMA5_PWM
 config SAMA5_ADC
 	bool "Touch Screen ADC Controller (ADC)"
 	default n
+	select ANALOG
+	select ADC
 
 config SAMA5_DMAC0
 	bool "DMA Controller 0 (DMAC0)"
@@ -267,6 +276,7 @@ config SAMA5_TDES
 config SAMA5_TRNG
 	bool "True Random Number Generator (TRNG)"
 	default n
+	select DEV_RANDOM
 
 config SAMA5_ARM
 	bool "Performance Monitor Unit (ARM)"
@@ -687,7 +697,7 @@ endif # SAMA5_LCDC_HEO
 config SAMA5_LCDC_HCR
 	bool "Enable hardware cursor (HCR)"
 	default n
-	depends on EXPERIMENTAL
+	depends on EXPERIMENTAL && FB_HWCURSOR
 
 if SAMA5_LCDC_HCR
 
@@ -2010,6 +2020,41 @@ endif # SAMA5_TSD
 endmenu # Touchscreen Configuration
 endif # SAMA5_ADC
 
+if SAMA5_WDT
+
+menu "Watchdog Configuration"
+
+config SAMA5_WDT_INTERRUPT
+	bool "Interrupt on timeout"
+	default n
+	---help---
+		The normal behavior is to reset everything when a watchdog timeout
+		occurs.  An alternative behavior is to simply interrupt when the
+		timeout occurs.  This setting enables that alternative behavior.
+
+config SAMA5_WDT_DEBUGHALT
+	bool "Halt on DEBUG"
+	default y if DEBUG
+	default n if !DEBUG
+	---help---
+		Halt the watchdog timer in the debug state
+
+config SAMA5_WDT_IDLEHALT
+	bool "Halt in IDLE"
+	default y
+	---help---
+		Halt the watchdog timer in the IDLE state
+
+config SAMA5_WDT_REGDEBUG
+	bool "Register level debug"
+	default n
+	depends on DEBUG
+	---help---
+		Enable low-level register debug output
+
+endmenu # Watchdog configuration
+endif # SAMA5_WDT
+
 menu "External Memory Configuration"
 
 config SAMA5_DDRCS
@@ -2320,6 +2365,7 @@ config SAMA5_DDRCS_HEAP
 		heap (using RAM_END)
 
 if SAMA5_DDRCS_HEAP
+
 config SAMA5_DDRCS_HEAP_OFFSET
 	int "DDR-SDRAM offset"
 	default 0
