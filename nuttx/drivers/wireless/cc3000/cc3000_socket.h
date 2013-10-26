@@ -1,5 +1,5 @@
 /*****************************************************************************
- *  socket.h  - CC3000 Host Driver Implementation.
+ * drivers/wireless/cc3000_socket.h  - CC3000 Host Driver Implementation.
  *  Copyright (C) 2011 Texas Instruments Incorporated - http://www.ti.com/
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -32,8 +32,8 @@
  *
  *****************************************************************************/
 
-#ifndef __INCLUDE_NUTTX_WIRELESS_CC3000_INCLUDE_SYS_SOCKET_H
-#define __INCLUDE_NUTTX_WIRELESS_CC3000_INCLUDE_SYS_SOCKET_H
+#ifndef __DRIVERS_WIRELESS_CC3000_SOCKET_H
+#define __DRIVERS_WIRELESS_CC3000_SOCKET_H
 
 /****************************************************************************
  * Included Files
@@ -47,24 +47,122 @@
  * Pre-processor Definitions
  *****************************************************************************/
 
-#define socket(a,t,p)           cc3000_socket(a,t,p)
-#define closesocket(s)          cc3000_closesocket(s)
-#define bind(s,a,l)             cc3000_bind(s,a,l)
-#define connect(s,a,l)          cc3000_connect(s,a,l)
-#define listen(s,b)             cc3000_listen(s,b)
-#define accept(s,a,l)           cc3000_accept(s,a,l)
-#define send(s,b,l,f)           cc3000_send(s,b,l,f)
-#define sendto(s,b,l,f,a,n)     cc3000_sendto(s,b,l,f,a,n)
-#define recv(s,b,l,f)           cc3000_recv(s,b,l,f)
-#define recvfrom(s,b,l,f,a,n)   cc3000_recvfrom(s,b,l,f,a,n)
-#define setsockopt(s,l,o,v,n)   cc3000_setsockopt(s,l,o,v,n)
-#define getsockopt(s,l,o,v,n)   cc3000_getsockopt(s,l,o,v,n)
-#define gethostbyname(h,l,i)    cc3000_gethostbyname(h,l,i)
-#define mdnsadvertiser(e,n,l)   cc3000_mdnsadvertiser(e,n,l)
+#define CC3000_HOSTNAME_MAX_LENGTH    (230)  /* 230 bytes + header shouldn't exceed 8
+                                              * bit value */
+
+/*--------- Address Families --------*/
+
+#define  CC3000_AF_INET                2
+#define  CC3000_AF_INET6               23
+
+
+/*------------ Socket Types ------------*/
+
+#define  CC3000_SOCK_STREAM     1
+#define  CC3000_SOCK_DGRAM      2
+#define  CC3000_SOCK_RAW        3           /* Raw sockets allow new IPv4
+                                             * protocols to be implemented in
+                                             * user space. A raw socket receives
+                                             * or sends the raw datagram not
+                                             * including link level headers */
+#define  CC3000_SOCK_RDM        4
+#define  CC3000_SOCK_SEQPACKET  5
+
+/*----------- Socket Protocol ----------*/
+
+#define CC3000_IPPROTO_IP              0                        /* Dummy for IP */
+#define CC3000_IPPROTO_ICMP            1                        /* Control message protocol */
+#define CC3000_IPPROTO_IPV4            CC3000_IPPROTO_IP        /* IP inside IP */
+#define CC3000_IPPROTO_TCP             6                        /* TCP */
+#define CC3000_IPPROTO_UDP             17                       /* User datagram protocol */
+#define CC3000_IPPROTO_IPV6            41                       /* IPv6 in IPv6 */
+#define CC3000_IPPROTO_NONE            59                       /* No next header */
+#define CC3000_IPPROTO_RAW             255                      /* Raw IP packet */
+#define CC3000_IPPROTO_MAX             256
+
+/*----------- Socket retunr codes  -----------*/
+
+#define CC3000_SOC_ERROR               (-1)        /* Error  */
+#define CC3000_SOC_IN_PROGRESS         (-2)        /* Socket in progress */
+
+/*----------- Socket Options -----------*/
+#define  CC3000_SOL_SOCKET              0xffff     /* Socket level */
+#define  CC3000_SOCKOPT_RECV_NONBLOCK   0          /* recv non block mode, set SOCK_ON or
+                                                    * SOCK_OFF (default block mode) */
+#define  CC3000_SOCKOPT_RECV_TIMEOUT    1          /* optname to configure recv and recvfromtimeout */
+#define  CC3000_SOCKOPT_ACCEPT_NONBLOCK 2          /* accept non block mode, set SOCK_ON or SOCK_OFF
+                                                    * (default block mode) */
+#define  CC3000_SOCK_ON                 0          /* socket non-blocking mode  is enabled */
+#define  CC3000_SOCK_OFF                1          /* socket blocking mode is enabled */
+
+#define  CC3000_TCP_NODELAY             0x0001
+#define  CC3000_TCP_BSDURGENT           0x7000
+
+#define  CC3000_MAX_PACKET_SIZE         1500
+#define  CC3000_MAX_LISTEN_QUEUE        4
+
+#define  CC3000_IOCTL_SOCKET_EVENTMASK
+
+#define CC3000_FD_SETSIZE             32
+
+#define  CC3000_ASIC_ADDR_LEN           8
+
+#define CC3000_NO_QUERY_RECIVED        -3
+
+/* It's easier to assume 8-bit bytes than to get CHAR_BIT. */
+
+#define __NFDBITS               (8 * sizeof (__fd_mask))
+#define __FDELT(d)              ((d) / __NFDBITS)
+#define __FDMASK(d)             ((__fd_mask) 1 << ((d) % __NFDBITS))
+
+#define __FDS_BITS(set)        ((set)->fds_bits)
+
+/* We don't use `memset' because this would require a prototype and
+ *   the array isn't too big.
+ */
+
+#define __FD_ZERO(set) \
+  do { \
+    unsigned int __i; \
+    TICC3000fd_set *__arr = (set); \
+    for (__i = 0; __i < sizeof (TICC3000fd_set) / sizeof (__fd_mask); ++__i) \
+      __FDS_BITS (__arr)[__i] = 0; \
+  } while (0)
+#define __FD_SET(d, set)       (__FDS_BITS (set)[__FDELT (d)] |= __FDMASK (d))
+#define __FD_CLR(d, set)       (__FDS_BITS (set)[__FDELT (d)] &= ~__FDMASK (d))
+#define __FD_ISSET(d, set)     (__FDS_BITS (set)[__FDELT (d)] & __FDMASK (d))
+
+/* Access macros for 'TICC3000fd_set' */
+
+#define CC3000_FD_SET(fd, fdsetp)      __FD_SET (fd, fdsetp)
+#define CC3000_FD_CLR(fd, fdsetp)      __FD_CLR (fd, fdsetp)
+#define CC3000_FD_ISSET(fd, fdsetp)    __FD_ISSET (fd, fdsetp)
+#define CC3000_FD_ZERO(fdsetp)         __FD_ZERO (fdsetp)
+
+
+/* mDNS port - 5353    mDNS multicast address - 224.0.0.251 */
+
+#define SET_mDNS_ADD(sockaddr)            sockaddr.sa_data[0] = 0x14; \
+                                          sockaddr.sa_data[1] = 0xe9; \
+                                          sockaddr.sa_data[2] = 0xe0; \
+                                          sockaddr.sa_data[3] = 0x0; \
+                                          sockaddr.sa_data[4] = 0x0; \
+                                          sockaddr.sa_data[5] = 0xfb;
 
 /*****************************************************************************
  * Public Types
  *****************************************************************************/
+
+/* The fd_set member is required to be an array of longs. */
+
+typedef long int __fd_mask;
+
+/* fd_set for select and pselect. */
+
+typedef struct
+{
+  __fd_mask fds_bits[CC3000_FD_SETSIZE / __NFDBITS];
+} TICC3000fd_set;
 
 /*****************************************************************************
  * Public Data
@@ -79,7 +177,7 @@ extern "C" {
  *****************************************************************************/
 
 /*****************************************************************************
- * Name: socket
+ * Name: cc3000_socket_impl
  *
  * Decription:
  *   create an endpoint for communication. The socket function creates a
@@ -101,26 +199,26 @@ extern "C" {
  *
  *****************************************************************************/
 
-int socket(int domain, int type, int protocol);
+int cc3000_socket_impl(long domain, long type, long protocol);
 
 /*****************************************************************************
- * Name: closesocket
+ * Name: cc3000_closesocket_impl
  *
  * Decription:
  *   The socket function closes a created socket.
  *
  * Input Parameters:
- *   sockfd    socket handle.
+ *   sd    socket handle.
  *
  * Returned Value:
  *   On success, zero is returned. On error, -1 is returned.
  *
  *****************************************************************************/
 
-int closesocket(int sockfd);
+long cc3000_closesocket_impl(long sd);
 
 /*****************************************************************************
- * Name: accept
+ * Name: cc3000_accept_impl
  *
  * Decription:
  *   accept a connection on a socket:
@@ -142,7 +240,7 @@ int closesocket(int sockfd);
  *   length (in bytes) of the address returned.
  *
  * Input Parameters:
- *   sockfd  socket descriptor (handle)
+ *   sd      socket descriptor (handle)
  *   addr    the argument addr is a pointer to a sockaddr structure
  *           This structure is filled in with the address of the
  *           peer socket, as known to the communications layer.
@@ -164,10 +262,10 @@ int closesocket(int sockfd);
  *
  *****************************************************************************/
 
-int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
+long cc3000_accept_impl(long sd, struct sockaddr *addr, socklen_t *addrlen);
 
 /*****************************************************************************
- * Name: bind
+ * Name: cc3000_bind_impl
  *
  * Decription:
  *   assign a name to a socket
@@ -179,7 +277,7 @@ int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
  *   socket may receive connections.
  *
  * Input Parameters:
- *   sockfd  socket descriptor (handle)
+ *   sd      socket descriptor (handle)
  *   addr    specifies the destination address. On this version
  *    only AF_INET is supported.
  *   addrlen  contains the size of the structure pointed to by addr.
@@ -189,10 +287,10 @@ int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
  *
  *****************************************************************************/
 
-int bind(int sockfd, FAR const struct sockaddr *addr, socklen_t addrlen);
+long cc3000_bind_impl(long sd, FAR const struct sockaddr *addr, socklen_t addrlen);
 
 /*****************************************************************************
- * Name: listen
+ * Name: cc3000_listen_impl
  *
  * Decription:
  *   listen for connections on a socket
@@ -206,19 +304,19 @@ int bind(int sockfd, FAR const struct sockaddr *addr, socklen_t addrlen);
  * NOTE: On this version, backlog is not supported
  *
  * Input Parameters:
- *   sockfd   socket descriptor (handle)
+ *   sd  socket descriptor (handle)
  *   backlog  specifies the listen queue depth. On this version
- *            backlog is not supported.
+ *    backlog is not supported.
  *
  * Returned Value:
  *   On success, zero is returned. On error, -1 is returned.
  *
  *****************************************************************************/
 
-int listen(int sockfd, int backlog);
+long cc3000_listen_impl(long sd, long backlog);
 
 /*****************************************************************************
- * Name: connect
+ * Name: cc3000_connect_impl
  *
  * Decription:
  *   initiate a connection on a socket
@@ -237,7 +335,7 @@ int listen(int sockfd, int backlog);
  *   establishment or for the connection establishment failure.
  *
  * Input Parameters:
- *   sockfd   socket descriptor (handle)
+ *   sd       socket descriptor (handle)
  *   addr     specifies the destination addr. On this version
  *     only AF_INET is supported.
  *   addrlen  contains the size of the structure pointed to by addr
@@ -247,10 +345,10 @@ int listen(int sockfd, int backlog);
  *
  *****************************************************************************/
 
-int connect(int sockfd, FAR const struct sockaddr *addr, socklen_t addrlen);
+long cc3000_connect_impl(long sd, FAR const struct sockaddr *addr, socklen_t addrlen);
 
 /*****************************************************************************
- * Name: select
+ * Name: cc3000_select_impl
  *
  * Decription:
  *   Monitor socket activity
@@ -288,12 +386,15 @@ int connect(int sockfd, FAR const struct sockaddr *addr, socklen_t addrlen);
  *
  *****************************************************************************/
 
-int select(int nfds, fd_set *readfds, fd_set *writefds,fd_set *exceptfds,
+int cc3000_select_impl(long nfds, TICC3000fd_set *readfds, TICC3000fd_set *writefds,TICC3000fd_set *exceptfds,
            struct timeval *timeout);
+
+int cc3000_select(int nfds, fd_set *readfds, fd_set *writefds,fd_set *exceptfds, struct timeval *timeout);
+
 
 #ifndef CC3000_TINY_DRIVER
 /*****************************************************************************
- * Name: setsockopt
+ * Name: cc3000_setsockopt_impl
  *
  * Decription:
  *   set socket options
@@ -308,10 +409,10 @@ int select(int nfds, fd_set *readfds, fd_set *writefds,fd_set *exceptfds,
  *   supplied. For example, to indicate that an option is to be
  *   interpreted by the TCP protocol, level should be set to the
  *   protocol number of TCP;
- *   The parameters value and value_len are used to access value -
+ *   The parameters optval and optlen are used to access optval -
  *   use for setsockopt(). For getsockopt() they identify a buffer
  *   in which the value for the requested option(s) are to
- *   be returned. For getsockopt(), value_len is a value-result
+ *   be returned. For getsockopt(), optlen is a value-result
  *   parameter, initially containing the size of the buffer
  *   pointed to by option_value, and modified on return to
  *   indicate the actual size of the value returned. If no option
@@ -320,31 +421,31 @@ int select(int nfds, fd_set *readfds, fd_set *writefds,fd_set *exceptfds,
  * NOTE: On this version the following two socket options are enabled:
  *    The only protocol level supported in this version
  *   is SOL_SOCKET (level).
- *    1. SOCKOPT_RECV_TIMEOUT (option)
+ *    1. SOCKOPT_RECV_TIMEOUT (optname)
  *     SOCKOPT_RECV_TIMEOUT configures recv and recvfrom timeout
  *    in milliseconds.
- *     In that case value should be pointer to unsigned long.
- *    2. SOCKOPT_NONBLOCK (option). sets the socket non-blocking mode on
+ *     In that case optval should be pointer to unsigned long.
+ *    2. SOCKOPT_NONBLOCK (optname). sets the socket non-blocking mode on
  *    or off.
- *     In that case value should be SOCK_ON or SOCK_OFF (value).
+ *     In that case optval should be SOCK_ON or SOCK_OFF (optval).
  *
  * Input Parameters:
- *   sockfd      socket handle
+ *   sd          socket handle
  *   level       defines the protocol level for this option
- *   option      defines the option name to Interrogate
- *   value       specifies a value for the option
- *   value_len   specifies the length of the option value
+ *   optname     defines the option name to Interrogate
+ *   optval      specifies a value for the option
+ *   optlen      specifies the length of the option value
  *
  * Returned Value:
  *   On success, zero is returned. On error, -1 is returned
  *
  *****************************************************************************/
 
-int setsockopt(int sockfd, int level, int option, FAR const void *value, socklen_t value_len);
+int cc3000_setsockopt_impl(long sd, long level, long optname, const void *optval, socklen_t optlen);
 #endif
 
 /*****************************************************************************
- * Name: getsockopt
+ * Name: cc3000_getsockopt_impl
  *
  * Decription:
  *   set socket options
@@ -359,42 +460,43 @@ int setsockopt(int sockfd, int level, int option, FAR const void *value, socklen
  *   supplied. For example, to indicate that an option is to be
  *   interpreted by the TCP protocol, level should be set to the
  *   protocol number of TCP;
- *   The parameters value and value_len are used to access value -
+ *   The parameters optval and optlen are used to access optval -
  *   use for setsockopt(). For getsockopt() they identify a buffer
  *   in which the value for the requested option(s) are to
- *   be returned. For getsockopt(), value_len is a value-result
+ *   be returned. For getsockopt(), optlen is a value-result
  *   parameter, initially containing the size of the buffer
  *   pointed to by option_value, and modified on return to
  *   indicate the actual size of the value returned. If no option
  *   value is to be supplied or returned, option_value may be NULL.
  *
  * NOTE: On this version the following two socket options are enabled:
- *   The only protocol level supported in this version
+ *    The only protocol level supported in this version
  *   is SOL_SOCKET (level).
- *
- *    1. SOCKOPT_RECV_TIMEOUT (option)
- *       SOCKOPT_RECV_TIMEOUT configures recv and recvfrom timeout
- *       in milliseconds. In that case value should be pointer to unsigned
- *       long.
- *    2. SOCKOPT_NONBLOCK (option). sets the socket non-blocking mode on
- *       or off. In that case value should be SOCK_ON or SOCK_OFF (value).
+ *    1. SOCKOPT_RECV_TIMEOUT (optname)
+ *     SOCKOPT_RECV_TIMEOUT configures recv and recvfrom timeout
+ *    in milliseconds.
+ *     In that case optval should be pointer to unsigned long.
+ *    2. SOCKOPT_NONBLOCK (optname). sets the socket non-blocking mode on
+ *    or off.
+ *     In that case optval should be SOCK_ON or SOCK_OFF (optval).
  *
  * Input Parameters:
- *   sockfd      socket handle
+ *   sd          socket handle
  *   level       defines the protocol level for this option
- *   option      defines the option name to Interrogate
- *   value       specifies a value for the option
- *   value_len   specifies the length of the option value
+ *   optname     defines the option name to Interrogate
+ *   optval      specifies a value for the option
+ *   optlen      specifies the length of the option value
  *
  * Returned Value:
  *   On success, zero is returned. On error, -1 is returned
  *
  *****************************************************************************/
 
-int getsockopt(int sockfd, int level, int option, FAR void *value, FAR socklen_t *value_len);
+int cc3000_getsockopt_impl(long sd, long level, long optname, void *optval, socklen_t *optlen);
+
 
 /*****************************************************************************
- * Name: recv
+ * Name: cc3000_recv_impl
  *
  * Decription:
  *     function receives a message from a connection-mode socket
@@ -402,7 +504,7 @@ int getsockopt(int sockfd, int level, int option, FAR void *value, FAR socklen_t
  * NOTE: On this version, only blocking mode is supported.
  *
  * Input Parameters:
- *   sockfd socket handle
+ *   sd socket handle
  *   buf    Points to the buffer where the message should be stored
  *   len    Specifies the length in bytes of the buffer pointed to
  *     by the buffer argument.
@@ -415,10 +517,10 @@ int getsockopt(int sockfd, int level, int option, FAR void *value, FAR socklen_t
  *
  *****************************************************************************/
 
-ssize_t recv(int sockfd, FAR void *buf, size_t len, int flags);
+int cc3000_recv_impl(long sd, void *buf, long len, long flags);
 
 /*****************************************************************************
- * Name: recvfrom
+ * Name: cc3000_recvfrom_impl
  *
  * Decription:
  *    read data from socket
@@ -429,7 +531,7 @@ ssize_t recv(int sockfd, FAR void *buf, size_t len, int flags);
  * NOTE: On this version, only blocking mode is supported.
  *
  * Input Parameters:
- *   sockfd socket handle
+ *   sd socket handle
  *   buf    Points to the buffer where the message should be stored
  *   len    Specifies the length in bytes of the buffer pointed to
  *     by the buffer argument.
@@ -446,11 +548,11 @@ ssize_t recv(int sockfd, FAR void *buf, size_t len, int flags);
  *
  *****************************************************************************/
 
-ssize_t recvfrom(int sockfd, FAR void *buf, size_t len, int flags,
-                        FAR struct sockaddr *from, FAR socklen_t *fromlen);
+int cc3000_recvfrom_impl(long sd, void *buf, long len, long flags,
+                             struct sockaddr *from, socklen_t *fromlen);
 
 /*****************************************************************************
- * Name: send
+ * Name: cc3000_send_impl
  *
  * Decription:
  *     Write data to TCP socket
@@ -460,7 +562,7 @@ ssize_t recvfrom(int sockfd, FAR void *buf, size_t len, int flags,
  * NOTE: On this version, only blocking mode is supported.
  *
  * Input Parameters:
- *   sockfd   socket handle
+ *   sd   socket handle
  *   buf      Points to a buffer containing the message to be sent
  *   len      message size in bytes
  *   flags    On this version, this parameter is not supported
@@ -471,10 +573,10 @@ ssize_t recvfrom(int sockfd, FAR void *buf, size_t len, int flags,
  *
  *****************************************************************************/
 
-ssize_t send(int sockfd, FAR const void *buf, size_t len, int flags);
+int cc3000_send_impl(long sd, const void *buf, long len, long flags);
 
 /*****************************************************************************
- * Name: sendto
+ * Name: cc3000_sendto_impl
  *
  * Decription:
  *     Write data to TCP socket
@@ -484,7 +586,7 @@ ssize_t send(int sockfd, FAR const void *buf, size_t len, int flags);
  * NOTE: On this version, only blocking mode is supported.
  *
  * Input Parameters:
- *   sockfd   socket handle
+ *   sd   socket handle
  *   buf      Points to a buffer containing the message to be sent
  *   len      message size in bytes
  *   flags    On this version, this parameter is not supported
@@ -499,12 +601,12 @@ ssize_t send(int sockfd, FAR const void *buf, size_t len, int flags);
  *
  *****************************************************************************/
 
-ssize_t sendto(int sockfd, FAR const void *buf, size_t len, int flags,
+int cc3000_sendto_impl(long sd, FAR const void *buf, long len, long flags,
                       FAR const struct sockaddr *to, socklen_t tolen);
 
 #ifndef CC3000_TINY_DRIVER
 /*****************************************************************************
- * Name: gethostbyname
+ * Name: cc3000_gethostbyname_impl
  *
  * Decription:
  *   Get host IP by name. Obtain the IP Address of machine on network,
@@ -526,11 +628,12 @@ ssize_t sendto(int sockfd, FAR const void *buf, size_t len, int flags,
  *
  *****************************************************************************/
 
-int gethostbyname(char * hostname, uint16_t usNameLen, unsigned long* out_ip_addr);
+//struct hostent *gethostbyname(const char *name);
+int cc3000_gethostbyname_impl(char * hostname, uint16_t usNameLen, unsigned long* out_ip_addr);
 #endif
 
 /*****************************************************************************
- * Name: mdnsAdvertiser
+ * Name: cc3000_mdnsAdvertiser_impl
  *
  * Decription:
  *     Set CC3000 in mDNS advertiser mode in order to advertise itself.
@@ -547,11 +650,11 @@ int gethostbyname(char * hostname, uint16_t usNameLen, unsigned long* out_ip_add
  *
  *****************************************************************************/
 
-int mdnsadvertiser(uint16_t mdnsEnabled, char *deviceServiceName,
+int cc3000_mdnsadvertiser_impl(uint16_t mdnsEnabled, char * deviceServiceName,
                    uint16_t deviceServiceNameLength);
 
 #ifdef  __cplusplus
 }
 #endif // __cplusplus
 
-#endif // __INCLUDE_NUTTX_WIRELESS_CC3000_INCLUDE_SYS_SOCKET_H
+#endif // __DRIVERS_WIRELESS_CC3000_SOCKET_H

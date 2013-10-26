@@ -50,6 +50,8 @@
 #include <nuttx/config.h>
 
 #include <sys/types.h>
+#include <sys/ioctl.h>
+
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -85,7 +87,7 @@
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
-/* Count the number of channels in use */ 
+/* Count the number of channels in use */
 
 #define SAMA5_CHAN0_INUSE    0
 #define SAMA5_CHAN1_INUSE    0
@@ -218,7 +220,7 @@
  * is a gain setting for each enabled channel.
  *
  * Valid gain settings are {0, 1, 2, 3} which may be interpreted as
- * either {1, 1, 2, 4} if the DIFFx bit in COR register is zero or as 
+ * either {1, 1, 2, 4} if the DIFFx bit in COR register is zero or as
  * {0.5, 1, 2, 2} if the DIFFx bit is set.
  */
 
@@ -482,11 +484,7 @@ static struct sam_adc_s g_adcpriv;
 #ifdef SAMA5_ADC_HAVE_CHANNELS
 /* ADC device instance */
 
-static struct adc_dev_s g_adcdev =
-{
-  .ad_ops      = &g_adcops,
-  .ad_priv     = &g_adcpriv,
-};
+static struct adc_dev_s g_adcdev;
 #endif
 
 /****************************************************************************
@@ -577,7 +575,7 @@ static bool sam_adc_checkreg(struct sam_adc_s *priv, bool wr,
  *
  * Input Parameters
  *   arg - The ADC private data structure cast to (void *)
- * 
+ *
  * Returned Value:
  *   None
  *
@@ -592,6 +590,7 @@ static void sam_adc_dmadone(void *arg)
   int chan;
   int i;
 
+  avdbg("ready=%d enabled=%d\n", priv->enabled, priv->ready);
   ASSERT(priv != NULL && !priv->ready);
 
   /* If the DMA is disabled, just ignore the data */
@@ -646,6 +645,8 @@ static void sam_adc_dmacallback(DMA_HANDLE handle, void *arg, int result)
   struct sam_adc_s *priv = (struct sam_adc_s *)arg;
   int ret;
 
+  allvdbg("ready=%d enabled=%d\n", priv->enabled, priv->ready);
+
   /* Check of the bottom half is keeping up with us */
 
   if (priv->ready && priv->enabled)
@@ -672,7 +673,7 @@ static void sam_adc_dmacallback(DMA_HANDLE handle, void *arg, int result)
 
   sam_adc_dmasetup(priv->dma,
                    priv->odd ? (void *)priv->oddbuf : (void *)priv->evenbuf,
-                   SAMA5_NCHANNELS);
+                   SAMA5_NCHANNELS * sizeof(uint32_t));
 }
 #endif
 
@@ -702,6 +703,7 @@ static int sam_adc_dmasetup(FAR struct sam_adc_s *priv, FAR uint8_t *buffer,
   uint32_t paddr;
   uint32_t maddr;
 
+  avdbg("buffer=%p buflen=%d\n", buffer, (int)buflen);
   DEBUGASSERT(priv != NULL && buffer != NULL && buflen > 0);
   DEBUGASSERT(((uint32_t)buffer & 3) == 0);
 
@@ -732,13 +734,13 @@ static int sam_adc_dmasetup(FAR struct sam_adc_s *priv, FAR uint8_t *buffer,
  * Description:
  *   This function executes on the worker thread.  It is scheduled by
  *   sam_adc_interrupt whenever any enabled end-of-conversion event occurs.
- *   All EOC interrupts are disabled when this function runs. 
+ *   All EOC interrupts are disabled when this function runs.
  *   sam_adc_endconversion will re-enable EOC interrupts when it completes
  *   processing all pending EOC events.
  *
  * Input Parameters
  *   arg - The ADC private data structure cast to (void *)
- * 
+ *
  * Returned Value:
  *   None
  *
@@ -752,6 +754,7 @@ static void sam_adc_endconversion(void *arg)
   int chan;
 
   ASSERT(priv != NULL);
+  avdbg("pending=%08x\n", priv->pending);
 
   /* Get the set of unmasked, pending ADC interrupts */
 
@@ -881,13 +884,20 @@ static void sam_adc_reset(struct adc_dev_s *dev)
   struct sam_adc_s *priv = (struct sam_adc_s *)dev->ad_priv;
   uint32_t regval;
 
+  avdbg("Resetting..\n");
+
   /* NOTE: We can't really reset the ADC hardware without losing the
    * touchscreen configuration.
    */
 
-  /* Stop any DMA */
+  /* Stop any ongoing DMA */
 
-  sam_dmastop(priv->dma);
+#ifdef CONFIG_SAMA5_ADC_DMA
+  if (priv->dma)
+    {
+      sam_dmastop(priv->dma);
+    }
+#endif
 
   /* Stop an release any timer */
 
@@ -944,6 +954,8 @@ static int sam_adc_setup(struct adc_dev_s *dev)
   struct sam_adc_s *priv = (struct sam_adc_s *)dev->ad_priv;
   uint32_t regval;
 
+  avdbg("Setup\n");
+
   /* Enable channel number tag.  This bit will force the channel number (CHNB)
    * to be included in the LDCR register content.
    */
@@ -985,7 +997,7 @@ static int sam_adc_setup(struct adc_dev_s *dev)
   priv->ready   = true;
   priv->enabled = false;
 
-  sam_adc_dmasetup(priv->dma, (void *)priv->evenbuf, SAMA5_NCHANNELS);
+  sam_adc_dmasetup(priv, (void *)priv->evenbuf, SAMA5_NCHANNELS);
 #else
   /* Enable end-of-conversion interrupts for all enabled channels. */
 
@@ -1010,6 +1022,8 @@ static void sam_adc_shutdown(struct adc_dev_s *dev)
 {
   struct sam_adc_s *priv = (struct sam_adc_s *)dev->ad_priv;
 
+  avdbg("Shutdown\n");
+
   /* Disable ADC interrupts, both at the level of the ADC device and at the
    * level of the AIC.
    */
@@ -1033,6 +1047,8 @@ static void sam_adc_shutdown(struct adc_dev_s *dev)
 static void sam_adc_rxint(struct adc_dev_s *dev, bool enable)
 {
   struct sam_adc_s *priv = (struct sam_adc_s *)dev->ad_priv;
+
+  avdbg("enable=%d\n", enable);
 
 #ifdef CONFIG_SAMA5_ADC_DMA
   /* We don't stop the DMA when RX is disabled, we just stop the data transfer */
@@ -1067,16 +1083,31 @@ static void sam_adc_rxint(struct adc_dev_s *dev, bool enable)
 
 static int sam_adc_ioctl(struct adc_dev_s *dev, int cmd, unsigned long arg)
 {
-  /* No ioctl commands supported:
-   *
-   * REVISIT:  Need to implement a ioctl to support software triggering
-   */
-
 #ifdef CONFIG_SAMA5_ADC_SWTRIG
-#  error Need an ioctl to perform software triggering
+  struct sam_adc_s *priv = (struct sam_adc_s *)dev->ad_priv;
+#endif
+  int ret = OK;
+
+  avdbg("cmd=%d arg=%ld\n", cmd, arg);
+
+  switch (cmd)
+    {
+#ifdef CONFIG_SAMA5_ADC_SWTRIG
+      case ANIOC_TRIGGER: /* Software trigger */
+        {
+          sam_adc_putreg(priv, SAM_ADC_CR, ADC_CR_START); /* Start conversion */
+        }
+        break;
 #endif
 
-  return -ENOTTY;
+      /* Unsupported or invalid command */
+
+      default:
+        ret = -ENOTTY;
+        break;
+    }
+
+  return ret;
 }
 
 /****************************************************************************
@@ -1099,6 +1130,8 @@ static int sam_adc_settimer(struct sam_adc_s *priv, uint32_t frequency,
   uint32_t tcclks;
   uint32_t mode;
   int ret;
+
+  avdbg("frequency=%ld channel=%d\n", (long)frequency, channel);
 
   /* Configure TC for a 1Hz frequency and trigger on RC compare. */
 
@@ -1127,7 +1160,7 @@ static int sam_adc_settimer(struct sam_adc_s *priv, uint32_t frequency,
       adbg("ERROR: Failed to allocate channel %d mode %08x\n", channel, mode);
       return -EINVAL;
     }
- 
+
   /* Set up TC_RA and TC_RC */
 
   sam_tc_setregister(priv->tc, TC_REGA, div / 2);
@@ -1152,6 +1185,8 @@ static int sam_adc_settimer(struct sam_adc_s *priv, uint32_t frequency,
 static void sam_adc_freetimer(struct sam_adc_s *priv)
 {
   /* Is a timer allocated? */
+
+  avdbg("tc=%p\n", priv->tc);
 
   if (priv->tc)
     {
@@ -1178,6 +1213,8 @@ static int sam_adc_trigger(struct sam_adc_s *priv)
   int ret = OK;
 
 #if defined(CONFIG_SAMA5_ADC_SWTRIG)
+  avdbg("Setup software trigger\n");
+
   /* Configure the software trigger */
 
   regval  = sam_adc_getreg(priv, SAM_ADC_MR);
@@ -1192,6 +1229,8 @@ static int sam_adc_trigger(struct sam_adc_s *priv)
   sam_adc_putreg(priv, SAM_ADC_TRGR, regval);
 
 #elif defined(CONFIG_SAMA5_ADC_ADTRG)
+  avdbg("Setup ADTRG trigger\n");
+
   /* Configure the trigger via the external ADTRG signal */
 
   regval  = sam_adc_getreg(priv, SAM_ADC_MR);
@@ -1217,6 +1256,8 @@ static int sam_adc_trigger(struct sam_adc_s *priv)
   sam_adc_putreg(priv, SAM_ADC_TRGR, regval);
 
 #elif defined(CONFIG_SAMA5_ADC_TIOATRIG)
+  avdbg("Setup timer/counter trigger\n");
+
   /* Start the timer */
 
 #if defined(CONFIG_SAMA5_ADC_TIOA0TRIG)
@@ -1295,6 +1336,8 @@ static void sam_adc_autocalibrate(struct sam_adc_s *priv)
 #ifdef CONFIG_SAMA5_ADC_AUTOCALIB
   uint32_t regval;
 
+  avdbg("Entry\n");
+
   /* Launch an automatic calibration of the ADC cell on next sequence */
 
   regval = sam_adc_getreg(priv, SAM_ADC_CR);
@@ -1319,6 +1362,8 @@ static void sam_adc_autocalibrate(struct sam_adc_s *priv)
 static void sam_adc_offset(struct sam_adc_s *priv)
 {
   uint32_t regval = 0;
+
+  avdbg("Entry\n");
 
 #ifdef CONFIG_SAMA5_ADC_ANARCH
   /* Set the offset for each enabled channel.  This centers the analog signal
@@ -1432,9 +1477,11 @@ static void sam_adc_offset(struct sam_adc_s *priv)
 
 static void sam_adc_gain(struct sam_adc_s *priv)
 {
+#ifdef CONFIG_SAMA5_ADC_ANARCH
   uint32_t regval;
 
-#ifdef CONFIG_SAMA5_ADC_ANARCH
+  avdbg("Entry\n");
+
   /* Set the gain for each enabled channel */
 
   regval = 0;
@@ -1479,6 +1526,8 @@ static void sam_adc_gain(struct sam_adc_s *priv)
   sam_adc_putreg(priv, SAM_ADC_CGR, regval);
 
 #else
+  avdbg("Gain=%d\n", CONFIG_SAMA5_ADC_GAIN);
+
   /* Set GAIN0 only.  GAIN0 will be used for all channels. */
 
   sam_adc_putreg(priv, SAM_ADC_CGR, ADC_CGR_GAIN0(CONFIG_SAMA5_ADC_GAIN));
@@ -1498,9 +1547,11 @@ static void sam_adc_analogchange(struct sam_adc_s *priv)
 {
   uint32_t regval;
 
+  avdbg("Entry\n");
+
   /* Enable/disable the analog change feature */
 
-  regval  = sam_adc_getreg(priv, SAM_ADC_MR);
+  regval = sam_adc_getreg(priv, SAM_ADC_MR);
 
 #ifdef CONFIG_SAMA5_ADC_ANARCH
   /* Disable analog change: No analog change on channel switching: DIFF0,
@@ -1538,6 +1589,8 @@ static void sam_adc_setseqr(int chan, uint32_t *seqr1, uint32_t *seqr2, int seq)
     {
       *seqr1 |= ADC_SEQR1_USCH(seq, chan);
     }
+
+  avdbg("chan=%d seqr1=%08x seqr2=%08x seq=%d\n", chan, *seqr1, *seqr2, seq);
 }
 #endif
 
@@ -1549,11 +1602,13 @@ static void sam_adc_sequencer(struct sam_adc_s *priv)
   uint32_t seqr2;
   int seq;
 
+  avdbg("Setup sequencer\n");
+
   /* Set user configured channel sequence */
 
-  seqr1  = 0;
-  seqr2  = 0;
-  seq    = 0;
+  seqr1 = 0;
+  seqr2 = 0;
+  seq   = 1;
 
 #ifdef CONFIG_SAMA5_ADC_CHAN0
   sam_adc_setseqr(0, &seqr1, &seqr2, seq++);
@@ -1636,6 +1691,8 @@ static void sam_adc_sequencer(struct sam_adc_s *priv)
 #else
   uint32_t regval;
 
+  avdbg("Disable sequencer\n");
+
   /* Disable the sequencer */
 
   regval  = sam_adc_getreg(priv, SAM_ADC_MR);
@@ -1657,11 +1714,7 @@ static void sam_adc_channels(struct sam_adc_s *priv)
 {
   uint32_t regval;
 
-  /* Disable the sequencer */
-
-  regval  = sam_adc_getreg(priv, SAM_ADC_MR);
-  regval &= ~ADC_MR_USEQ;
-  sam_adc_putreg(priv, SAM_ADC_MR, regval);
+  avdbg("Entry\n");
 
   /* Enable channels. */
 
@@ -1724,7 +1777,7 @@ static void sam_adc_channels(struct sam_adc_s *priv)
  ****************************************************************************/
 
 /****************************************************************************
- * Name: sam_adcinitialize
+ * Name: sam_adc_initialize
  *
  * Description:
  *   Initialize the adc
@@ -1734,7 +1787,7 @@ static void sam_adc_channels(struct sam_adc_s *priv)
  *
  ****************************************************************************/
 
-struct sam_adc_s *sam_adc_initialize(void)
+struct adc_dev_s *sam_adc_initialize(void)
 {
   struct sam_adc_s *priv = &g_adcpriv;
   uint32_t regval;
@@ -1746,6 +1799,8 @@ struct sam_adc_s *sam_adc_initialize(void)
 
   if (!priv->initialized)
     {
+      avdbg("Initializing...\n");
+
       /* Disable ADC peripheral clock */
 
       sam_adc_disableclk();
@@ -1793,7 +1848,12 @@ struct sam_adc_s *sam_adc_initialize(void)
       sam_configpio(PIO_ADC_TRG);
 #endif
 
-      /* Initialize the ADC device data structure */
+      /* Initialize the public ADC device data structure */
+
+      g_adcdev.ad_ops  = &g_adcops;
+      g_adcdev.ad_priv = priv;
+
+      /* Initialize the private ADC device data structure */
 
       sem_init(&priv->exclsem,  0, 1);
       priv->dev = &g_adcdev;
@@ -1872,7 +1932,8 @@ struct sam_adc_s *sam_adc_initialize(void)
 
   /* Return a pointer to the device structure */
 
-  return priv;
+  avdbg("Returning %p\n", &g_adcdev);
+  return &g_adcdev;
 }
 
 /****************************************************************************
@@ -1886,6 +1947,8 @@ struct sam_adc_s *sam_adc_initialize(void)
 void sam_adc_lock(FAR struct sam_adc_s *priv)
 {
   int ret;
+
+  avdbg("Locking\n");
 
   do
     {
@@ -1910,6 +1973,7 @@ void sam_adc_lock(FAR struct sam_adc_s *priv)
 
 void sam_adc_unlock(FAR struct sam_adc_s *priv)
 {
+  avdbg("Unlocking\n");
   sem_post(&priv->exclsem);
 }
 

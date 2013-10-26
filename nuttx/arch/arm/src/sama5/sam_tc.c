@@ -56,6 +56,7 @@
 #include <semaphore.h>
 #include <assert.h>
 #include <errno.h>
+#include <debug.h>
 
 #include <arch/board/board.h>
 
@@ -90,6 +91,26 @@
 #  error Cannot realize TC input frequency
 #endif
 
+/* Timer debug is enabled if any timer client is enabled */
+
+#ifndef CONFIG_DEBUG
+#  undef CONFIG_DEBUG_ANALOG
+#  undef CONFIG_SAMA5_TC_REGDEBUG
+#endif
+
+#undef DEBUG_TC
+#if defined(CONFIG_SAMA5_ADC) && defined(CONFIG_DEBUG_ANALOG)
+#  define DEBUG_TC 1
+#endif
+
+#ifdef DEBUG_TC
+#  define tcdbg    dbg
+#  define tcvdbg   vdbg
+#else
+#  define tcdbg(x...)
+#  define tcvdbg(x...)
+#endif
+
 /****************************************************************************
  * Private Types
  ****************************************************************************/
@@ -110,6 +131,7 @@ struct sam_tcconfig_s
   uintptr_t base;          /* TC register base address */
   uint8_t pid;             /* Peripheral ID */
   uint8_t chfirst;         /* First channel number */
+  uint8_t tc;              /* Timer/counter number */
 
   /* Channels */
 
@@ -142,10 +164,10 @@ struct sam_tc_s
 
   /* Debug stuff */
 
-#ifdef CONFIG_SAMA5_HSMCI_REGDEBUG
-   bool wrlast;            /* Last was a write */
-   uint32_t addrlast;      /* Last address */
-   uint32_t vallast;       /* Last value */
+#ifdef CONFIG_SAMA5_TC_REGDEBUG
+   bool wr;                /* True:Last was a write */
+   uint32_t regaddr;       /* Last address */
+   uint32_t regval;        /* Last value */
    int ntimes;             /* Number of times */
 #endif
 };
@@ -159,22 +181,22 @@ struct sam_tc_s
 static void sam_takesem(struct sam_tc_s *tc);
 #define     sam_givesem(tc) (sem_post(&tc->exclsem))
 
-#ifdef CONFIG_SAMA5_HSMCI_REGDEBUG
-static bool sam_checkreg(struct sam_tc_s *tc, bool wr,
-                         uint32_t value, uint32_t regaddr, uint32_t regval);
+#ifdef CONFIG_SAMA5_TC_REGDEBUG
+static bool sam_checkreg(struct sam_tc_s *tc, bool wr, uint32_t regaddr,
+                         uint32_t regval);
 #else
-# define    sam_checkreg(tc,wr,value,regaddr) (false)
+# define    sam_checkreg(tc,wr,regaddr,regval) (false)
 #endif
 
 static inline uint32_t sam_tc_getreg(struct sam_chan_s *chan,
                                      unsigned int offset);
 static inline void sam_tc_putreg(struct sam_chan_s *chan,
-                                 unsigned int offset, uint32_t value);
+                                 unsigned int offset, uint32_t regval);
 
 static inline uint32_t sam_chan_getreg(struct sam_chan_s *chan,
                                        unsigned int offset);
 static inline void sam_chan_putreg(struct sam_chan_s *chan,
-                                   unsigned int offset, uint32_t value);
+                                   unsigned int offset, uint32_t regval);
 
 /* Initialization ***********************************************************/
 
@@ -191,6 +213,7 @@ static const struct sam_tcconfig_s g_tc012config =
   .base    = SAM_TC012_VBASE,
   .pid     = SAM_PID_TC0,
   .chfirst = 0,
+  .tc      = 0,
   .channel =
   {
     {
@@ -257,6 +280,7 @@ static const struct sam_tcconfig_s g_tc345config =
   .base    = SAM_TC345_VBASE,
   .pid     = SAM_PID_TC1,
   .chfirst = 3,
+  .tc      = 1,
   .channel =
   {
     {
@@ -406,8 +430,10 @@ static void sam_takesem(struct sam_tc_s *tc)
  *   Check if the current register access is a duplicate of the preceding.
  *
  * Input Parameters:
- *   value   - The value to be written
- *   regaddr - The address of the register to write to
+ *   tc      - The timer/counter peripheral state
+ *   wr      - True:write access false:read access
+ *   regval  - The regiser value associated with the access
+ *   regaddr - The address of the register being accessed
  *
  * Returned Value:
  *   true:  This is the first register access of this type.
@@ -415,13 +441,13 @@ static void sam_takesem(struct sam_tc_s *tc)
  *
  ****************************************************************************/
 
-#ifdef CONFIG_SAMA5_HSMCI_REGDEBUG
+#ifdef CONFIG_SAMA5_TC_REGDEBUG
 static bool sam_checkreg(struct sam_tc_s *tc, bool wr, uint32_t regaddr,
-                         uint32_t value)
+                         uint32_t regval)
 {
-  if (wr      == tc->wrlast &&   /* Same kind of access? */
-      value   == tc->vallast &&  /* Same value? */
-      regaddr == tc->addrlast)   /* Same regaddr? */
+  if (wr      == tc->wr &&      /* Same kind of access? */
+      regaddr == tc->regaddr && /* Same register address? */
+      regval  == tc->regval)    /* Same register value? */
     {
       /* Yes, then just keep a count of the number of times we did this. */
 
@@ -441,10 +467,10 @@ static bool sam_checkreg(struct sam_tc_s *tc, bool wr, uint32_t regaddr,
 
       /* Save information about the new access */
 
-      tc->wrlast   = wr;
-      tc->vallast  = value;
-      tc->addrlast = regaddr;
-      tc->ntimes   = 0;
+      tc->wr      = wr;
+      tc->regval  = regval;
+      tc->regaddr = regaddr;
+      tc->ntimes  = 0;
     }
 
   /* Return true if this is the first time that we have done this operation */
@@ -468,8 +494,8 @@ static inline uint32_t sam_tc_getreg(struct sam_chan_s *chan,
   uint32_t regaddr    = tc->base + offset;
   uint32_t regval     = getreg32(regaddr);
 
-#ifdef CONFIG_SAMA5_HSMCI_REGDEBUG
-  if (sam_checkreg(tc, false, regval, regaddr))
+#ifdef CONFIG_SAMA5_TC_REGDEBUG
+  if (sam_checkreg(tc, false, regaddr, regval))
     {
       lldbg("%08x->%08x\n", regaddr, regval);
     }
@@ -492,8 +518,8 @@ static inline void sam_tc_putreg(struct sam_chan_s *chan, uint32_t regval,
   struct sam_tc_s *tc = chan->tc;
   uint32_t regaddr    = tc->base + offset;
 
-#ifdef CONFIG_SAMA5_HSMCI_REGDEBUG
-  if (sam_checkreg(tc, true, regval, regaddr))
+#ifdef CONFIG_SAMA5_TC_REGDEBUG
+  if (sam_checkreg(tc, true, regaddr, regval))
     {
       lldbg("%08x<-%08x\n", regaddr, regval);
     }
@@ -516,8 +542,8 @@ static inline uint32_t sam_chan_getreg(struct sam_chan_s *chan,
   uint32_t regaddr = chan->base + offset;
   uint32_t regval  = getreg32(regaddr);
 
-#ifdef CONFIG_SAMA5_HSMCI_REGDEBUG
-  if (sam_checkreg(chan->tc, false, regval, regaddr))
+#ifdef CONFIG_SAMA5_TC_REGDEBUG
+  if (sam_checkreg(chan->tc, false, regaddr, regval))
     {
       lldbg("%08x->%08x\n", regaddr, regval);
     }
@@ -539,8 +565,8 @@ static inline void sam_chan_putreg(struct sam_chan_s *chan, unsigned int offset,
 {
   uint32_t regaddr = chan->base + offset;
 
-#ifdef CONFIG_SAMA5_HSMCI_REGDEBUG
-  if (sam_checkreg(chan->tc, true, regval, regaddr))
+#ifdef CONFIG_SAMA5_TC_REGDEBUG
+  if (sam_checkreg(chan->tc, true, regaddr, regval))
     {
       lldbg("%08x<-%08x\n", regaddr, regval);
     }
@@ -586,7 +612,7 @@ static inline struct sam_chan_s *sam_tc_initialize(int channel)
   /* Select the timer/counter and get the index associated with the
    * channel.
    */
- 
+
 #ifdef CONFIG_SAMA5_TC0
   if (channel >= 0 && channel < 3)
     {
@@ -606,6 +632,7 @@ static inline struct sam_chan_s *sam_tc_initialize(int channel)
     {
       /* Timer/counter is not invalid or not enabled */
 
+      tcdbg("ERROR: Bad channel number: %d\n", channel);
       return NULL;
     }
 
@@ -627,11 +654,14 @@ static inline struct sam_chan_s *sam_tc_initialize(int channel)
 
       for (i = 0, ch = tcconfig->chfirst; i < SAM_TC_NCHANNELS; i++)
         {
+          tcdbg("Initializing TC%d channel %d\n", tcconfig->tc, ch);
+
           /* Initialize the channel data structure */
 
           chan       = &tc->channel[i];
           chconfig   = &tcconfig->channel[i];
 
+          chan->tc   = tc;
           chan->base = chconfig->base;
           chan->chan = ch++;
 
@@ -688,11 +718,16 @@ static inline struct sam_chan_s *sam_tc_initialize(int channel)
     {
       /* No.. return a failure */
 
+      tcdbg("Channel %d is in-used\n", channel);
       sam_givesem(tc);
       return NULL;
     }
 
-  /* OK.. return the channel with the semaphore locked */
+  /* Mark the channel "inuse" */
+
+  chan->inuse = true;
+
+  /* And return the channel with the semaphore locked */
 
   return chan;
 }
@@ -716,7 +751,7 @@ static inline struct sam_chan_s *sam_tc_initialize(int channel)
  *   On success, a non-NULL handle value is returned.  This handle may be
  *   used with subsequent timer/counter interfaces to manage the timer.  A
  *   NULL handle value is returned on a failure.
- *   
+ *
  ****************************************************************************/
 
 TC_HANDLE sam_tc_allocate(int channel, int mode)
@@ -726,6 +761,8 @@ TC_HANDLE sam_tc_allocate(int channel, int mode)
   /* Initialize the timer/counter data (if necessary) and get exclusive
    * access to the requested channel.
    */
+
+  tcvdbg("channel=%d mode=%08x\n", channel, mode);
 
   chan = sam_tc_initialize(channel);
   if (chan)
@@ -749,6 +786,7 @@ TC_HANDLE sam_tc_allocate(int channel, int mode)
 
   /* Return an opaque reference to the channel */
 
+  tcvdbg("Returning %p\n", chan);
   return (TC_HANDLE)chan;
 }
 
@@ -763,12 +801,14 @@ TC_HANDLE sam_tc_allocate(int channel, int mode)
  *
  * Returned Value:
  *   None
- *   
+ *
  ****************************************************************************/
 
 void sam_tc_free(TC_HANDLE handle)
 {
   struct sam_chan_s *chan = (struct sam_chan_s *)handle;
+
+  tcvdbg("Freeing %p channel=%d inuse=%d\n", chan, chan->chan, chan->inuse);
   DEBUGASSERT(chan && chan->inuse);
 
   /* Make sure that the channel is stopped */
@@ -776,7 +816,7 @@ void sam_tc_free(TC_HANDLE handle)
   sam_tc_stop(handle);
 
   /* Mark the channel as available */
- 
+
   chan->inuse = false;
 }
 
@@ -791,14 +831,16 @@ void sam_tc_free(TC_HANDLE handle)
  *   handle Channel handle previously allocated by sam_tc_allocate()
  *
  * Returned Value:
- *   
+ *
  ****************************************************************************/
 
 void sam_tc_start(TC_HANDLE handle)
 {
   struct sam_chan_s *chan = (struct sam_chan_s *)handle;
 
+  tcvdbg("Starting channel %d inuse=%d\n", chan->chan, chan->inuse);
   DEBUGASSERT(chan && chan->inuse);
+
   sam_chan_putreg(chan, SAM_TC_CCR_OFFSET, TC_CCR_CLKEN | TC_CCR_SWTRG);
 }
 
@@ -812,14 +854,16 @@ void sam_tc_start(TC_HANDLE handle)
  *   handle Channel handle previously allocated by sam_tc_allocate()
  *
  * Returned Value:
- *   
+ *
  ****************************************************************************/
 
 void sam_tc_stop(TC_HANDLE handle)
 {
   struct sam_chan_s *chan = (struct sam_chan_s *)handle;
 
+  tcvdbg("Stopping channel %d inuse=%d\n", chan->chan, chan->inuse);
   DEBUGASSERT(chan && chan->inuse);
+
   sam_chan_putreg(chan, SAM_TC_CCR_OFFSET, TC_CCR_CLKDIS);
 }
 
@@ -828,10 +872,9 @@ void sam_tc_stop(TC_HANDLE handle)
  *
  * Description:
  *    Set TC_RA, TC_RB, or TC_RB using the provided divisor.  The actual
- *    setting in the regsiter will be the TC input frequency divided by
+ *    setting in the register will be the TC input frequency divided by
  *    the provided divider (which should derive from the divider returned
  *    by sam_tc_divider).
- *    
  *
  * Input Parameters:
  *   handle Channel handle previously allocated by sam_tc_allocate()
@@ -844,9 +887,15 @@ void sam_tc_stop(TC_HANDLE handle)
 void sam_tc_setregister(TC_HANDLE handle, int reg, unsigned int div)
 {
   struct sam_chan_s *chan = (struct sam_chan_s *)handle;
+  uint32_t regval;
+
   DEBUGASSERT(reg < TC_NREGISTERS);
 
-  sam_chan_putreg(chan, g_regoffset[reg], TC_FREQUENCY / div);
+  regval = TC_FREQUENCY / div;
+  tcvdbg("Channel %d: Set register %d to %d / %d = %d\n",
+         chan->chan, reg, TC_FREQUENCY, div, (unsigned int)regval);
+
+  sam_chan_putreg(chan, g_regoffset[reg], regval);
 }
 
 /****************************************************************************
@@ -855,7 +904,6 @@ void sam_tc_setregister(TC_HANDLE handle, int reg, unsigned int div)
  * Description:
  *   Return the timer input frequency, that is, the MCK frequency divided
  *   down so that the timer/counter is driven within its maximum frequency.
- *   This value needed for 
  *
  * Input Parameters:
  *   None
@@ -899,6 +947,8 @@ int sam_tc_divisor(uint32_t frequency, uint32_t *div, uint32_t *tcclks)
 {
   int ndx = 0;
 
+  tcvdbg("frequency=%d\n", frequency);
+
   /* Satisfy lower bound */
 
   while (frequency < (g_divfreq[ndx] >> 16))
@@ -907,6 +957,7 @@ int sam_tc_divisor(uint32_t frequency, uint32_t *div, uint32_t *tcclks)
         {
           /* If no divisor can be found, return -ERANGE */
 
+          tcdbg("Lower bound search failed\n");
           return -ERANGE;
         }
     }
@@ -925,6 +976,7 @@ int sam_tc_divisor(uint32_t frequency, uint32_t *div, uint32_t *tcclks)
 
   if (div)
     {
+      tcvdbg("return div=%d\n", g_divider[ndx]);
       *div = g_divider[ndx];
     }
 
@@ -932,6 +984,7 @@ int sam_tc_divisor(uint32_t frequency, uint32_t *div, uint32_t *tcclks)
 
   if (tcclks)
     {
+      tcvdbg("return tcclks=%d\n", ndx);
       *tcclks = ndx;
     }
 

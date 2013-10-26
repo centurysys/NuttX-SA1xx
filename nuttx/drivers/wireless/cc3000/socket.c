@@ -36,158 +36,64 @@
  * Included Files
  *****************************************************************************/
 
+#include <sys/types.h>
+#include <sys/select.h>
+
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <errno.h>
 #include <debug.h>
 #include <stdlib.h>
-#include <nuttx/wireless/cc3000/hci.h>
+#include <pthread.h>
+
 #include <nuttx/wireless/cc3000/include/sys/socket.h>
-#include <nuttx/wireless/cc3000/evnt_handler.h>
-#include <nuttx/wireless/cc3000/netapp.h>
+
+#include "cc3000_socket.h"
+#include "cc3000.h"
 
 /*****************************************************************************
  * Pre-processor Definitions
  *****************************************************************************/
 
-/* Enable this flag if and only if you must comply with BSD socket close()
- * function
- */
-
-#ifdef _API_USE_BSD_CLOSE
-#  define close(sd) closesocket(sd)
+#ifndef ARRAY_SIZE
+#  define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 #endif
 
-/* Enable this flag if and only if you must comply with BSD socket read() and
- * write() functions
- */
+/****************************************************************************
+ * Private Types
+ ****************************************************************************/
 
-#ifdef _API_USE_BSD_READ_WRITE
-#  define read(sd, buf, len, flags) recv(sd, buf, len, flags)
-#  define write(sd, buf, len, flags) send(sd, buf, len, flags)
-#endif
+/****************************************************************************
+ * Private Function Prototypes
+ ****************************************************************************/
 
-#define SOCKET_OPEN_PARAMS_LEN             (12)
-#define SOCKET_CLOSE_PARAMS_LEN            (4)
-#define SOCKET_ACCEPT_PARAMS_LEN           (4)
-#define SOCKET_BIND_PARAMS_LEN             (20)
-#define SOCKET_LISTEN_PARAMS_LEN           (8)
-#define SOCKET_GET_HOST_BY_NAME_PARAMS_LEN (9)
-#define SOCKET_CONNECT_PARAMS_LEN          (20)
-#define SOCKET_SELECT_PARAMS_LEN           (44)
-#define SOCKET_SET_SOCK_OPT_PARAMS_LEN     (20)
-#define SOCKET_GET_SOCK_OPT_PARAMS_LEN     (12)
-#define SOCKET_RECV_FROM_PARAMS_LEN        (12)
-#define SOCKET_SENDTO_PARAMS_LEN           (24)
-#define SOCKET_MDNS_ADVERTISE_PARAMS_LEN   (12)
+/****************************************************************************
+ * Public Data
+ ****************************************************************************/
 
-/* The legnth of arguments for the SEND command: sd + buff_offset + len + flags,
- * while size of each parameter is 32 bit - so the total length is 16 bytes;
- */
+pthread_mutex_t g_cc3000_mut;
 
-#define HCI_CMND_SEND_ARG_LENGTH          (16)
+/****************************************************************************
+ * Private Data
+ ****************************************************************************/
 
-#define SELECT_TIMEOUT_MIN_MICRO_SECONDS  5000
-
-#define HEADERS_SIZE_DATA                 (SPI_HEADER_SIZE + 5)
-
-#define SIMPLE_LINK_HCI_CMND_TRANSPORT_HEADER_SIZE \
-  (SPI_HEADER_SIZE + SIMPLE_LINK_HCI_CMND_HEADER_SIZE)
-
-#define MDNS_DEVICE_SERVICE_MAX_LENGTH    (32)
-
-/*****************************************************************************
- * Public Functions
- *****************************************************************************/
-/*****************************************************************************
- * Name: HostFlowControlConsumeBuff
- *
- * Input Parameters:
- *   sd  socket descriptor
- *
- * Returned Value:
- *   0 in case there are buffers available,
- *   -1 in case of bad socket
- *   -2 if there are no free buffers present (only when
- *   SEND_NON_BLOCKING is enabled)
- *
- * Decription:
- *   if SEND_NON_BLOCKING not define - block until have free buffer
- *   becomes available, else return immediately  with correct status
- *   regarding the buffers available.
- *
- *****************************************************************************/
-
-int HostFlowControlConsumeBuff(int sd)
+static const int bsd2ti_types[] =
 {
-#ifndef SEND_NON_BLOCKING
-  /* Wait in busy loop */
+  CC3000_SOCK_STREAM,             /* SOCK_STREAM  */
+  CC3000_SOCK_DGRAM,              /*  SOCK_DGRAM  */
+  CC3000_SOCK_SEQPACKET,          /*  SOCK_SEQPACKET */
+  CC3000_SOCK_RAW,                /*  SOCK_RAW    */
+  CC3000_SOCK_RDM                 /*  SOCK_RDM */
+};
 
-  do
-    {
-      /* In case last transmission failed then we will return the last failure
-       * reason here.
-       * Note that the buffer will not be allocated in this case
-       */
+/****************************************************************************
+ * Private Functions
+ ****************************************************************************/
 
-      if (tSLInformation.slTransmitDataError != 0)
-        {
-          errno = tSLInformation.slTransmitDataError;
-          tSLInformation.slTransmitDataError = 0;
-          return errno;
-        }
-
-      if (SOCKET_STATUS_ACTIVE != get_socket_active_status(sd))
-        {
-          return -1;
-        }
-
-      /* We must yield here for the the Event to get processed that returns
-       * the buffers
-       */
-
-      usleep(100000);
-    }
-  while (0 == tSLInformation.usNumberOfFreeBuffers);
-
-  tSLInformation.usNumberOfFreeBuffers--;
-
-  return 0;
-#else
-
-  /* In case last transmission failed then we will return the last failure
-   * reason here.
-   * Note that the buffer will not be allocated in this case
-   */
-
-  if (tSLInformation.slTransmitDataError != 0)
-    {
-      errno = tSLInformation.slTransmitDataError;
-      tSLInformation.slTransmitDataError = 0;
-      return errno;
-    }
-
-  if (SOCKET_STATUS_ACTIVE != get_socket_active_status(sd))
-    {
-      return -1;
-    }
-
-  /* If there are no available buffers, return -2. It is recommended to use
-   * select or receive to see if there is any buffer occupied with received data
-   * If so, call receive() to release the buffer.
-   */
-
-  if (0 == tSLInformation.usNumberOfFreeBuffers)
-    {
-      return -2;
-    }
-  else
-    {
-      tSLInformation.usNumberOfFreeBuffers--;
-      return 0;
-    }
-#endif
-}
+/****************************************************************************
+ * Public Functions
+ ****************************************************************************/
 
 /*****************************************************************************
  * Name: socket
@@ -212,36 +118,54 @@ int HostFlowControlConsumeBuff(int sd)
  *
  *****************************************************************************/
 
-int socket(long domain, long type, long protocol)
+int cc3000_socket(int domain, int type, int protocol)
 {
-  long ret;
-  uint8_t *ptr, *args;
+  int sd;
 
-  ret = EFAIL;
-  ptr = tSLInformation.pucTxCommandBuffer;
-  args = (ptr + HEADERS_SIZE_CMD);
+  if (type < SOCK_STREAM || type >= ARRAY_SIZE(bsd2ti_types))
+    {
+      errno = EPROTOTYPE;
+      return -1;
+    }
 
-  /* Fill in HCI packet structure */
+  switch(domain)
+    {
+    case AF_INET:
+      domain = CC3000_AF_INET;
+      break;
+    case AF_INET6:
+      domain = CC3000_AF_INET6;
+      break;
+    default:
+      errno = EAFNOSUPPORT;
+      return -1;
+    }
 
-  args = UINT32_TO_STREAM(args, domain);
-  args = UINT32_TO_STREAM(args, type);
-  args = UINT32_TO_STREAM(args, protocol);
+  switch(protocol)
+    {
+      case CC3000_IPPROTO_IP:
+      case CC3000_IPPROTO_ICMP:
+      case CC3000_IPPROTO_TCP:
+      case CC3000_IPPROTO_UDP:
+      case CC3000_IPPROTO_IPV6:
+      case CC3000_IPPROTO_NONE:
+      case CC3000_IPPROTO_RAW:
+      case CC3000_IPPROTO_MAX:
+        break;
 
-  /* Initiate a HCI command */
+      default:
+        errno = EPROTONOSUPPORT;
+        return -1;
+    }
 
-  hci_command_send(HCI_CMND_SOCKET, ptr, SOCKET_OPEN_PARAMS_LEN);
-
-  /* Since we are in blocking state - wait for event complete */
-
-  SimpleLinkWaitEvent(HCI_CMND_SOCKET, &ret);
-
-  /* Process the event */
-
-  errno = ret;
-
-  set_socket_active_status(ret, SOCKET_STATUS_ACTIVE);
-
-  return ret;
+  cc3000_lib_lock();
+  type = bsd2ti_types[type];
+  sd = cc3000_socket_impl(domain,type,protocol);
+#ifdef CONFIG_CC3000_MT
+  cc3000_add_socket(sd, 0);
+#endif
+  cc3000_lib_unlock();
+  return sd;
 }
 
 /*****************************************************************************
@@ -251,47 +175,27 @@ int socket(long domain, long type, long protocol)
  *   The socket function closes a created socket.
  *
  * Input Parameters:
- *   sd    socket handle.
+ *   sockfd    socket handle.
  *
  * Returned Value:
  *   On success, zero is returned. On error, -1 is returned.
  *
  *****************************************************************************/
 
-long closesocket(long sd)
+int cc3000_closesocket(int sockfd)
 {
-  long ret;
-  uint8_t *ptr, *args;
-
-  ret = EFAIL;
-  ptr = tSLInformation.pucTxCommandBuffer;
-  args = (ptr + HEADERS_SIZE_CMD);
-
-  /* Fill in HCI packet structure */
-
-  args = UINT32_TO_STREAM(args, sd);
-
-  /* Initiate a HCI command */
-
-  hci_command_send(HCI_CMND_CLOSE_SOCKET,
-                   ptr, SOCKET_CLOSE_PARAMS_LEN);
-
-  /* Since we are in blocking state - wait for event complete */
-
-  SimpleLinkWaitEvent(HCI_CMND_CLOSE_SOCKET, &ret);
-  errno = ret;
-
-  /* Since 'close' call may result in either OK (and then it closed) or error
-   * mark this socket as invalid
-   */
-
-  set_socket_active_status(sd, SOCKET_STATUS_INACTIVE);
-
+  int ret;
+  cc3000_lib_lock();
+  ret = cc3000_closesocket_impl(sockfd);
+#ifdef CONFIG_CC3000_MT
+  cc3000_remove_socket(sockfd, 0);
+#endif
+  cc3000_lib_unlock();
   return ret;
 }
 
 /*****************************************************************************
- * Name: accept
+ * Name: accept, cc3000_do_accept
  *
  * Decription:
  *   accept a connection on a socket:
@@ -313,7 +217,7 @@ long closesocket(long sd)
  *   length (in bytes) of the address returned.
  *
  * Input Parameters:
- *   sd      socket descriptor (handle)
+ *   sockfd  socket descriptor (handle)
  *   addr    the argument addr is a pointer to a sockaddr structure
  *           This structure is filled in with the address of the
  *           peer socket, as known to the communications layer.
@@ -335,50 +239,46 @@ long closesocket(long sd)
  *
  *****************************************************************************/
 
-long accept(long sd, sockaddr *addr, socklen_t *addrlen)
+int cc3000_do_accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
 {
-  long ret;
-  uint8_t *ptr, *args;
-  tBsdReturnParams tAcceptReturnArguments;
-
-  ret = EFAIL;
-  ptr = tSLInformation.pucTxCommandBuffer;
-  args = (ptr + HEADERS_SIZE_CMD);
-
-  /* Fill in temporary command buffer */
-
-  args = UINT32_TO_STREAM(args, sd);
-
-  /* Initiate a HCI command */
-
-  hci_command_send(HCI_CMND_ACCEPT,
-                   ptr, SOCKET_ACCEPT_PARAMS_LEN);
-
-  /* Since we are in blocking state - wait for event complete */
-
-  SimpleLinkWaitEvent(HCI_CMND_ACCEPT, &tAcceptReturnArguments);
-
-
-  /* Need specify return parameters!!! */
-
-  memcpy(addr, &tAcceptReturnArguments.tSocketAddress, ASIC_ADDR_LEN);
-  *addrlen = ASIC_ADDR_LEN;
-  errno = tAcceptReturnArguments.iStatus;
-  ret = errno;
-
-  /* if succeeded, iStatus = new socket descriptor. otherwise - error number */
-
-  if (M_IS_VALID_SD(ret))
-    {
-      set_socket_active_status(ret, SOCKET_STATUS_ACTIVE);
-    }
-  else
-    {
-      set_socket_active_status(sd, SOCKET_STATUS_INACTIVE);
-    }
-
+  int ret;
+  cc3000_lib_lock();
+  ret = cc3000_accept_impl(sockfd, addr, addrlen);
+  cc3000_lib_unlock();
   return ret;
 }
+
+int cc3000_accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
+#ifdef CONFIG_CC3000_MT
+{
+  short non_blocking=CC3000_SOCK_ON;
+  if (setsockopt(sockfd, CC3000_SOL_SOCKET, CC3000_SOCKOPT_ACCEPT_NONBLOCK,
+                 &non_blocking, sizeof(non_blocking)) < 0)
+   {
+     ndbg("setsockopt failure %d\n", errno);
+     return -errno;
+   }
+
+  memset(addr,0,*addrlen);
+  return cc3000_accept_socket(sockfd,0,addr,addrlen);
+}
+#else
+{
+  int ret = OK;
+
+  cc3000_accept_socket(sockfd,0);
+  short nonBlocking=CC3000_SOCK_OFF;
+
+  if (setsockopt(sockfd, CC3000_SOL_SOCKET, CC3000_SOCKOPT_ACCEPT_NONBLOCK,
+                 &nonBlocking, sizeof(nonBlocking)) < 0)
+   {
+     ndbg("setsockopt failure %d\n", errno);
+     return -errno;
+   }
+
+  return cc3000_do_accept(int sockfd, addr, addrlen);;
+}
+#endif
 
 /*****************************************************************************
  * Name: bind
@@ -393,7 +293,7 @@ long accept(long sd, sockaddr *addr, socklen_t *addrlen)
  *   socket may receive connections.
  *
  * Input Parameters:
- *   sd      socket descriptor (handle)
+ *   sockfd  socket descriptor (handle)
  *   addr    specifies the destination address. On this version
  *    only AF_INET is supported.
  *   addrlen  contains the size of the structure pointed to by addr.
@@ -403,35 +303,13 @@ long accept(long sd, sockaddr *addr, socklen_t *addrlen)
  *
  *****************************************************************************/
 
-long bind(long sd, const sockaddr *addr, long addrlen)
+int cc3000_bind(int sockfd, FAR const struct sockaddr *addr, socklen_t addrlen)
 {
-  long ret;
-  uint8_t *ptr, *args;
+  int ret = OK;
 
-  ret = EFAIL;
-  ptr = tSLInformation.pucTxCommandBuffer;
-  args = (ptr + HEADERS_SIZE_CMD);
-
-  addrlen = ASIC_ADDR_LEN;
-
-  /* Fill in temporary command buffer */
-
-  args = UINT32_TO_STREAM(args, sd);
-  args = UINT32_TO_STREAM(args, 0x00000008);
-  args = UINT32_TO_STREAM(args, addrlen);
-  ARRAY_TO_STREAM(args, ((uint8_t *)addr), addrlen);
-
-  /* Initiate a HCI command */
-
-  hci_command_send(HCI_CMND_BIND,
-                   ptr, SOCKET_BIND_PARAMS_LEN);
-
-  /* Since we are in blocking state - wait for event complete */
-
-  SimpleLinkWaitEvent(HCI_CMND_BIND, &ret);
-
-  errno = ret;
-
+  cc3000_lib_lock();
+  ret = cc3000_bind_impl(sockfd, addr, addrlen);
+  cc3000_lib_unlock();
   return ret;
 }
 
@@ -450,7 +328,7 @@ long bind(long sd, const sockaddr *addr, long addrlen)
  * NOTE: On this version, backlog is not supported
  *
  * Input Parameters:
- *   sd      socket descriptor (handle)
+ *   sockfd  socket descriptor (handle)
  *   backlog  specifies the listen queue depth. On this version
  *    backlog is not supported.
  *
@@ -459,30 +337,382 @@ long bind(long sd, const sockaddr *addr, long addrlen)
  *
  *****************************************************************************/
 
-long listen(long sd, long backlog)
+int cc3000_listen(int sockfd, int backlog)
 {
-  long ret;
-  uint8_t *ptr, *args;
+  int ret = OK;
 
-  ret = EFAIL;
-  ptr = tSLInformation.pucTxCommandBuffer;
-  args = (ptr + HEADERS_SIZE_CMD);
+  cc3000_lib_lock();
+  ret = cc3000_listen_impl(sockfd,backlog);
+  cc3000_lib_unlock();
+  return ret;
+}
 
-  /* Fill in temporary command buffer */
+/*****************************************************************************
+ * Name: connect
+ *
+ * Decription:
+ *   initiate a connection on a socket
+ *   Function connects the socket referred to by the socket descriptor
+ *   sd, to the address specified by addr. The addrlen argument
+ *   specifies the size of addr. The format of the address in addr is
+ *   determined by the address space of the socket. If it is of type
+ *   SOCK_DGRAM, this call specifies the peer with which the socket is
+ *   to be associated; this address is that to which datagrams are to be
+ *   sent, and the only address from which datagrams are to be received.
+ *   If the socket is of type SOCK_STREAM, this call attempts to make a
+ *   connection to another socket. The other socket is specified  by
+ *   address, which is an address in the communications space of the
+ *   socket. Note that the function implements only blocking behavior
+ *   thus the caller will be waiting either for the connection
+ *   establishment or for the connection establishment failure.
+ *
+ * Input Parameters:
+ *   sockfd   socket descriptor (handle)
+ *   addr     specifies the destination addr. On this version
+ *     only AF_INET is supported.
+ *   addrlen  contains the size of the structure pointed to by addr
+ *
+ * Returned Value:
+ *   On success, zero is returned. On error, -1 is returned
+ *
+ *****************************************************************************/
 
-  args = UINT32_TO_STREAM(args, sd);
-  args = UINT32_TO_STREAM(args, backlog);
+int cc3000_connect(int sockfd, FAR const struct sockaddr *addr, socklen_t addrlen)
+{
+  int ret = OK;
 
-  /* Initiate a HCI command */
+  cc3000_lib_lock();
+  ret = cc3000_connect_impl(sockfd, addr, addrlen);
+  cc3000_lib_unlock();
+  return ret;
+}
 
-  hci_command_send(HCI_CMND_LISTEN,
-                   ptr, SOCKET_LISTEN_PARAMS_LEN);
+/*****************************************************************************
+ * Name: select
+ *
+ * Decription:
+ *   Monitor socket activity
+ *   Select allow a program to monitor multiple file descriptors,
+ *   waiting until one or more of the file descriptors become
+ *   "ready" for some class of I/O operation
+ *
+ * NOTE: If the timeout value set to less than 5ms it will automatically set
+ *   to 5ms to prevent overload of the system
+ *
+ * Input Parameters:
+ *   nfds       the highest-numbered file descriptor in any of the
+ *     three sets, plus 1.
+ *   readfds    socket descriptors list for read monitoring
+ *   writefds   socket descriptors list for write monitoring
+ *   exceptfds  socket descriptors list for exception monitoring
+ *   timeout     is an upper bound on the amount of time elapsed
+ *     before select() returns. Null means infinity
+ *     timeout. The minimum timeout is 5 milliseconds,
+ *    less than 5 milliseconds will be set
+ *     automatically to 5 milliseconds.
+ *
+ * Returned Value:
+ *   On success, select() returns the number of file descriptors
+ *   contained in the three returned descriptor sets (that is, the
+ *   total number of bits that are set in readfds, writefds,
+ *   exceptfds) which may be zero if the timeout expires before
+ *   anything interesting  happens.
+ *   On error, -1 is returned.
+ *   *readfds - return the sockets on which Read request will
+ *     return without delay with valid data.
+ *   *writefds - return the sockets on which Write request
+ *     will return without delay.
+ *   *exceptfds - return the sockets which closed recently.
+ *
+ *****************************************************************************/
 
-  /* Since we are in blocking state - wait for event complete */
+int cc3000_select(int nfds, fd_set *readfds, fd_set *writefds,fd_set *exceptfds,
+           struct timeval *timeout)
+{
+  int ret = OK;
 
-  SimpleLinkWaitEvent(HCI_CMND_LISTEN, &ret);
-  errno = ret;
+  cc3000_lib_lock();
+  ret = cc3000_select_impl(nfds, (TICC3000fd_set *)readfds,
+                          (TICC3000fd_set *)writefds,
+                          (TICC3000fd_set *)exceptfds, timeout);
+  cc3000_lib_unlock();
+  return ret;
+}
 
+#ifndef CC3000_TINY_DRIVER
+/*****************************************************************************
+ * Name: setsockopt
+ *
+ * Decription:
+ *   set socket options
+ *   This function manipulate the options associated with a socket.
+ *   Options may exist at multiple protocol levels; they are always
+ *   present at the uppermost socket level.
+ *   When manipulating socket options the level at which the option
+ *   resides and the name of the option must be specified.
+ *   To manipulate options at the socket level, level is specified as
+ *   SOL_SOCKET. To manipulate options at any other level the protocol
+ *   number of the appropriate protocol controlling the option is
+ *   supplied. For example, to indicate that an option is to be
+ *   interpreted by the TCP protocol, level should be set to the
+ *   protocol number of TCP;
+ *   The parameters value and value_len are used to access value -
+ *   use for setsockopt(). For getsockopt() they identify a buffer
+ *   in which the value for the requested option(s) are to
+ *   be returned. For getsockopt(), value_len is a value-result
+ *   parameter, initially containing the size of the buffer
+ *   pointed to by option_value, and modified on return to
+ *   indicate the actual size of the value returned. If no option
+ *   value is to be supplied or returned, option_value may be NULL.
+ *
+ * NOTE: On this version the following two socket options are enabled:
+ *   The only protocol level supported in this version
+ *   is SOL_SOCKET (level).
+ *
+ *     1. SOCKOPT_RECV_TIMEOUT (option)
+ *        SOCKOPT_RECV_TIMEOUT configures recv and recvfrom timeout
+ *        in milliseconds. In that case value should be pointer to
+ *        unsigned long.
+ *     2. SOCKOPT_NONBLOCK (option). sets the socket non-blocking mode on
+ *        or off. In that case value should be SOCK_ON or SOCK_OFF (value).
+ *
+ * Input Parameters:
+ *   sockfd      socket handle
+ *   level       defines the protocol level for this option
+ *   option      defines the option name to Interrogate
+ *   value       specifies a value for the option
+ *   value_len   specifies the length of the option value
+ *
+ * Returned Value:
+ *   On success, zero is returned. On error, -1 is returned
+ *
+ *****************************************************************************/
+
+int cc3000_setsockopt(int sockfd, int level, int option,
+                      FAR const void *value, socklen_t value_len)
+{
+  int ret = OK;
+
+  cc3000_lib_lock();
+  ret = cc3000_setsockopt_impl(sockfd, level, option, value, value_len);
+  cc3000_lib_unlock();
+  return ret;
+}
+#endif
+
+/*****************************************************************************
+ * Name: getsockopt
+ *
+ * Decription:
+ *   set socket options
+ *   This function manipulate the options associated with a socket.
+ *   Options may exist at multiple protocol levels; they are always
+ *   present at the uppermost socket level.
+ *   When manipulating socket options the level at which the option
+ *   resides and the name of the option must be specified.
+ *   To manipulate options at the socket level, level is specified as
+ *   SOL_SOCKET. To manipulate options at any other level the protocol
+ *   number of the appropriate protocol controlling the option is
+ *   supplied. For example, to indicate that an option is to be
+ *   interpreted by the TCP protocol, level should be set to the
+ *   protocol number of TCP;
+ *   The parameters value and value_len are used to access value -
+ *   use for setsockopt(). For getsockopt() they identify a buffer
+ *   in which the value for the requested option(s) are to
+ *   be returned. For getsockopt(), value_len is a value-result
+ *   parameter, initially containing the size of the buffer
+ *   pointed to by option_value, and modified on return to
+ *   indicate the actual size of the value returned. If no option
+ *   value is to be supplied or returned, option_value may be NULL.
+ *
+ * NOTE: On this version the following two socket options are enabled:
+ *    The only protocol level supported in this version
+ *   is SOL_SOCKET (level).
+ *    1. SOCKOPT_RECV_TIMEOUT (option)
+ *     SOCKOPT_RECV_TIMEOUT configures recv and recvfrom timeout
+ *    in milliseconds.
+ *     In that case value should be pointer to unsigned long.
+ *    2. SOCKOPT_NONBLOCK (option). sets the socket non-blocking mode on
+ *    or off.
+ *     In that case value should be SOCK_ON or SOCK_OFF (value).
+ *
+ * Input Parameters:
+ *   sockfd      socket handle
+ *   level       defines the protocol level for this option
+ *   option      defines the option name to Interrogate
+ *   value       specifies a value for the option
+ *   value_len   specifies the length of the option value
+ *
+ * Returned Value:
+ *   On success, zero is returned. On error, -1 is returned
+ *
+ *****************************************************************************/
+
+int cc3000_getsockopt(int sockfd, int level, int option, FAR void *value,
+                      FAR socklen_t *value_len)
+{
+  int ret = OK;
+
+  cc3000_lib_lock();
+  ret = cc3000_getsockopt_impl(sockfd, level, option, value, value_len);
+  cc3000_lib_unlock();
+  return ret;
+}
+
+/*****************************************************************************
+ * Name: recv
+ *
+ * Decription:
+ *     function receives a message from a connection-mode socket
+ *
+ * NOTE: On this version, only blocking mode is supported.
+ *
+ * Input Parameters:
+ *   sockfd socket handle
+ *   buf    Points to the buffer where the message should be stored
+ *   len    Specifies the length in bytes of the buffer pointed to
+ *     by the buffer argument.
+ *   flags   Specifies the type of message reception.
+ *     On this version, this parameter is not supported.
+ *
+ * Returned Value:
+ *     Return the number of bytes received, or -1 if an error
+ *     occurred
+ *
+ *****************************************************************************/
+
+ssize_t cc3000_recv(int sockfd, FAR void *buf, size_t len, int flags)
+{
+  ssize_t ret = OK;
+
+#ifdef CONFIG_CC3000_MT
+  ret = cc3000_wait_data(sockfd, 0);
+  if (ret != OK )
+    {
+      return -1;
+    }
+#endif
+
+  cc3000_lib_lock();
+  ret = cc3000_recv_impl(sockfd, buf, len, flags);
+  cc3000_lib_unlock();
+  return ret;
+}
+
+/*****************************************************************************
+ * Name: recvfrom
+ *
+ * Decription:
+ *    read data from socket
+ *    function receives a message from a connection-mode or
+ *    connectionless-mode socket. Note that raw sockets are not
+ *    supported.
+ *
+ * NOTE: On this version, only blocking mode is supported.
+ *
+ * Input Parameters:
+ *   sockfd socket handle
+ *   buf    Points to the buffer where the message should be stored
+ *   len    Specifies the length in bytes of the buffer pointed to
+ *     by the buffer argument.
+ *   flags   Specifies the type of message reception.
+ *     On this version, this parameter is not supported.
+ *   from   pointer to an address structure indicating the source
+ *    address: sockaddr. On this version only AF_INET is
+ *    supported.
+ *   fromlen   source address tructure size
+ *
+ * Returned Value:
+ *     Return the number of bytes received, or -1 if an error
+ *     occurred
+ *
+ *****************************************************************************/
+
+ssize_t cc3000_recvfrom(int sockfd, FAR void *buf, size_t len, int flags,
+                        FAR struct sockaddr *from, FAR socklen_t *fromlen)
+{
+  ssize_t ret = OK;
+
+#ifdef CONFIG_CC3000_MT
+  ret = cc3000_wait_data(sockfd, 0);
+  if (ret != OK )
+    {
+      return -1;
+    }
+#endif
+
+  cc3000_lib_lock();
+  ret = cc3000_recvfrom_impl(sockfd, buf, len, flags, from, fromlen);
+  cc3000_lib_unlock();
+  return ret;
+}
+
+/*****************************************************************************
+ * Name: send
+ *
+ * Decription:
+ *     Write data to TCP socket
+ *     This function is used to transmit a message to another
+ *     socket.
+ *
+ * NOTE: On this version, only blocking mode is supported.
+ *
+ * Input Parameters:
+ *   sockfd   socket handle
+ *   buf      Points to a buffer containing the message to be sent
+ *   len      message size in bytes
+ *   flags    On this version, this parameter is not supported
+ *
+ * Returned Value:
+ *     Return the number of bytes transmitted, or -1 if an
+ *     error occurred
+ *
+ *****************************************************************************/
+
+ssize_t cc3000_send(int sockfd, FAR const void *buf, size_t len, int flags)
+{
+  ssize_t ret = OK;
+
+  cc3000_lib_lock();
+  ret = cc3000_send_impl(sockfd, buf, len, flags);
+  cc3000_lib_unlock();
+  return ret;
+}
+
+/*****************************************************************************
+ * Name: sendto
+ *
+ * Decription:
+ *     Write data to TCP socket
+ *     This function is used to transmit a message to another
+ *     socket.
+ *
+ * NOTE: On this version, only blocking mode is supported.
+ *
+ * Input Parameters:
+ *   sockfd   socket handle
+ *   buf      Points to a buffer containing the message to be sent
+ *   len      message size in bytes
+ *   flags    On this version, this parameter is not supported
+ *   to       pointer to an address structure indicating the destination
+ *     address: sockaddr. On this version only AF_INET is
+ *     supported.
+ *   tolen    destination address structure size
+ *
+ * Returned Value:
+ *     Return the number of bytes transmitted, or -1 if an
+ *     error occurred
+ *
+ *****************************************************************************/
+
+ssize_t cc3000_sendto(int sockfd, FAR const void *buf, size_t len, int flags,
+                      FAR const struct sockaddr *to, socklen_t tolen)
+{
+  ssize_t ret = OK;
+
+  cc3000_lib_lock();
+  ret = cc3000_sendto_impl(sockfd, buf, len, flags, to, tolen);
+  cc3000_lib_unlock();
   return ret;
 }
 
@@ -510,696 +740,17 @@ long listen(long sd, long backlog)
  *****************************************************************************/
 
 #ifndef CC3000_TINY_DRIVER
-int gethostbyname(char * hostname, uint16_t usNameLen, unsigned long* out_ip_addr)
+// TODO: Standard is struct hostent *gethostbyname(const char *name);
+int cc3000_gethostbyname(char * hostname, uint16_t usNameLen, unsigned long* out_ip_addr)
 {
-  tBsdGethostbynameParams ret;
-  uint8_t *ptr, *args;
+  int ret = OK;
 
-  errno = EFAIL;
-
-  if (usNameLen > HOSTNAME_MAX_LENGTH)
-    {
-      return errno;
-    }
-
-  ptr = tSLInformation.pucTxCommandBuffer;
-  args = (ptr + SIMPLE_LINK_HCI_CMND_TRANSPORT_HEADER_SIZE);
-
-  /* Fill in HCI packet structure */
-
-  args = UINT32_TO_STREAM(args, 8);
-  args = UINT32_TO_STREAM(args, usNameLen);
-  ARRAY_TO_STREAM(args, hostname, usNameLen);
-
-  /* Initiate a HCI command */
-
-  hci_command_send(HCI_CMND_GETHOSTNAME, ptr, SOCKET_GET_HOST_BY_NAME_PARAMS_LEN
-                   + usNameLen - 1);
-
-  /* Since we are in blocking state - wait for event complete */
-
-  SimpleLinkWaitEvent(HCI_EVNT_BSD_GETHOSTBYNAME, &ret);
-
-  errno = ret.retVal;
-
-  (*((long*)out_ip_addr)) = ret.outputAddress;
-
-  return errno;
+  cc3000_lib_lock();
+  ret = cc3000_gethostbyname_impl(hostname, usNameLen, out_ip_addr);
+  cc3000_lib_unlock();
+  return ret;
 }
 #endif
-
-/*****************************************************************************
- * Name: connect
- *
- * Decription:
- *   initiate a connection on a socket
- *   Function connects the socket referred to by the socket descriptor
- *   sd, to the address specified by addr. The addrlen argument
- *   specifies the size of addr. The format of the address in addr is
- *   determined by the address space of the socket. If it is of type
- *   SOCK_DGRAM, this call specifies the peer with which the socket is
- *   to be associated; this address is that to which datagrams are to be
- *   sent, and the only address from which datagrams are to be received.
- *   If the socket is of type SOCK_STREAM, this call attempts to make a
- *   connection to another socket. The other socket is specified  by
- *   address, which is an address in the communications space of the
- *   socket. Note that the function implements only blocking behavior
- *   thus the caller will be waiting either for the connection
- *   establishment or for the connection establishment failure.
- *
- * Input Parameters:
- *   sd       socket descriptor (handle)
- *   addr     specifies the destination addr. On this version
- *     only AF_INET is supported.
- *   addrlen  contains the size of the structure pointed to by addr
- *
- * Returned Value:
- *   On success, zero is returned. On error, -1 is returned
- *
- *****************************************************************************/
-
-long connect(long sd, const sockaddr *addr, long addrlen)
-{
-  long int ret;
-  uint8_t *ptr, *args;
-
-  ret = EFAIL;
-  ptr = tSLInformation.pucTxCommandBuffer;
-  args = (ptr + SIMPLE_LINK_HCI_CMND_TRANSPORT_HEADER_SIZE);
-  addrlen = 8;
-
-  /* Fill in temporary command buffer */
-
-  args = UINT32_TO_STREAM(args, sd);
-  args = UINT32_TO_STREAM(args, 0x00000008);
-  args = UINT32_TO_STREAM(args, addrlen);
-  ARRAY_TO_STREAM(args, ((uint8_t *)addr), addrlen);
-
-  /* Initiate a HCI command */
-
-  hci_command_send(HCI_CMND_CONNECT,
-                   ptr, SOCKET_CONNECT_PARAMS_LEN);
-
-  /* Since we are in blocking state - wait for event complete */
-
-  SimpleLinkWaitEvent(HCI_CMND_CONNECT, &ret);
-
-  errno = ret;
-
-  return (long)ret;
-}
-
-/*****************************************************************************
- * Name: select
- *
- * Decription:
- *   Monitor socket activity
- *   Select allow a program to monitor multiple file descriptors,
- *   waiting until one or more of the file descriptors become
- *   "ready" for some class of I/O operation
- *
- * NOTE: If the timeout value set to less than 5ms it will automatically set
- *   to 5ms to prevent overload of the system
- *
- * Input Parameters:
- *   nfds       the highest-numbered file descriptor in any of the
- *     three sets, plus 1.
- *   writesds   socket descriptors list for write monitoring
- *   readsds    socket descriptors list for read monitoring
- *   exceptsds  socket descriptors list for exception monitoring
- *   timeout     is an upper bound on the amount of time elapsed
- *     before select() returns. Null means infinity
- *     timeout. The minimum timeout is 5 milliseconds,
- *    less than 5 milliseconds will be set
- *     automatically to 5 milliseconds.
- *
- * Returned Value:
- *   On success, select() returns the number of file descriptors
- *   contained in the three returned descriptor sets (that is, the
- *   total number of bits that are set in readfds, writefds,
- *   exceptfds) which may be zero if the timeout expires before
- *   anything interesting  happens.
- *   On error, -1 is returned.
- *   *readsds - return the sockets on which Read request will
- *     return without delay with valid data.
- *   *writesds - return the sockets on which Write request
- *     will return without delay.
- *   *exceptsds - return the sockets which closed recently.
- *
- *****************************************************************************/
-
-int select(long nfds, TICC3000fd_set *readsds, TICC3000fd_set *writesds,
-           TICC3000fd_set *exceptsds, struct timeval *timeout)
-{
-  uint8_t *ptr, *args;
-  tBsdSelectRecvParams tParams;
-  unsigned long is_blocking;
-
-  if (timeout == NULL)
-    {
-      is_blocking = 1; /* blocking , infinity timeout */
-    }
-  else
-    {
-      is_blocking = 0; /* no blocking, timeout */
-    }
-
-  /* Fill in HCI packet structure */
-
-  ptr = tSLInformation.pucTxCommandBuffer;
-  args = (ptr + HEADERS_SIZE_CMD);
-
-  /* Fill in temporary command buffer */
-
-  args = UINT32_TO_STREAM(args, nfds);
-  args = UINT32_TO_STREAM(args, 0x00000014);
-  args = UINT32_TO_STREAM(args, 0x00000014);
-  args = UINT32_TO_STREAM(args, 0x00000014);
-  args = UINT32_TO_STREAM(args, 0x00000014);
-  args = UINT32_TO_STREAM(args, is_blocking);
-  args = UINT32_TO_STREAM(args, ((readsds) ? *(unsigned long*)readsds : 0));
-  args = UINT32_TO_STREAM(args, ((writesds) ? *(unsigned long*)writesds : 0));
-  args = UINT32_TO_STREAM(args, ((exceptsds) ? *(unsigned long*)exceptsds : 0));
-
-  if (timeout)
-    {
-      if (0 == timeout->tv_sec && timeout->tv_usec <
-          SELECT_TIMEOUT_MIN_MICRO_SECONDS)
-        {
-          timeout->tv_usec = SELECT_TIMEOUT_MIN_MICRO_SECONDS;
-        }
-
-      args = UINT32_TO_STREAM(args, timeout->tv_sec);
-      args = UINT32_TO_STREAM(args, timeout->tv_usec);
-   }
-
-  /* Initiate a HCI command */
-
-  hci_command_send(HCI_CMND_BSD_SELECT, ptr, SOCKET_SELECT_PARAMS_LEN);
-
-  /* Since we are in blocking state - wait for event complete */
-
-  SimpleLinkWaitEvent(HCI_EVNT_SELECT, &tParams);
-
-  /* Update actually read FD */
-
-  if (tParams.iStatus >= 0)
-    {
-      if (readsds)
-        {
-          memcpy(readsds, &tParams.uiRdfd, sizeof(tParams.uiRdfd));
-        }
-
-      if (writesds)
-        {
-          memcpy(writesds, &tParams.uiWrfd, sizeof(tParams.uiWrfd));
-        }
-
-      if (exceptsds)
-        {
-          memcpy(exceptsds, &tParams.uiExfd, sizeof(tParams.uiExfd));
-        }
-
-      return tParams.iStatus;
-    }
-  else
-    {
-      errno = tParams.iStatus;
-      return -1;
-    }
-}
-
-/*****************************************************************************
- * Name: setsockopt
- *
- * Decription:
- *   set socket options
- *   This function manipulate the options associated with a socket.
- *   Options may exist at multiple protocol levels; they are always
- *   present at the uppermost socket level.
- *   When manipulating socket options the level at which the option
- *   resides and the name of the option must be specified.
- *   To manipulate options at the socket level, level is specified as
- *   SOL_SOCKET. To manipulate options at any other level the protocol
- *   number of the appropriate protocol controlling the option is
- *   supplied. For example, to indicate that an option is to be
- *   interpreted by the TCP protocol, level should be set to the
- *   protocol number of TCP;
- *   The parameters optval and optlen are used to access optval -
- *   use for setsockopt(). For getsockopt() they identify a buffer
- *   in which the value for the requested option(s) are to
- *   be returned. For getsockopt(), optlen is a value-result
- *   parameter, initially containing the size of the buffer
- *   pointed to by option_value, and modified on return to
- *   indicate the actual size of the value returned. If no option
- *   value is to be supplied or returned, option_value may be NULL.
- *
- * NOTE: On this version the following two socket options are enabled:
- *    The only protocol level supported in this version
- *   is SOL_SOCKET (level).
- *    1. SOCKOPT_RECV_TIMEOUT (optname)
- *     SOCKOPT_RECV_TIMEOUT configures recv and recvfrom timeout
- *    in milliseconds.
- *     In that case optval should be pointer to unsigned long.
- *    2. SOCKOPT_NONBLOCK (optname). sets the socket non-blocking mode on
- *    or off.
- *     In that case optval should be SOCK_ON or SOCK_OFF (optval).
- *
- * Input Parameters:
- *   sd          socket handle
- *   level       defines the protocol level for this option
- *   optname     defines the option name to Interrogate
- *   optval      specifies a value for the option
- *   optlen      specifies the length of the option value
- *
- * Returned Value:
- *   On success, zero is returned. On error, -1 is returned
- *
- *****************************************************************************/
-
-#ifndef CC3000_TINY_DRIVER
-int setsockopt(long sd, long level, long optname, const void *optval, socklen_t optlen)
-{
-  int ret;
-  uint8_t *ptr, *args;
-
-  ptr = tSLInformation.pucTxCommandBuffer;
-  args = (ptr + HEADERS_SIZE_CMD);
-
-  /* Fill in temporary command buffer */
-
-  args = UINT32_TO_STREAM(args, sd);
-  args = UINT32_TO_STREAM(args, level);
-  args = UINT32_TO_STREAM(args, optname);
-  args = UINT32_TO_STREAM(args, 0x00000008);
-  args = UINT32_TO_STREAM(args, optlen);
-  ARRAY_TO_STREAM(args, ((uint8_t *)optval), optlen);
-
-  /* Initiate a HCI command */
-
-  hci_command_send(HCI_CMND_SETSOCKOPT,
-                   ptr, SOCKET_SET_SOCK_OPT_PARAMS_LEN  + optlen);
-
-  /* Since we are in blocking state - wait for event complete */
-
-  SimpleLinkWaitEvent(HCI_CMND_SETSOCKOPT, &ret);
-
-  if (ret >= 0)
-    {
-      return 0;
-    }
-  else
-    {
-      errno = ret;
-      return ret;
-    }
-}
-#endif
-
-/*****************************************************************************
- * Name: getsockopt
- *
- * Decription:
- *   set socket options
- *   This function manipulate the options associated with a socket.
- *   Options may exist at multiple protocol levels; they are always
- *   present at the uppermost socket level.
- *   When manipulating socket options the level at which the option
- *   resides and the name of the option must be specified.
- *   To manipulate options at the socket level, level is specified as
- *   SOL_SOCKET. To manipulate options at any other level the protocol
- *   number of the appropriate protocol controlling the option is
- *   supplied. For example, to indicate that an option is to be
- *   interpreted by the TCP protocol, level should be set to the
- *   protocol number of TCP;
- *   The parameters optval and optlen are used to access optval -
- *   use for setsockopt(). For getsockopt() they identify a buffer
- *   in which the value for the requested option(s) are to
- *   be returned. For getsockopt(), optlen is a value-result
- *   parameter, initially containing the size of the buffer
- *   pointed to by option_value, and modified on return to
- *   indicate the actual size of the value returned. If no option
- *   value is to be supplied or returned, option_value may be NULL.
- *
- * NOTE: On this version the following two socket options are enabled:
- *    The only protocol level supported in this version
- *   is SOL_SOCKET (level).
- *    1. SOCKOPT_RECV_TIMEOUT (optname)
- *     SOCKOPT_RECV_TIMEOUT configures recv and recvfrom timeout
- *    in milliseconds.
- *     In that case optval should be pointer to unsigned long.
- *    2. SOCKOPT_NONBLOCK (optname). sets the socket non-blocking mode on
- *    or off.
- *     In that case optval should be SOCK_ON or SOCK_OFF (optval).
- *
- * Input Parameters:
- *   sd          socket handle
- *   level       defines the protocol level for this option
- *   optname     defines the option name to Interrogate
- *   optval      specifies a value for the option
- *   optlen      specifies the length of the option value
- *
- * Returned Value:
- *   On success, zero is returned. On error, -1 is returned
- *
- *****************************************************************************/
-
-int getsockopt (long sd, long level, long optname, void *optval, socklen_t *optlen)
-{
-  uint8_t *ptr, *args;
-  tBsdGetSockOptReturnParams  tRetParams;
-
-  ptr = tSLInformation.pucTxCommandBuffer;
-  args = (ptr + HEADERS_SIZE_CMD);
-
-  /* Fill in temporary command buffer */
-
-  args = UINT32_TO_STREAM(args, sd);
-  args = UINT32_TO_STREAM(args, level);
-  args = UINT32_TO_STREAM(args, optname);
-
-  /* Initiate a HCI command */
-
-  hci_command_send(HCI_CMND_GETSOCKOPT,
-                   ptr, SOCKET_GET_SOCK_OPT_PARAMS_LEN);
-
-  /* Since we are in blocking state - wait for event complete */
-
-  SimpleLinkWaitEvent(HCI_CMND_GETSOCKOPT, &tRetParams);
-
-  if (((int8_t)tRetParams.iStatus) >= 0)
-    {
-      *optlen = 4;
-      memcpy(optval, tRetParams.ucOptValue, 4);
-      return 0;
-    }
-  else
-    {
-      errno = tRetParams.iStatus;
-      return errno;
-    }
-}
-
-/*****************************************************************************
- * Name: simple_link_recv
- *
- * Input Parameters:
- *   sd       socket handle
- *   buf      read buffer
- *   len      buffer length
- *   flags    indicates blocking or non-blocking operation
- *   from     pointer to an address structure indicating source address
- *   fromlen  source address structure size
- *
- * Returned Value:
- *     Return the number of bytes received, or -1 if an error
- *     occurred
- *
- * Decription:
- *     Read data from socket
- *     Return the length of the message on successful completion.
- *     If a message is too long to fit in the supplied buffer,
- *     excess bytes may be discarded depending on the type of
- *     socket the message is received from
- *
- *****************************************************************************/
-
-int simple_link_recv(long sd, void *buf, long len, long flags, sockaddr *from,
-                     socklen_t *fromlen, long opcode)
-{
-  uint8_t *ptr, *args;
-  tBsdReadReturnParams tSocketReadEvent;
-
-  ptr = tSLInformation.pucTxCommandBuffer;
-  args = (ptr + HEADERS_SIZE_CMD);
-
-  /* Fill in HCI packet structure */
-
-  args = UINT32_TO_STREAM(args, sd);
-  args = UINT32_TO_STREAM(args, len);
-  args = UINT32_TO_STREAM(args, flags);
-
-  /* Generate the read command, and wait for the */
-
-  hci_command_send(opcode,  ptr, SOCKET_RECV_FROM_PARAMS_LEN);
-
-  /* Since we are in blocking state - wait for event complete */
-
-  SimpleLinkWaitEvent(opcode, &tSocketReadEvent);
-
-  /* In case the number of bytes is more then zero - read data */
-
-  if (tSocketReadEvent.iNumberOfBytes > 0)
-    {
-      /* Wait for the data in a synchronous way. Here we assume that the bug is
-       * big enough to store also parameters of receive from too....
-       */
-
-      SimpleLinkWaitData((uint8_t *)buf, (uint8_t *)from, (uint8_t *)fromlen);
-    }
-
-  errno = tSocketReadEvent.iNumberOfBytes;
-
-  return tSocketReadEvent.iNumberOfBytes;
-}
-
-/*****************************************************************************
- * Name: recv
- *
- * Decription:
- *     function receives a message from a connection-mode socket
- *
- * NOTE: On this version, only blocking mode is supported.
- *
- * Input Parameters:
- *   sd     socket handle
- *   buf    Points to the buffer where the message should be stored
- *   len    Specifies the length in bytes of the buffer pointed to
- *     by the buffer argument.
- *   flags   Specifies the type of message reception.
- *     On this version, this parameter is not supported.
- *
- * Returned Value:
- *     Return the number of bytes received, or -1 if an error
- *     occurred
- *
- *****************************************************************************/
-
-int recv(long sd, void *buf, long len, long flags)
-{
-  return(simple_link_recv(sd, buf, len, flags, NULL, NULL, HCI_CMND_RECV));
-}
-
-/*****************************************************************************
- * Name: recvfrom
- *
- * Decription:
- *    read data from socket
- *    function receives a message from a connection-mode or
- *    connectionless-mode socket. Note that raw sockets are not
- *    supported.
- *
- * NOTE: On this version, only blocking mode is supported.
- *
- * Input Parameters:
- *   sd     socket handle
- *   buf    Points to the buffer where the message should be stored
- *   len    Specifies the length in bytes of the buffer pointed to
- *     by the buffer argument.
- *   flags   Specifies the type of message reception.
- *     On this version, this parameter is not supported.
- *   from   pointer to an address structure indicating the source
- *    address: sockaddr. On this version only AF_INET is
- *    supported.
- *   fromlen   source address tructure size
- *
- * Returned Value:
- *     Return the number of bytes received, or -1 if an error
- *     occurred
- *
- *****************************************************************************/
-
-int recvfrom(long sd, void *buf, long len, long flags, sockaddr *from,
-             socklen_t *fromlen)
-{
-  return(simple_link_recv(sd, buf, len, flags, from, fromlen,
-                          HCI_CMND_RECVFROM));
-}
-
-/*****************************************************************************
- * Name: simple_link_send
- *
- * Input Parameters:
- *   sd       socket handle
- *   buf      write buffer
- *   len      buffer length
- *   flags    On this version, this parameter is not supported
- *   to       pointer to an address structure indicating destination
- *     address
- *   tolen    destination address structure size
- *
- * Returned Value:
- *     Return the number of bytes transmitted, or -1 if an error
- *     occurred, or -2 in case there are no free buffers available
- *    (only when SEND_NON_BLOCKING is enabled)
- *
- * Decription:
- *     This function is used to transmit a message to another
- *     socket
- *
- *****************************************************************************/
-
-int simple_link_send(long sd, const void *buf, long len, long flags,
-                     const sockaddr *to, long tolen, long opcode)
-{
-  tBsdReadReturnParams tSocketSendEvent;
-  uint8_t uArgSize = 0,  addrlen;
-  uint8_t *ptr, *pDataPtr = NULL, *args;
-  unsigned long addr_offset = 0;
-  int res;
-
-  /* Check the bsd_arguments */
-
-  if (0 != (res = HostFlowControlConsumeBuff(sd)))
-    {
-      return res;
-    }
-
-  /* Update the number of sent packets */
-
-  tSLInformation.NumberOfSentPackets++;
-
-  /* Allocate a buffer and construct a packet and send it over spi */
-
-  ptr = tSLInformation.pucTxCommandBuffer;
-  args = (ptr + HEADERS_SIZE_DATA);
-
-  /* Update the offset of data and parameters according to the command */
-
-  switch(opcode)
-    {
-    case HCI_CMND_SENDTO:
-      {
-        addr_offset = len + sizeof(len) + sizeof(len);
-        addrlen = 8;
-        uArgSize = SOCKET_SENDTO_PARAMS_LEN;
-        pDataPtr = ptr + HEADERS_SIZE_DATA + SOCKET_SENDTO_PARAMS_LEN;
-        break;
-      }
-
-    case HCI_CMND_SEND:
-      {
-        tolen = 0;
-        to = NULL;
-        uArgSize = HCI_CMND_SEND_ARG_LENGTH;
-        pDataPtr = ptr + HEADERS_SIZE_DATA + HCI_CMND_SEND_ARG_LENGTH;
-        break;
-      }
-
-    default:
-      {
-        break;
-      }
-  }
-
-  /* Fill in temporary command buffer */
-
-  args = UINT32_TO_STREAM(args, sd);
-  args = UINT32_TO_STREAM(args, uArgSize - sizeof(sd));
-  args = UINT32_TO_STREAM(args, len);
-  args = UINT32_TO_STREAM(args, flags);
-
-  if (opcode == HCI_CMND_SENDTO)
-    {
-      args = UINT32_TO_STREAM(args, addr_offset);
-      args = UINT32_TO_STREAM(args, addrlen);
-    }
-
-  /* Copy the data received from user into the TX Buffer */
-
-  ARRAY_TO_STREAM(pDataPtr, ((uint8_t *)buf), len);
-
-  /* In case we are using SendTo, copy the to parameters */
-
-  if (opcode == HCI_CMND_SENDTO)
-    {
-      ARRAY_TO_STREAM(pDataPtr, ((uint8_t *)to), tolen);
-    }
-
-  /* Initiate a HCI command */
-
-  hci_data_send(opcode, ptr, uArgSize, len,(uint8_t*)to, tolen);
-
-  if (opcode == HCI_CMND_SENDTO)
-    {
-      SimpleLinkWaitEvent(HCI_EVNT_SENDTO, &tSocketSendEvent);
-    }
-  else
-    {
-      SimpleLinkWaitEvent(HCI_EVNT_SEND, &tSocketSendEvent);
-    }
-
-  return len;
-}
-
-/*****************************************************************************
- * Name: send
- *
- * Decription:
- *     Write data to TCP socket
- *     This function is used to transmit a message to another
- *     socket.
- *
- * NOTE: On this version, only blocking mode is supported.
- *
- * Input Parameters:
- *   sd       socket handle
- *   buf      Points to a buffer containing the message to be sent
- *   len      message size in bytes
- *   flags    On this version, this parameter is not supported
- *
- * Returned Value:
- *     Return the number of bytes transmitted, or -1 if an
- *     error occurred
- *
- *****************************************************************************/
-
-int send(long sd, const void *buf, long len, long flags)
-{
-  return(simple_link_send(sd, buf, len, flags, NULL, 0, HCI_CMND_SEND));
-}
-
-/*****************************************************************************
- * Name: sendto
- *
- * Decription:
- *     Write data to TCP socket
- *     This function is used to transmit a message to another
- *     socket.
- *
- * NOTE: On this version, only blocking mode is supported.
- *
- * Input Parameters:
- *   sd       socket handle
- *   buf      Points to a buffer containing the message to be sent
- *   len      message size in bytes
- *   flags    On this version, this parameter is not supported
- *   to       pointer to an address structure indicating the destination
- *     address: sockaddr. On this version only AF_INET is
- *     supported.
- *   tolen    destination address structure size
- *
- * Returned Value:
- *     Return the number of bytes transmitted, or -1 if an
- *     error occurred
- *
- *****************************************************************************/
-
-int sendto(long sd, const void *buf, long len, long flags, const sockaddr *to,
-           socklen_t tolen)
-{
-  return(simple_link_send(sd, buf, len, flags, to, tolen, HCI_CMND_SENDTO));
-}
 
 /*****************************************************************************
  * Name: mdnsAdvertiser
@@ -1219,35 +770,14 @@ int sendto(long sd, const void *buf, long len, long flags, const sockaddr *to,
  *
  *****************************************************************************/
 
-int mdnsAdvertiser(uint16_t mdnsEnabled, char * deviceServiceName,
-                   uint16_t deviceServiceNameLength)
+int cc3000_mdnsadvertiser(uint16_t mdnsEnabled, char *deviceServiceName,
+                          uint16_t deviceServiceNameLength)
+
 {
-  uint8_t *pTxBuffer;
-  uint8_t *pArgs;
-  int ret;
+  int ret = OK;
 
-  if (deviceServiceNameLength > MDNS_DEVICE_SERVICE_MAX_LENGTH)
-    {
-      return EFAIL;
-    }
-
-  pTxBuffer = tSLInformation.pucTxCommandBuffer;
-  pArgs = (pTxBuffer + SIMPLE_LINK_HCI_CMND_TRANSPORT_HEADER_SIZE);
-
-  /* Fill in HCI packet structure */
-
-  pArgs = UINT32_TO_STREAM(pArgs, mdnsEnabled);
-  pArgs = UINT32_TO_STREAM(pArgs, 8);
-  pArgs = UINT32_TO_STREAM(pArgs, deviceServiceNameLength);
-  ARRAY_TO_STREAM(pArgs, deviceServiceName, deviceServiceNameLength);
-
-  /* Initiate a HCI command */
-
-  hci_command_send(HCI_CMND_MDNS_ADVERTISE, pTxBuffer, SOCKET_MDNS_ADVERTISE_PARAMS_LEN + deviceServiceNameLength);
-
-  /* Since we are in blocking state - wait for event complete */
-
-  SimpleLinkWaitEvent(HCI_EVNT_MDNS_ADVERTISE, &ret);
-
+  cc3000_lib_lock();
+  ret = cc3000_mdnsadvertiser_impl(mdnsEnabled, deviceServiceName, deviceServiceNameLength);
+  cc3000_lib_unlock();
   return ret;
 }
