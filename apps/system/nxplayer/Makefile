@@ -1,8 +1,10 @@
 ############################################################################
-# audio/Makefile
+# apps/system/nxplayer/Makefile
 #
 #   Copyright (C) 2013 Ken Pettit. All rights reserved.
+#   Copyright (C) 2012-2013 Gregory Nutt. All rights reserved.
 #   Author: Ken Pettit <pettitkd@gmail.com>
+#           Gregory Nutt <gnutt@nuttx.org>
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -33,35 +35,56 @@
 #
 ############################################################################
 
+# TODO, this makefile should run make under the app dirs, instead of
+# sourcing the Make.defs!
+
+-include $(TOPDIR)/.config
 -include $(TOPDIR)/Make.defs
-DELIM ?= $(strip /)
+include $(APPDIR)/Make.defs
 
 ifeq ($(WINTOOL),y)
-INCDIROPT = -w
+INCDIROPT	= -w
 endif
 
-DEPPATH = --dep-path .
-ASRCS =
-CSRCS = audio.c buffer.c
-VPATH = .
+# NxPlayer Library
 
-# Include support for various drivers.  Each Make.defs file will add its
-# files to the source file list, add its DEPPATH info, and will add
-# the appropriate paths to the VPATH variable
+ASRCS		=
+CSRCS		= nxplayer.c
 
-ifeq ($(CONFIG_AUDIO_FORMAT_PCM),y)
-  CSRCS += pcm.c
+# NxPlayer Application
+
+APPNAME		= nxplayer
+PRIORITY	= SCHED_PRIORITY_DEFAULT
+STACKSIZE	= 3100
+
+ifeq ($(CONFIG_NXPLAYER_COMMAND_LINE),y)
+CSRCS   += nxplayer_main.c
 endif
 
-AOBJS = $(ASRCS:.S=$(OBJEXT))
-COBJS = $(CSRCS:.c=$(OBJEXT))
+AOBJS		= $(ASRCS:.S=$(OBJEXT))
+COBJS		= $(CSRCS:.c=$(OBJEXT))
 
-SRCS = $(ASRCS) $(CSRCS)
-OBJS = $(AOBJS) $(COBJS)
+SRCS		= $(ASRCS) $(CSRCS)
+OBJS		= $(AOBJS) $(COBJS)
 
-BIN = libaudio$(LIBEXT)
+ifeq ($(CONFIG_WINDOWS_NATIVE),y)
+  BIN		= ..\..\libapps$(LIBEXT)
+else
+ifeq ($(WINTOOL),y)
+  BIN		= ..\\..\\libapps$(LIBEXT)
+else
+  BIN		= ../../libapps$(LIBEXT)
+endif
+endif
 
-all: $(BIN)
+ROOTDEPPATH	= --dep-path .
+
+# Common build
+
+VPATH		=
+
+all:	.built
+.PHONY: context depend clean distclean
 
 $(AOBJS): %$(OBJEXT): %.S
 	$(call ASSEMBLE, $<, $@)
@@ -69,18 +92,37 @@ $(AOBJS): %$(OBJEXT): %.S
 $(COBJS): %$(OBJEXT): %.c
 	$(call COMPILE, $<, $@)
 
-$(BIN): $(OBJS)
-	$(call ARCHIVE, $@, $(OBJS))
+.built: $(OBJS)
+	$(call ARCHIVE, $(BIN), $(OBJS))
+	$(Q) touch .built
+
+# Register application
+
+ifeq ($(CONFIG_NSH_BUILTIN_APPS),y)
+ifeq ($(CONFIG_NXPLAYER_COMMAND_LINE),y)
+$(BUILTIN_REGISTRY)$(DELIM)$(APPNAME)_main.bdat: $(DEPCONFIG) Makefile
+	$(call REGISTER,$(APPNAME),$(PRIORITY),$(STACKSIZE),$(APPNAME)_main)
+
+context: $(BUILTIN_REGISTRY)$(DELIM)$(APPNAME)_main.bdat
+else
+context:
+endif
+else
+context:
+endif
+
+# Create dependencies
 
 .depend: Makefile $(SRCS)
-	$(Q) $(MKDEP) $(DEPPATH) "$(CC)" -- $(CFLAGS) -- $(SRCS) >Make.dep
+	$(Q) $(MKDEP) $(ROOTDEPPATH) "$(CC)" -- $(CFLAGS) -- $(SRCS) >Make.dep
 	$(Q) touch $@
 
 depend: .depend
 
 clean:
-	$(call DELFILE, $(BIN))
+	$(call DELFILE, .built)
 	$(call CLEAN)
+	rm -rf ..$(DELIM)..$(DELIM)builtin$(DELIM)registry$(DELIM)$(APPNAME)_main.*
 
 distclean: clean
 	$(call DELFILE, Make.dep)
