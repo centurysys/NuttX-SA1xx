@@ -1,7 +1,7 @@
 ############################################################################
-# apps/examples/cc3000/Makefile
+# apps/platform/Makefile
 #
-#   Copyright (C) 2008, 2010-2013 Gregory Nutt. All rights reserved.
+#   Copyright (C) 2013 Gregory Nutt. All rights reserved.
 #   Author: Gregory Nutt <gnutt@nuttx.org>
 #
 # Redistribution and use in source and binary forms, with or without
@@ -35,80 +35,101 @@
 
 -include $(TOPDIR)/.config
 -include $(TOPDIR)/Make.defs
-include $(APPDIR)/Make.defs
+include $(APPDIR)$(DELIM)Make.defs
 
-# Hello, World! built-in application info
+# Platform-specific Appliction Support
+# Tool stuff
 
-APPNAME		= c3b
-PRIORITY	= SCHED_PRIORITY_DEFAULT
-STACKSIZE	= 608
+ifeq ($(DIRLINK),)
+DIRLINK = $(TOPDIR)/tools/link.sh
+DIRUNLINK = $(TOPDIR)/tools/unlink.sh
+endif
 
-APPNAME1	= shell
-PRIORITY1	= SCHED_PRIORITY_DEFAULT
-STACKSIZE1	= 980
+ifeq ($(WINTOOL),y)
+INCDIROPT = -w
+endif
 
-# Hello, World! Example
+# Directories
 
-ASRCS		=
-CSRCS		= cc3000basic.c board.c shell.c telnetd_driver.c telnetd_daemon.c
+BINDIR      = $(APPDIR)$(DELIM)platform$(DELIM)bin
+PLATFORMDIR = $(APPDIR)$(DELIM)platform$(DELIM)board
+DUMMYDIR    = $(APPDIR)$(DELIM)platform$(DELIM)dummy
+BOARDDIR    = $(APPDIR)$(DELIM)platform$(DELIM)$(CONFIG_ARCH_BOARD)
+LINKDIR     = $(if $(wildcard $(BOARDDIR)$(DELIM)Make.defs),$(BOARDDIR),$(DUMMYDIR))
 
-AOBJS		= $(ASRCS:.S=$(OBJEXT))
-COBJS		= $(CSRCS:.c=$(OBJEXT))
+VPATH       = $(PLATFORMDIR)
 
-SRCS		= $(ASRCS) $(CSRCS)
-OBJS		= $(AOBJS) $(COBJS)
+# Binaries
+
+ASRCS =
+CSRCS =
+
+-include $(PLATFORMDIR)$(DELIM)Make.defs
+
+AOBJS = $(ASRCS:.S=$(OBJEXT))
+COBJS = $(CSRCS:.c=$(OBJEXT))
+
+SRCS = $(ASRCS) $(CSRCS)
+OBJS = $(AOBJS) $(COBJS)
 
 ifeq ($(CONFIG_WINDOWS_NATIVE),y)
-  BIN		= ..\..\libapps$(LIBEXT)
+  BIN = ..\libapps$(LIBEXT)
 else
 ifeq ($(WINTOOL),y)
-  BIN		= ..\\..\\libapps$(LIBEXT)
+  BIN = ..\\libapps$(LIBEXT)
 else
-  BIN		= ../../libapps$(LIBEXT)
+  BIN = ../libapps$(LIBEXT)
 endif
 endif
 
-ROOTDEPPATH	= --dep-path .
-
-# Common build
-
-VPATH		=
+# Build targets
 
 all: .built
-.PHONY: clean depend distclean
+.PHONY: context .depend depend clean distclean
 
+ifneq ($(AOBJS),)
 $(AOBJS): %$(OBJEXT): %.S
 	$(call ASSEMBLE, $<, $@)
-
-$(COBJS): %$(OBJEXT): %.c
-	$(call COMPILE, $<, $@)
-
-.built: $(OBJS)
-	$(call ARCHIVE, $(BIN), $(OBJS))
-	@touch .built
-
-ifeq ($(CONFIG_NSH_BUILTIN_APPS),y)
-$(BUILTIN_REGISTRY)$(DELIM)$(APPNAME)_main.bdat: $(DEPCONFIG) Makefile
-	$(call REGISTER,$(APPNAME),$(PRIORITY),$(STACKSIZE),$(APPNAME)_main)
-	$(call REGISTER,$(APPNAME1),$(PRIORITY1),$(STACKSIZE1),$(APPNAME1)_main)
-
-context: $(BUILTIN_REGISTRY)$(DELIM)$(APPNAME)_main.bdat $(BUILTIN_REGISTRY)$(DELIM)$(APPNAME)_main.bdat
-else
-context:
 endif
 
-.depend: Makefile $(SRCS)
-	@$(MKDEP) $(ROOTDEPPATH) "$(CC)" -- $(CFLAGS) -- $(SRCS) >Make.dep
-	@touch $@
+ifneq ($(COBJS),)
+$(COBJS): %$(OBJEXT): %.c
+	$(call COMPILE, $<, $@)
+endif
+
+.built: $(OBJS)
+ifneq ($(OBJS),)
+	$(call ARCHIVE, $(BIN), $(OBJS))
+endif
+	$(Q) touch .built
+
+# Build context setup
+
+$(PLATFORMDIR): $(TOPDIR)$(DELIM).config
+	@echo "LN: platform$(DELIM)board to $(LINKDIR)"
+	$(Q) $(DIRUNLINK) $(PLATFORMDIR)
+	$(Q) $(DIRLINK) $(LINKDIR) $(PLATFORMDIR)
+
+context: $(PLATFORMDIR)
+
+# Dependencies
+
+.depend: Makefile $(SRCS) $(PLATFORMDIR)
+	$(Q) $(MKDEP) --obj-path bin --obj-suffix  $(OBJEXT) --dep-path $(PLATFORMDIR) "$(CC)" -- $(CFLAGS) -- $(SRCS) >Make.dep
+	$(Q) touch $@
 
 depend: .depend
 
-clean:
+# Clean targets
+
+clean: $(PLATFORMDIR)
 	$(call DELFILE, .built)
-	$(call CLEAN)
+	$(MAKE) -C $(BINDIR) TOPDIR="$(TOPDIR)" APPDIR="$(APPDIR)" clean
 
 distclean: clean
 	$(call DELFILE, Make.dep)
 	$(call DELFILE, .depend)
+	$(Q) $(DIRUNLINK) $(PLATFORMDIR)
 
 -include Make.dep
+

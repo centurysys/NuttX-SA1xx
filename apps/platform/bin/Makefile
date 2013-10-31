@@ -1,5 +1,5 @@
 ############################################################################
-# drivers/wireless/Make.defs
+# libc/bin/Makefile
 #
 #   Copyright (C) 2013 Gregory Nutt. All rights reserved.
 #   Author: Gregory Nutt <gnutt@nuttx.org>
@@ -31,18 +31,18 @@
 # ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 #
-############################################################################
+###########################################################################
 
-ifeq ($(CONFIG_WL_CC3000),y)
+-include $(TOPDIR)/Make.defs
 
-# Include cc3000 drivers
+all:
+.PHONY: clean distclean
 
-CSRCS += cc3000.c cc3000_common.c cc3000drv.c evnt_handler.c hci.c netapp.c
-CSRCS += nvmem.c security.c socket.c socket_imp.c wlan.c
+# Clean Targets:
 
-# Include wireless devices build support
+clean:
+	$(call CLEAN)
 
-DEPPATH += --dep-path wireless$(DELIM)cc3000
-VPATH += :wireless$(DELIM)cc3000
-CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" $(TOPDIR)$(DELIM)drivers$(DELIM)wireless$(DELIM)cc3000}
-endif
+# Deep clean -- removes all traces of the configuration
+
+distclean: clean

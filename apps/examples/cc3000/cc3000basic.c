@@ -79,14 +79,30 @@
  *                              |
  *                              +---> CC3000 pin
  *
- *
  ****************************************************************************/
 
 /****************************************************************************
  * Included Files
  ****************************************************************************/
+/*
+ * Memory Analyses
+ *
+ *              total       used       free    largest
+ * Mem:         16560      11144       5416       5384
+ * PID   SIZE   USED   THREAD NAME
+ *     0      0      0 Idle Task
+ *     1    876    772 init
+ *     2    604    588 c3b
+ *     3    236    220 <pthread0>
+ *
+ *     8    364    348 <pthread0>
+ *
+ *     9    260    196 <pthread>
+ *    10    380    364 Telnet dd
+ *    11    860    844 Telnet sd
+ */
 
-#include <nuttx/config.h>
+ #include <nuttx/config.h>
 
 #include "board.h"
 #include <stdio.h>
@@ -135,7 +151,7 @@ void ShowInformation(void);
 
 static uint8_t isInitialized = false;
 
-#ifdef CONFIG_EXAMPLE_CC3000_MEM_CHECK
+#ifdef CONFIG_EXAMPLES_CC3000_MEM_CHECK
 static struct mallinfo mmstart;
 static struct mallinfo mmprevious;
 #endif
@@ -144,7 +160,7 @@ static struct mallinfo mmprevious;
  *  Private Functions
  ****************************************************************************/
 
-#ifdef CONFIG_EXAMPLE_CC3000_MEM_CHECK
+#ifdef CONFIG_EXAMPLES_CC3000_MEM_CHECK
 static void show_memory_usage(struct mallinfo *mmbefore,
                               struct mallinfo *mmafter)
 {
@@ -166,14 +182,21 @@ static void show_memory_usage(struct mallinfo *mmbefore,
       printf("Change:%11d freed\n", diff);
     }
 
+#ifdef CONFIG_EXAMPLES_CC3000_STACK_CHECK
   stkmon_disp();
+#endif
 }
+#endif
 
+#ifdef CONFIG_EXAMPLES_CC3000_STACK_CHECK
+static char buff[CONFIG_TASK_NAME_SIZE+1];
 static void _stkmon_disp(FAR struct tcb_s *tcb, FAR void *arg)
 {
 #if CONFIG_TASK_NAME_SIZE > 0
+  strncpy(buff,tcb->name,CONFIG_TASK_NAME_SIZE);
+  buff[CONFIG_TASK_NAME_SIZE] = '\0';
   syslog("%5d %6d %6d %s\n",
-         tcb->pid, tcb->adj_stack_size, up_check_tcbstack(tcb), tcb->name);
+         tcb->pid, tcb->adj_stack_size, up_check_tcbstack(tcb), buff);
 #else
   syslog("%5d %6d %6d\n",
          tcb->pid, tcb->adj_stack_size, up_check_tcbstack(tcb));
@@ -227,7 +250,7 @@ static bool wait_on(long timeoutMs, volatile unsigned long *what,
  * Public Functions
  ****************************************************************************/
 
-#ifndef CONFIG_EXAMPLE_CC3000_MEM_CHECK
+#ifndef CONFIG_EXAMPLES_CC3000_STACK_CHECK
 #  define stkmon_disp()
 #else
 void stkmon_disp(void)
@@ -349,12 +372,12 @@ int execute(int cmd)
          Initialize();
        }
 
-#ifdef CONFIG_EXAMPLE_CC3000_MEM_CHECK
+#ifdef CONFIG_EXAMPLES_CC3000_MEM_CHECK
       mmprevious= mallinfo();
       show_memory_usage(&mmstart,&mmprevious);
 #endif
       shell_main(0, 0);
-#ifdef CONFIG_EXAMPLE_CC3000_MEM_CHECK
+#ifdef CONFIG_EXAMPLES_CC3000_MEM_CHECK
       mmprevious= mallinfo();
       show_memory_usage(&mmstart,&mmprevious);
 #endif
@@ -375,7 +398,7 @@ int execute(int cmd)
 
 void Initialize(void)
 {
-#ifdef CONFIG_EXAMPLE_CC3000_MEM_CHECK
+#ifdef CONFIG_EXAMPLES_CC3000_MEM_CHECK
   mmstart = mallinfo();
   memcpy(&mmprevious, &mmstart, sizeof(struct mallinfo));
   show_memory_usage(&mmstart,&mmprevious);
@@ -392,6 +415,9 @@ void Initialize(void)
 
   printf("Initializing CC3000...\n");
   CC3000_Init();
+#ifdef CONFIG_EXAMPLES_CC3000_STACK_CHECK
+  stkmon_disp();
+#endif
   printf("  CC3000 init complete.\n");
 
   if (nvmem_read_sp_version(fancyBuffer) == 0)
@@ -431,7 +457,7 @@ void Initialize(void)
     isInitialized = true;
 #endif
 
-#ifdef CONFIG_EXAMPLE_CC3000_MEM_CHECK
+#ifdef CONFIG_EXAMPLES_CC3000_MEM_CHECK
     mmprevious = mallinfo();
     show_memory_usage(&mmstart,&mmprevious);
 #endif

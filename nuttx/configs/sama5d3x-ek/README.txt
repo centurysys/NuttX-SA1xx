@@ -79,6 +79,7 @@ Contents
   - AT24 Serial EEPROM
   - CAN Usage
   - SAMA5 ADC Support
+  - OV2640 Camera interface
   - SAMA5D3x-EK Configuration Options
   - Configurations
 
@@ -746,28 +747,28 @@ SAMA5 ADC Support
   Basic driver configuration:
 
     System Type -> SAMA5 Peripheral Support
-      CONFIG_SAMA5_ADC=y              : Enable ADC driver support
-      CONFIG_SAMA5_TC0=y              : Enable the Timer/counter library need for periodic sampling
+      CONFIG_SAMA5_ADC=y               : Enable ADC driver support
+      CONFIG_SAMA5_TC0=y               : Enable the Timer/counter library need for periodic sampling
 
     Drivers
-      CONFIG_ANALOG=y                 : Should be automatically selected
-      CONFIG_ADC=y                    : Should be automatically selected
+      CONFIG_ANALOG=y                  : Should be automatically selected
+      CONFIG_ADC=y                     : Should be automatically selected
 
     System Type -> ADC Configuration
-      CONFIG_SAMA5_ADC_CHAN0=y        : These settings enable the sequencer to collect
-      CONFIG_SAMA5_ADC_CHAN1=y        : Samples from ADC channels 0-3 on each trigger
+      CONFIG_SAMA5_ADC_CHAN0=y         : These settings enable the sequencer to collect
+      CONFIG_SAMA5_ADC_CHAN1=y         : Samples from ADC channels 0-3 on each trigger
       CONFIG_SAMA5_ADC_CHAN2=y
       CONFIG_SAMA5_ADC_CHAN3=y
       CONFIG_SAMA5_ADC_SEQUENCER=y
 
-      CONFIG_SAMA5_ADC_TIOA0TRIG=y    : Trigger on the TC0, channel 0 output A
-      CONFIG_SAMA5_ADC_TIOAFREQ=2     : At a frequency of 2Hz
-      CONFIG_SAMA5_ADC_TIOA_RISING=y  : Trigger on the rising edge
+      CONFIG_SAMA5_ADC_TIOA0TRIG=y     : Trigger on the TC0, channel 0 output A
+      CONFIG_SAMA5_ADC_TIOAFREQ=2      : At a frequency of 2Hz
+      CONFIG_SAMA5_ADC_TIOA_RISING=y   : Trigger on the rising edge
 
     Default ADC settings (like gain and offset) may also be set if desired.
 
     System Type -> Timer/counter Configuration
-      CONFIG_SAMA5_TC0_TIOA0=y        : Should be automatically selected
+      CONFIG_SAMA5_TC0_TIOA0=y         : Should be automatically selected
 
   Work queue supported is also needed:
 
@@ -779,7 +780,7 @@ SAMA5 ADC Support
   enabled as follows:
 
     Application Configuration -> Examples -> ADC eample
-      CONFIG_EXAMPLES_ADC=y           : Enables the example code
+      CONFIG_EXAMPLES_ADC=y            : Enables the example code
       CONFIG_EXAMPLES_ADC_DEVPATH="/dev/adc0"
 
     Other default settings for the ADC example should be okay.
@@ -790,10 +791,54 @@ SAMA5 ADC Support
   following in the configuration.
 
     System Type -> SAMA5 Peripheral Support
-      CONFIG_SAMA5_DMAC1=y            : Enable DMAC1 support
+      CONFIG_SAMA5_DMAC1=y             : Enable DMAC1 support
 
     System Type -> ADC Configuration
-      CONFIG_SAMA5_ADC_DMA=y          : Enable ADC DMA transfers
+      CONFIG_SAMA5_ADC_DMA=y           : Enable ADC DMA transfers
+      CONFIG_SAMA5_ADC_DMASAMPLES=2    : Collect two sets of samples per DMA
+
+    Drivers -> Analog device (ADC/DAC) support
+      CONFIG_ADC_FIFOSIZE=16           : Driver may need a large ring buffer
+
+    Application Configuration -> Examples -> ADC eample
+      CONFIG_EXAMPLES_ADC_GROUPSIZE=16 : Larger buffers in the test
+
+OV2640 Camera interface
+=======================
+
+SAMA5D3x PIN             SAMA5D3x-EK    OV2640
+PIO  PER SIGNAL        ISI Socket J11
+---- --- ------------- --- ------------ ------------
+                        1  VDDISI
+                        2  GND
+                        3  VDDISI
+                        4  GND
+PE28  ?  ?              5  ZB_SLPTR
+PE29  ?  ?              6  ZB_RST
+PC27  B  TWI1_CK        7  TWCK1
+PC26  B  TWI1_D         8  TWD1
+                        9  GND
+PD31  B  PCK1 (ISI_MCK) 10 ISI_MCK
+                        11 GND
+PA30  C  ISI_VSYNC      12 ISI_VSYNC
+                        13 GND
+PA31  C  ISI_HSYNC      14 ISI_HSYNC
+                        15 GND
+PC30  C  ISI_PCK        16 ISI_PCK
+                        17 GND
+PA16  C  ISI_D0         18 ISI_D0
+PA17  C  ISI_D1         19 ISI_D1
+PA18  C  ISI_D2         20 ISI_D2
+PA19  C  ISI_D3         21 ISI_D3
+PA20  C  ISI_D4         22 ISI_D4
+PA21  C  ISI_D5         23 ISI_D5
+PA22  C  ISI_D6         24 ISI_D6
+PA23  C  ISI_D7         25 ISI_D7
+PC29  C  ISI_D8         26 ISI_D8
+PC28  C  ISI_D9         27 ISI_D9
+PC27  C  ISI_D10        28 ISI_D10
+PC26  C  ISI_D11        29 ISI_D11
+                        30 GND
 
 SAMA5D3x-EK Configuration Options
 =================================
