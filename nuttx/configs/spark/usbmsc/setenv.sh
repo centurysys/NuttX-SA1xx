@@ -1,9 +1,7 @@
-############################################################################
-# drivers/mtd/Make.defs
-# These driver supports various Memory Technology Devices (MTD) using the
-# NuttX MTD interface.
+#!/bin/bash
+# configs/spark/usbmsc/setenv.sh
 #
-#   Copyright (C) 2009-2013 Gregory Nutt. All rights reserved.
+#   Copyright (C) 2013 Gregory Nutt. All rights reserved.
 #   Author: Gregory Nutt <gnutt@nuttx.org>
 #
 # Redistribution and use in source and binary forms, with or without
@@ -33,51 +31,33 @@
 # ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 #
-############################################################################
 
-# Include MTD drivers
+if [ "$_" = "$0" ] ; then
+  echo "You must source this script, not run it!" 1>&2
+  exit 1
+fi
 
-ifeq ($(CONFIG_MTD),y)
+WD=`pwd`
+if [ ! -x "setenv.sh" ]; then
+  echo "This script must be executed from the top-level NuttX build directory"
+  exit 1
+fi
 
-CSRCS += at45db.c flash_eraseall.c ftl.c m25px.c n25qx.c ramtron.c mtd_config.c
+if [ -z "${PATH_ORIG}" ]; then
+  export PATH_ORIG="${PATH}"
+fi
 
-ifeq ($(CONFIG_MTD_PARTITION),y)
-CSRCS += mtd_partition.c
-endif
+# This is the Cygwin path to the location where I build the buildroot
+# toolchain.
 
-ifeq ($(CONFIG_RAMMTD),y)
-CSRCS += rammtd.c
-endif
+export BUILDROOT_BIN="${WD}/../misc/buildroot/build_arm_nofpu/staging_dir/bin"
 
-ifeq ($(CONFIG_MTD_AT24XX),y)
-CSRCS += at24xx.c
-endif
+# This is the path to the Spark tools directory
 
-ifeq ($(CONFIG_MTD_SST25),y)
-CSRCS += sst25.c
-endif
+export TOOL_BIN="${WD}/configs/spark/tools"
 
-ifeq ($(CONFIG_MTD_SST39FV),y)
-CSRCS += sst39vf.c
-endif
+# Update the PATH variable
 
-ifeq ($(CONFIG_MTD_W25),y)
-CSRCS += w25.c
-endif
+export PATH="${BUILDROOT_BIN}:${TOOL_BIN}:/sbin:/usr/sbin:${PATH_ORIG}"
 
-ifeq ($(CONFIG_MTD_AT25),y)
-CSRCS += at25.c
-endif
-
-ifeq ($(CONFIG_MTD_SMART),y)
-ifeq ($(CONFIG_FS_SMARTFS),y)
-CSRCS += smart.c
-endif
-endif
-
-# Include MTD driver support
-
-DEPPATH += --dep-path mtd
-VPATH += :mtd
-
-endif
+echo "PATH : ${PATH}"

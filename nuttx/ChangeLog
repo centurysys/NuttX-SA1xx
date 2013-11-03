@@ -5914,5 +5914,43 @@
 	* drivers/wireless/cc3000 and include/nuttx/wireless/cc3000:
 	  CC3000 driver updates from David Sidrane (2013-10-13).
 	* arch/arm/src/sama5/chip/sam_ssc.h:  SSC register definition
-	  header files (2013-10-30).
-
+	  header file (2013-10-30).
+	* arch/arm/src/sama5/chip/sam_pwm.h:  PWM register definition
+	  header file (2013-10-31).
+	* drivers/mtd/mtd_partition.c: Fix erase block vs page block confusion.
+	  From Ken Pettit (2013-10-31).
+	* arch/arm/src/stm32/stm32_usbdev.c: On a failure to bind the class
+	  driver, the driver reference was being nullified too soon.  This
+	  caused an exception in usbdev_reset() later.  The driver reference
+	  will be nullified later usbdev_unregister when the caller gets the
+	  error.  From David Sidrane (2013-10-31).
+	* drivers/mtd/mtd_config.c and include/nuttx/configdata.h:  Add a container
+	  for an MTD device that can be used to provide a simple, lightweight
+	  interface to configation data storage that resides on some storage
+	  media that is wrapped as an MTD device.  From Ken Pettit (2013-11-1).
+	* configs/mikroe-stm32f4:  Now uses /dev/config for configuration data
+	  storage.  From Ken Pettit (2013-11-1).
+	* arch/ stack management functions:  Extension and standardization of
+	  stack debug logic.  Now includes coloration of the IDLE and interrupt
+	  stacks as well as the heap.  Suggested by David Sidrane (2013-11-1).
+	* configs/spark/usbmsc:  Add spark USB MSC configuration.  From David
+	  Sidrane (2013-11-1).
+	* fs/fat/fs_fat32util.c:  In one error return case, the error return
+	  value was not being set, making the failure look like success. From
+	  David Sidrane (2011-10-1).
+	* drivers/usbdev/usbmsc.c and usbmsc_scsi.c:  pthread_join() does not
+	  work if called from a different task group than the pthread.  This
+	  is correct behavior, but a problem.  The correct solution would be
+	  configure the USB MSC thread to a task, however, this workaround
+	  from David Sidrane plugs the hole for now (2013-11-1).
+	* drivers/mtd/mtd_config.c:  Reduce configuration header size.  From
+	  Ken Pettit (2013-11-1).
+	* drivers/mtd/sst25.c:  Improved write performance by fixing a bug
+	  that prevented operation in the faster write mode.  The code did
+	  not wait on the last write complete before issuing the WRDI  The
+	  loop in general failed to wait on the fist 2 bytes after the
+	  SST25_AAI if the next 2 were FF FF, then it would reissue the
+	  address but not cancel the write. Reorganized to always wait for
+	  completion after and address with data write and on any data
+	  write so  that the device is complete before WRDI is sent.  From
+	  David Sidrane (2013-11-2).
