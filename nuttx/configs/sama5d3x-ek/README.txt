@@ -79,7 +79,9 @@ Contents
   - AT24 Serial EEPROM
   - CAN Usage
   - SAMA5 ADC Support
-  - OV2640 Camera interface
+  - SAMA5 PWM Support
+  - OV2640 Camera Interface
+  - WM8904 Audio Codec Interface
   - SAMA5D3x-EK Configuration Options
   - Configurations
 
@@ -657,6 +659,12 @@ AT24 Serial EEPROM
 
 CAN Usage
 =========
+  I planned to verify CAN using the IXXAT USB-to-CAN Compact.  This section
+  provides miscellaneous CAN-related notes, mostly to myself but perhaps of
+  interest to others.
+
+  [Unfortunately, as of this writing, I still do not have a proper CAN test
+   bed to verify the CAN driver.]
 
   CAN Configuration
   -----------------
@@ -705,7 +713,7 @@ CAN Usage
 
   Only messages that have IDs that match the CONFIG_SAMA5_CANn_ADDRn when both
   the received and the configured address are masked by CONFIG_SAMA5_CANn_MASKn
-  will be accepted.  For eacmple, if the mask is all ones, then only messasges
+  will be accepted.  For example, if the mask is all ones, then only messasges
   with exact address matches will be accepted; if the mask is all zeroes than
   any address will be accepted.
 
@@ -714,8 +722,8 @@ CAN Usage
 
   CAN1 and CAN2 are available via RJ-11 connectors on the SAMA5Dx-EK.  Each
   is wired as follows.  Also shown below is the matching pins if you want connect
-  the CAN to a device that uses an DB-9 connector.  Both connector types are
-  common.
+  the CAN to a device that uses an DB-9 connector (Such as the IXXAT USB-to-CAN
+  Compact).  Both connector types (as well as RJ-45) are common.
 
                     +----------+     RJ-11       DB-9
                     |    O     |     ----------- --------------
@@ -727,8 +735,7 @@ CAN Usage
   |  |654321|  |    |  o3      |     Pin 6 N/C   Pin 6 N/C
   |  |oooooo|  |    |       o7 |                 Pin 7 CANH
   |  +------+  |    |  o2      |                 Pin 8 N/C
-  +------------+    |       o6 |                 Pin 9 N/C
-   RJ-11 Female     |  x1      |
+  +------------+    |       o6 |                 Pin 9 CANV+ (N/C on IXXAT)   RJ-11 Female     |  x1      |
                     |          |
                     |    O     |
                     +----------+
@@ -737,14 +744,14 @@ CAN Usage
 SAMA5 ADC Support
 =================
 
+  Basic driver configuration
+  --------------------------
   ADC support can be added to the NSH configuration.  However, there are no
   ADC input pins available to the user for ADC testing (the touchscreen ADC
   inputs are intended for other functionality).  Because of this, there is
   not much motivation to enable ADC support on the SAMA5D3x-EK.  This
   paragraph is included here, however, for people using a custom SAMA5D3x
-  board thay requires ADC support.
-
-  Basic driver configuration:
+  board that requires ADC support.
 
     System Type -> SAMA5 Peripheral Support
       CONFIG_SAMA5_ADC=y               : Enable ADC driver support
@@ -775,16 +782,20 @@ SAMA5 ADC Support
     Library routines
       CONFIG_SCHED_WORKQUEUE=y
 
+  ADC Test Example
+  ----------------
   For testing purposes, there is an ADC program at apps/examples/adc that
   will collect a specified number of samples.  This test program can be
   enabled as follows:
 
-    Application Configuration -> Examples -> ADC eample
+    Application Configuration -> Examples -> ADC example
       CONFIG_EXAMPLES_ADC=y            : Enables the example code
       CONFIG_EXAMPLES_ADC_DEVPATH="/dev/adc0"
 
     Other default settings for the ADC example should be okay.
 
+  ADC DMA Support
+  ---------------
   At 2Hz, DMA is not necessary nor desire-able.  The ADC driver has support
   for DMA transfers of converted data (although that support has not been
   tested as of this writing).  DMA support can be added by include the
@@ -800,45 +811,199 @@ SAMA5 ADC Support
     Drivers -> Analog device (ADC/DAC) support
       CONFIG_ADC_FIFOSIZE=16           : Driver may need a large ring buffer
 
-    Application Configuration -> Examples -> ADC eample
+    Application Configuration -> Examples -> ADC example
       CONFIG_EXAMPLES_ADC_GROUPSIZE=16 : Larger buffers in the test
 
-OV2640 Camera interface
+SAMA5 PWM Support
+=================
+
+  Basic driver configuration
+  --------------------------
+  PWM support can be added to the NSH configuration.  However, there are no
+  PWM output pins available to the user for PWM testing.  Because of this,
+  there is not much motivation to enable PWM support on the SAMA5D3x-EK.  This
+  paragraph is included here, however, for people using a custom SAMA5D3x
+  board that requires PWM support.
+
+  Basic driver configuration:
+
+    System Type -> SAMA5 Peripheral Support
+      CONFIG_SAMA5_PWM=y               : Enable PWM driver support
+
+    Drivers
+      CONFIG_PWM=y                     : Should be automatically selected
+
+    PWM Channel/Output Selection
+    ----------------------------
+    In order to use the PWM, you must enable one or more PWM Channels:
+
+    System Type -> PWM Configuration
+      CONFIG_SAMA5_PWM_CHAN0=y         : Enable one or more of channels 0-3
+      CONFIG_SAMA5_PWM_CHAN1=y
+      CONFIG_SAMA5_PWM_CHAN2=y
+      CONFIG_SAMA5_PWM_CHAN3=y
+
+    For each channel that is enabled, you must also specify the output pins
+    to be enabled and the clocking supplied to the PWM channel.
+
+      CONFIG_SAMA5_PWM_CHANx_FAULTINPUT=n : (not used currently)
+      CONFIG_SAMA5_PWM_CHANx_OUTPUTH=y  : Enable One of both of the H and L output pins
+      CONFIG_SAMA5_PWM_CHANx_OUTPUTL=y
+
+    Where x=0..3.
+
+    Care must be taken because all PWM output pins conflict with some other
+    usage of the pin by other devices.  Furthermore, many of these pins have
+    not been brought out to an external connector:
+
+      -----+---+---+----+------+----------------
+       PWM  PIN PER PIO   I/O   CONFLICTS
+      -----+---+---+----+------+----------------
+       PWM0 FI   B  PC28 J2.30  SPI1, ISI
+            H    B  PB0   ---   GMAC
+                 B  PA20 J1.14  LCDC, ISI
+            L    B  PB1   ---   GMAC
+                 B  PA21 J1.16  LCDC, ISI
+      -----+---+---+----+------+----------------
+       PWM1 FI   B  PC31 J2.36  HDMI
+            H    B  PB4   ---   GMAC
+                 B  PA22 J1.18  LCDC, ISI
+            L    B  PB5   ---   GMAC
+                 B  PE31 J3.20  ISI, HDMI
+                 B  PA23 J1.20  LCDC, ISI
+      -----+---+---+----+------+----------------
+       PWM2 FI   B  PC29 J2.29  UART0, ISI, HDMI
+            H    C  PD5   ---   HSMCI0
+                 B  PB8   ---   GMAC
+            L    C  PD6   ---   HSMCI0
+                 B  PB9   ---   GMAC
+      -----+---+---+----+------+----------------
+       PWM3 FI   C  PD16  ---  SPI0, Audio
+            H    C  PD7   ---  HSMCI0
+                 B  PB12 J3.7  GMAC
+            L    C  PD8   ---  HSMCI0
+                 B  PB13  ---  GMAC
+      -----+---+---+----+--------------------
+
+    See configs/sama5d3x-ek/include/board.h for all of the default PWM
+    pin selections.  I used PWM channel 0, pins PA20 and PA21 for testing.
+
+    Clocking is addressed in the next paragraph.
+
+    PWM Clock Configuration
+    -----------------------
+    PWM Channels can be clocked from either a coarsely divided divided down
+    MCK or from a custom frequency from PWM CLKA and/or CLKB.  If you want
+    to use CLKA or CLKB, you must enable and configure them.
+
+    System Type -> PWM Configuration
+      CONFIG_SAMA5_PWM_CLKA=y
+      CONFIG_SAMA5_PWM_CLKA_FREQUENCY=3300
+      CONFIG_SAMA5_PWM_CLKB=y
+      CONFIG_SAMA5_PWM_CLKB_FREQUENCY=3300
+
+    Then for each of the enabled, channels you must select the input clock
+    for that channel:
+
+    System Type -> PWM Configuration
+      CONFIG_SAMA5_PWM_CHANx_CLKA=y     : Pick one of MCK, CLKA, or CLKB (only)
+      CONFIG_SAMA5_PWM_CHANx_CLKB=y
+      CONFIG_SAMA5_PWM_CHANx_MCK=y
+      CONFIG_SAMA5_PWM_CHANx_MCKDIV=128 : If MCK is selected, then the MCK divider must
+                                        : also be provided (1,2,4,8,16,32,64,128,256,512, or 1024).
+
+  PWM Test Example
+  ----------------
+  For testing purposes, there is an PWM program at apps/examples/pwm that
+  will collect a specified number of samples.  This test program can be
+  enabled as follows:
+
+    Application Configuration -> Examples -> PWM example
+      CONFIG_EXAMPLES_PWM=y            : Enables the example code
+
+    Other default settings for the PWM example should be okay.
+
+      CONFIG_EXAMPLES_PWM_DEVPATH="/dev/pwm0"
+      CONFIG_EXAMPLES_PWM_FREQUENCY=100
+
+  Usage of the example is straightforward:
+
+    nsh> pwm -h
+    Usage: pwm [OPTIONS]
+
+    Arguments are "sticky".  For example, once the PWM frequency is
+    specified, that frequency will be re-used until it is changed.
+
+    "sticky" OPTIONS include:
+      [-p devpath] selects the PWM device.  Default: /dev/pwm0 Current: /dev/pwm0
+      [-f frequency] selects the pulse frequency.  Default: 100 Hz Current: 100 Hz
+      [-d duty] selects the pulse duty as a percentage.  Default: 50 % Current: 50 %
+      [-t duration] is the duration of the pulse train in seconds.  Default: 5 Current: 5
+      [-h] shows this message and exits
+
+OV2640 Camera Interface
 =======================
 
-SAMA5D3x PIN             SAMA5D3x-EK    OV2640
-PIO  PER SIGNAL        ISI Socket J11
----- --- ------------- --- ------------ ------------
-                        1  VDDISI
-                        2  GND
-                        3  VDDISI
-                        4  GND
-PE28  ?  ?              5  ZB_SLPTR
-PE29  ?  ?              6  ZB_RST
-PC27  B  TWI1_CK        7  TWCK1
-PC26  B  TWI1_D         8  TWD1
-                        9  GND
-PD31  B  PCK1 (ISI_MCK) 10 ISI_MCK
-                        11 GND
-PA30  C  ISI_VSYNC      12 ISI_VSYNC
-                        13 GND
-PA31  C  ISI_HSYNC      14 ISI_HSYNC
-                        15 GND
-PC30  C  ISI_PCK        16 ISI_PCK
-                        17 GND
-PA16  C  ISI_D0         18 ISI_D0
-PA17  C  ISI_D1         19 ISI_D1
-PA18  C  ISI_D2         20 ISI_D2
-PA19  C  ISI_D3         21 ISI_D3
-PA20  C  ISI_D4         22 ISI_D4
-PA21  C  ISI_D5         23 ISI_D5
-PA22  C  ISI_D6         24 ISI_D6
-PA23  C  ISI_D7         25 ISI_D7
-PC29  C  ISI_D8         26 ISI_D8
-PC28  C  ISI_D9         27 ISI_D9
-PC27  C  ISI_D10        28 ISI_D10
-PC26  C  ISI_D11        29 ISI_D11
-                        30 GND
+    SAMA5D3x PIN             SAMA5D3x-EK    OV2640
+    PIO  PER SIGNAL        ISI Socket J11
+    ---- --- ------------- --- ------------ ------------
+                            1  VDDISI
+                            2  GND
+                            3  VDDISI
+                            4  GND
+    PE28  ?  ?              5  ZB_SLPTR
+    PE29  ?  ?              6  ZB_RST
+    PC27  B  TWI1_CK        7  TWCK1
+    PC26  B  TWI1_D         8  TWD1
+                                9  GND
+    PD31  B  PCK1 (ISI_MCK) 10 ISI_MCK
+                            11 GND
+    PA30  C  ISI_VSYNC      12 ISI_VSYNC
+                            13 GND
+    PA31  C  ISI_HSYNC      14 ISI_HSYNC
+                            15 GND
+    PC30  C  ISI_PCK        16 ISI_PCK
+                            17 GND
+    PA16  C  ISI_D0         18 ISI_D0
+    PA17  C  ISI_D1         19 ISI_D1
+    PA18  C  ISI_D2         20 ISI_D2
+    PA19  C  ISI_D3         21 ISI_D3
+    PA20  C  ISI_D4         22 ISI_D4
+    PA21  C  ISI_D5         23 ISI_D5
+    PA22  C  ISI_D6         24 ISI_D6
+    PA23  C  ISI_D7         25 ISI_D7
+    PC29  C  ISI_D8         26 ISI_D8
+    PC28  C  ISI_D9         27 ISI_D9
+    PC27  C  ISI_D10        28 ISI_D10
+    PC26  C  ISI_D11        29 ISI_D11
+                            30 GND
+
+WM8904 Audio Codec Interface
+============================
+
+  Connectivity
+  ------------
+
+    ------------- ---------------- -----------------
+    WM8904        SAMA5D3          NuttX Pin Name
+    ------------- ---------------- -----------------
+     3 SDA        PA30 TWD0        PIO_TWI0_D
+     2 SCLK       PA31 TWCK0       PIO_TWI0_CK
+    28 MCLK       PD30 PCK0        PIO_PMC_PCK0
+    29 BCLK/GPIO4 PC16 TK          PIO_SSC0_TK
+    "" "        " PC19 RK          PIO_SSC0_RK
+    30 LRCLK      PC17 TF          PIO_SSC0_TF
+    "" "   "      PC20 RF          PIO_SSC0_RF
+    31 ADCDAT     PC21 RD          PIO_SSC0_RD
+    32 DACDAT     PC18 TD          PIO_SSC0_TD
+     1 IRQ/GPIO1  PD16 INT_AUDIO   N/A
+    ------------- ---------------- -----------------
+
+  Configuration
+  -------------
+
+  nxplayer
+  --------
 
 SAMA5D3x-EK Configuration Options
 =================================
@@ -2153,7 +2318,7 @@ Configurations
        o The I2C dev command may have bad side effects on your I2C devices.
          Use only at your own risk.
 
-       As an eample, the I2C dev comman can be used to list all devices
+       As an example, the I2C dev comman can be used to list all devices
        responding on TWI0 (the default) like this:
 
          nsh> i2c dev 0x03 0x77

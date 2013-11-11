@@ -5954,3 +5954,79 @@
 	  completion after and address with data write and on any data
 	  write so  that the device is complete before WRDI is sent.  From
 	  David Sidrane (2013-11-2).
+	* configs/sama5/src/sam_can.c:  Add CAN initialization logic
+	  and fix a data alignment problem (2013-11-3).
+	* drivers/mtd/mtd_config.c:  Updated configuration driver from
+	  Ken Pettit (2013-11-4).
+	* configs/sim/configdata:  MTD configuration driver unit test for
+	  the simulation platform.  From Ken Pettit (2013-11-4).
+	* configs/mikroe-stm32f4/fulldemo: Configuration updated by Ken
+	  Pettit (2013-11-4).
+	* arch/arm/src/stm32/stm32_usbdev.c:  Correct EP0 state handling
+	  logic when buffers larger than the EP0 packet size are sent.
+	  Also add support for decoded USB trace strings.  From David
+	  Sidrane (2013-11-5).
+	* drivers/usbdev/cdcacm.c, composite.c, usbmsc.c:  uninitialization
+	  logic cause re-use of a stale pointer.  Changed to a two pass
+	  uninitialization for the case of the composite driver:  Memory
+	  resources are not freed until the second uninitialization pass.
+	  From David Sidrane (2011-11-5).
+	* arch/arm/src/sama5/sam_pwm.c and .h:  Add PWM driver for SAMA5
+	  untested on initial checkout (not even incorporated in to build
+	  system) (2013-11-6).
+	* arch/arm/src/sama5/Make.defs and Kconfig:  SAMA5 PWM driver now
+	  incorporated into build and configuration system.  Builds with
+	  no errors (2013-11-6).
+	* configs/sama5d3x-ek:  Add support for the PWM test for the
+	  SAMA5D3x-EK board (2013-11-6).
+	* arch/arm/src/sama5/sam_pwm.c and .h: SAMA5 PWM driver is now
+	  function (2013-11-7).
+	* include/nuttx/audio/i2s.h:  First cut at an I2S interface
+	  definition.  This initial definition is sparse will will
+	  probably evolve significantly (2011-11-7).
+	* arch/arm/src/sama5/sam_ssc.c and .h:  Skeleton and build setup
+	  for a forthcoming SSC (aka I2S) driver for the SAMA5.  The
+	  initial check-in is just the SAMA5 SPI driver gutted and hacked
+	  to use the I2S interface.  More coming (2013-11-7).
+	* arch/arm/src/stm32 and arch/arm/include/stm32:  Added support for
+	  the STM32F429.  From Ken Pettit (2013-11-7).
+	* configs/stm32f429i-disco:  Support for the STM32F429I-Discovery
+	  board from Ken Pettit (2013-11-7).
+	* arch/arm/src/stm32/stm32_usbdev.c:  The long outstanding bug
+	  involviing the handling of OUT SETUP commands has been fixed in
+	  the STM32 F1 USB device driver by David Sidrane (2013-11-7).
+	* configs/spark/composite/cdc-acm.inf:  Windows CDC/ACM driver
+	  provided by David Sidrane (2013-11-7).
+	* configs/spark/usbserial.c:  Add an apps/examples/usbserial
+	  configuration for the Spark.  From David Sidran (2013-11-7).
+	* arch/arm/src/sama5/sam_ssc.c and .h:  First cut of SAMA5
+	  SSC/I2S driver is code complete (2013-11-9).
+	* arch/arm/src/stm32 (numerous files):  OTG FS device and host
+	  drivers extended so that they can support either the OTG FS
+	  peripheral or the OTG HS peripheral (in FS mode).  This was
+	  done as a quick way to get USB support on the STM32F429 which
+	  has only OTG HS.  From Ken Pettit (2013-11-10).
+	* configs/stm32f429i-disco:  Add support for the usbnsh and
+	  usbmsc configurations using the OTG HS peripheral in FS mode.
+	  From Ken Pettit (2013-11-10)
+	* drivers/audio/i2schar.c:  A simple character driver to support I2S
+	  accesses.  This driver in its current state is intended only to
+	  support I2C testing and would not be appropriate to used for any real
+	  driver application. (2013-11-10).
+	* arch/arm/src/kl/kl_pwm.c and .h:  PWM driver for the Freescale
+	  Kinetis KL family from Alan Carvalho de Assis (2013-11-10).
+	* configs/freedom-kl25z:  Add PWM support.  From Alan Carvalho de Assis
+	  (2013-11-10).
+	* drivers/audio/vs1053:  VS1053 worker thread stack size is now
+	  configurable and assigned a name via pthread_setname_np(). From Ken
+	  Pettit (2013-11-10).
+	* libc/audio/lib_buffer.c:  Moved audio/buffer/c to libc/audio/lib_buffer.c.
+	  This file was moved because it contains buffer management functions
+	  that must be available to audio applications.  If it was left in the
+	  audio/ directory then it would not be available to applications in the
+	  NuttX Kernel build (2013-11-10).
+	* arch/arm/src/sama5/sam_ssc.c and Kconfig:  Add configurable support
+	  for SSC loopback mode (2013-11-10).
+	* include/nuttx/audio/i2s.h, arch/arm/src/sama5/sam_ssc.c, and
+	  drivers/audio/i2schar.c:  Improvied I2S interface design:  Simplified
+	  audio buffer queuing (2013-11-10).

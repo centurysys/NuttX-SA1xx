@@ -508,6 +508,41 @@ config ARCH_CHIP_STM32F427I
 	select STM32_STM32F427
 	select ARCH_HAVE_FPU
 
+config ARCH_CHIP_STM32F429V
+	bool "STM32F429V"
+	select ARCH_CORTEXM4
+	select STM32_STM32F40XX
+	select STM32_STM32F429
+	select ARCH_HAVE_FPU
+
+config ARCH_CHIP_STM32F429Z
+	bool "STM32F429Z"
+	select ARCH_CORTEXM4
+	select STM32_STM32F40XX
+	select STM32_STM32F429
+	select ARCH_HAVE_FPU
+
+config ARCH_CHIP_STM32F429I
+	bool "STM32F429I"
+	select ARCH_CORTEXM4
+	select STM32_STM32F40XX
+	select STM32_STM32F429
+	select ARCH_HAVE_FPU
+
+config ARCH_CHIP_STM32F429B
+	bool "STM32F429B"
+	select ARCH_CORTEXM4
+	select STM32_STM32F40XX
+	select STM32_STM32F429
+	select ARCH_HAVE_FPU
+
+config ARCH_CHIP_STM32F429N
+	bool "STM32F429N"
+	select ARCH_CORTEXM4
+	select STM32_STM32F40XX
+	select STM32_STM32F429
+	select ARCH_HAVE_FPU
+
 endchoice
 
 config STM32_STM32L15XX
@@ -560,6 +595,10 @@ config STM32_STM32F40XX
 
 # This is really 427/437, but we treat the two the same.
 config STM32_STM32F427
+	bool
+
+# This is really 429/439, but we treat the two the same.
+config STM32_STM32F429
 	bool
 
 config STM32_DFU
@@ -713,6 +752,19 @@ config STM32_OTGHS
 	default n
 	depends on STM32_STM32F20XX || STM32_STM32F40XX
 
+config STM32_OTGHS_FS_MODE
+	bool "Use OTG HS in FS mode"
+	default n
+	depends on STM32_OTGHS && !STM32_OTGFS
+	select STM32_OTGFS2
+	---help---
+		The STM32 USB HS module can operate in legacy FS mode using the
+		built-in FS PHY in the HS module.  This mode can only be used if
+		the OTG FS block is not being used since they use on the same
+		driver, and all the base address are different (the driver
+		uses #define defined addresses which are re-mapped when this
+		option is selected).
+
 config STM32_PWR
 	bool "PWR"
 	default n
@@ -753,21 +805,21 @@ config STM32_SPI3
 config STM32_SPI4
 	bool "SPI4"
 	default n
-	depends on STM32_STM32F427
+	depends on STM32_STM32F427 || STM32_STM32F429
 	select SPI
 	select STM32_SPI
 
 config STM32_SPI5
 	bool "SPI5"
 	default n
-	depends on STM32_STM32F427
+	depends on STM32_STM32F427 || STM32_STM32F429
 	select SPI
 	select STM32_SPI
 
 config STM32_SPI6
 	bool "SPI6"
 	default n
-	depends on STM32_STM32F427
+	depends on STM32_STM32F427 || STM32_STM32F429
 	select SPI
 	select STM32_SPI
 
@@ -904,14 +956,14 @@ config STM32_USART6
 config STM32_UART7
 	bool "UART7"
 	default n
-	depends on STM32_STM32F427
+	depends on STM32_STM32F427 || STM32_STM32F429
 	select ARCH_HAVE_UART7
 	select STM32_USART
 
 config STM32_UART8
 	bool "UART8"
 	default n
-	depends on STM32_STM32F427
+	depends on STM32_STM32F427 || STM32_STM32F429
 	select ARCH_HAVE_UART8
 	select STM32_USART
 
@@ -951,6 +1003,9 @@ config STM32_I2C
 	bool
 
 config STM32_CAN
+	bool
+
+config STM32_OTGFS2
 	bool
 
 menu "Alternate Pin Mapping"
@@ -1133,7 +1188,7 @@ endmenu
 config STM32_FLASH_PREFETCH
 	bool "Enable FLASH Pre-fetch"
 	depends on STM32_STM32F20XX || STM32_STM32F40XX
-	default y if STM32_STM32F427
+	default y if STM32_STM32F427 || STM32_STM32F429
 	default n
 	---help---
 	Enable FLASH prefetch and F2 and F4 parts (FLASH pre-fetch is always enabled
@@ -1215,6 +1270,7 @@ config STM32_TIM1_PWM
 	bool "TIM1 PWM"
 	default n
 	depends on STM32_TIM1
+	select ARCH_HAVE_PWM_PULSECOUNT
 	---help---
 		Reserve timer 1 for use by PWM
 
@@ -1236,6 +1292,7 @@ config STM32_TIM2_PWM
 	bool "TIM2 PWM"
 	default n
 	depends on STM32_TIM2
+	select ARCH_HAVE_PWM_PULSECOUNT
 	---help---
 		Reserve timer 2 for use by PWM
 
@@ -1257,6 +1314,7 @@ config STM32_TIM3_PWM
 	bool "TIM3 PWM"
 	default n
 	depends on STM32_TIM3
+	select ARCH_HAVE_PWM_PULSECOUNT
 	---help---
 		Reserve timer 3 for use by PWM
 
@@ -1278,6 +1336,7 @@ config STM32_TIM4_PWM
 	bool "TIM4 PWM"
 	default n
 	depends on STM32_TIM4
+	select ARCH_HAVE_PWM_PULSECOUNT
 	---help---
 		Reserve timer 4 for use by PWM
 
@@ -1299,6 +1358,7 @@ config STM32_TIM5_PWM
 	bool "TIM5 PWM"
 	default n
 	depends on STM32_TIM5
+	select ARCH_HAVE_PWM_PULSECOUNT
 	---help---
 		Reserve timer 5 for use by PWM
 
@@ -1320,6 +1380,7 @@ config STM32_TIM8_PWM
 	bool "TIM8 PWM"
 	default n
 	depends on STM32_TIM8
+	select ARCH_HAVE_PWM_PULSECOUNT
 	---help---
 		Reserve timer 8 for use by PWM
 
@@ -1341,6 +1402,7 @@ config STM32_TIM9_PWM
 	bool "TIM9 PWM"
 	default n
 	depends on STM32_TIM9
+	select ARCH_HAVE_PWM_PULSECOUNT
 	---help---
 		Reserve timer 9 for use by PWM
 
@@ -1362,6 +1424,7 @@ config STM32_TIM10_PWM
 	bool "TIM10 PWM"
 	default n
 	depends on STM32_TIM10
+	select ARCH_HAVE_PWM_PULSECOUNT
 	---help---
 		Reserve timer 10 for use by PWM
 
@@ -1383,6 +1446,7 @@ config STM32_TIM11_PWM
 	bool "TIM11 PWM"
 	default n
 	depends on STM32_TIM11
+	select ARCH_HAVE_PWM_PULSECOUNT
 	---help---
 		Reserve timer 11 for use by PWM
 
@@ -1404,6 +1468,7 @@ config STM32_TIM12_PWM
 	bool "TIM12 PWM"
 	default n
 	depends on STM32_TIM12
+	select ARCH_HAVE_PWM_PULSECOUNT
 	---help---
 		Reserve timer 12 for use by PWM
 
@@ -1425,6 +1490,7 @@ config STM32_TIM13_PWM
 	bool "TIM13 PWM"
 	default n
 	depends on STM32_TIM13
+	select ARCH_HAVE_PWM_PULSECOUNT
 	---help---
 		Reserve timer 13 for use by PWM
 
@@ -1446,6 +1512,7 @@ config STM32_TIM14_PWM
 	bool "TIM14 PWM"
 	default n
 	depends on STM32_TIM14
+	select ARCH_HAVE_PWM_PULSECOUNT
 	---help---
 		Reserve timer 14 for use by PWM
 

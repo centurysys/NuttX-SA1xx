@@ -131,6 +131,15 @@ else
 endif
 endif
 
+ifeq ($(CONFIG_SAMA5_SSC0),y)
+CHIP_CSRCS += sam_ssc.c
+else
+ifeq ($(CONFIG_SAMA5_SSC1),y)
+CHIP_CSRCS += sam_ssc.c
+else
+endif
+endif
+
 ifeq ($(CONFIG_SAMA5_LCDC),y)
 CHIP_CSRCS += sam_lcd.c
 endif
@@ -203,6 +212,10 @@ CHIP_CSRCS += sam_adc.c
 ifeq ($(CONFIG_SAMA5_TSD),y)
 CHIP_CSRCS += sam_tsd.c
 endif
+endif
+
+ifeq ($(CONFIG_SAMA5_PWM),y)
+CHIP_CSRCS += sam_pwm.c
 endif
 
 ifeq ($(CONFIG_SAMA5_TC0),y)
