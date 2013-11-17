@@ -1,7 +1,7 @@
 ############################################################################
-# configs/ea3131/nsh/appconfig
+# fs/procfs/Make.defs
 #
-#   Copyright (C) 2011-2012 Gregory Nutt. All rights reserved.
+#   Copyright (C) 2013 Gregory Nutt. All rights reserved.
 #   Author: Gregory Nutt <gnutt@nuttx.org>
 #
 # Redistribution and use in source and binary forms, with or without
@@ -14,7 +14,7 @@
 #    notice, this list of conditions and the following disclaimer in
 #    the documentation and/or other materials provided with the
 #    distribution.
-# 3. Neither the name NuttX nor the names of its contributors may be
+# 3. Neither the name Nuttx nor the names of its contributors may be
 #    used to endorse or promote products derived from this software
 #    without specific prior written permission.
 #
@@ -33,12 +33,16 @@
 #
 ############################################################################
 
-# Path to example in apps/examples containing the user_start entry point
+ifeq ($(CONFIG_FS_PROCFS),y)
+# Files required for procfs file system support
 
-CONFIGURED_APPS += examples/nsh
+ASRCS +=
+CSRCS += fs_procfs.c
 
-# The NSH library
+# Include procfs build support
 
-CONFIGURED_APPS += system/readline
-CONFIGURED_APPS += nshlib
+DEPPATH += --dep-path procfs
+VPATH += :procfs
+CFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" $(TOPDIR)$(DELIM)fs$(DELIM)procfs}
 
+endif

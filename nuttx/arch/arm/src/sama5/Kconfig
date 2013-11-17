@@ -57,12 +57,14 @@ config ARCH_CHIP_ATSAMA5D31
 	select SAMA5_HAVE_LCDC
 	select SAMA5_HAVE_UART0
 	select SAMA5_HAVE_UART1
+	select ARCH_NAND_HWECC
 
 config ARCH_CHIP_ATSAMA5D33
 	bool "Atmel ATSAMA5D33"
 	select ARCH_CHIP_SAMA5D3
 	select SAMA5_HAVE_GMAC
 	select SAMA5_HAVE_LCDC
+	select ARCH_NAND_HWECC
 
 config ARCH_CHIP_ATSAMA5D34
 	bool "Atmel ATSAMA5D34"
@@ -72,6 +74,7 @@ config ARCH_CHIP_ATSAMA5D34
 	select SAMA5_HAVE_LCDC
 	select SAMA5_HAVE_CAN0
 	select SAMA5_HAVE_CAN1
+	select ARCH_NAND_HWECC
 
 config ARCH_CHIP_ATSAMA5D35
 	bool "Atmel ATSAMA5D35"
@@ -84,6 +87,7 @@ config ARCH_CHIP_ATSAMA5D35
 	select SAMA5_HAVE_CAN0
 	select SAMA5_HAVE_CAN1
 	select SAMA5_HAVE_TC1
+	select ARCH_NAND_HWECC
 
 endchoice # Atmel AT91SAMA5 Chip Selection
 
@@ -1392,12 +1396,6 @@ config SAMA5_SSC_MAXINFLIGHT
 if SAMA5_SSC0
 comment "SSC0 Configuration"
 
-config SAMA5_SSC0_MASTER
-	bool "Master mode"
-	default n
-	---help---
-		Selects master (vs. slave) mode data transfers
-
 config SAMA5_SSC0_DATALEN
 	int "Data width (bits)"
 	default 16
@@ -1418,30 +1416,24 @@ choice
 	default SAMA5_SSC0_RX_MCKDIV
 
 config SAMA5_SSC0_RX_RKINPUT
-	bool "External Clock"
+	bool "RK input"
 	---help---
 		The SSC receiver clock is an external clock provided on the RK input
-		pin.
+		pin.  Sample rate determined by the external clock frequency.
 
 config SAMA5_SSC0_RX_TXCLK
 	bool "Transmitter Clock"
 	---help---
-		The SSC receiver clock is transmitter clock.
+		The SSC receiver clock is transmitter clock.  RX sample rate is the same
+		as the TX sample rate.
 
 config SAMA5_SSC0_RX_MCKDIV
 	bool "MCK/2"
 	---help---
-		The SSC receiver clock is the MCK/2 divided by a up to 4095.
+		The SSC receiver clock is the MCK/2 divided by a up to 4095.  Desired
+		sample rate must be provided below.
 
 endchoice # Receiver clock source
-
-config SAMA5_SSC0_RX_EXTFREQ
-	int "External reciver clock frequency"
-	default 100
-	depends on SAMA5_SSC0_RX_RKINPUT
-	---help---
-		If the receiver clock is provided via a clock input on the RK pin,
-		then the frequency of the receiver clock must be provided.
 
 if !SAMA5_SSC0_RX_RKINPUT
 choice
@@ -1474,30 +1466,24 @@ choice
 	default SAMA5_SSC0_TX_MCKDIV
 
 config SAMA5_SSC0_TX_TKINPUT
-	bool "External Clock"
+	bool "TK input"
 	---help---
 		The SSC transmitter clock is an external clock provided on the TK input
-		pin.
+		pin.  Sample rate determined by the external clock frequency.
 
 config SAMA5_SSC0_TX_RXCLK
 	bool "Receiver Clock"
 	---help---
-		The SSC transmitter clock is receiver clock.
+		The SSC transmitter clock is receiver clock.  TX sample rate is the same
+		as the RX sample rate.
 
 config SAMA5_SSC0_TX_MCKDIV
 	bool "MCK/2"
 	---help---
-		The SSC transmitter clock is the MCK/2 divided by a up to 4095.
+		The SSC transmitter clock is the MCK/2 divided by a up to 4095.  Desired
+		sample rate must be provided below.
 
 endchoice # Transmitter clock source
-
-config SAMA5_SSC0_TX_EXTFREQ
-	int "External transmitter clock frequency"
-	default 100
-	depends on SAMA5_SSC0_TX_TKINPUT
-	---help---
-		If the transmitter clock is provided via a clock input on the TK pin,
-		then the frequency of the transmitter clock must be provided.
 
 if !SAMA5_SSC0_TX_TKINPUT
 choice
@@ -1518,8 +1504,8 @@ endif # !SAMA5_SSC0_TX_TKINPUT
 endif # SAMA5_SSC0_TX
 
 config SAMA5_SSC0_MCKDIV_SAMPLERATE
-	int "Internal transmitter clock frequency"
-	default 100
+	int "Sample rate"
+	default 48000
 	depends on SAMA5_SSC0_RX_MCKDIV || SAMA5_SSC0_TX_MCKDIV
 	---help---
 		If the either the receiver or transmitter clock is provided by MCK/2 divided
@@ -1544,12 +1530,6 @@ endif # SAMA5_SSC0
 if SAMA5_SSC1
 comment "SSC1 Configuration"
 
-config SAMA5_SSC1_MASTER
-	bool "Master mode"
-	default n
-	---help---
-		Selects master (vs. slave) mode data transfers
-
 config SAMA5_SSC1_DATALEN
 	int "Data width (bits)"
 	default 16
@@ -1570,30 +1550,24 @@ choice
 	default SAMA5_SSC1_RX_MCKDIV
 
 config SAMA5_SSC1_RX_RKINPUT
-	bool "External Clock"
+	bool "RK input"
 	---help---
 		The SSC receiver clock is an external clock provided on the RK input
-		pin.
+		pin.  Sample rate determined by the external clock frequency.
 
 config SAMA5_SSC1_RX_TXCLK
 	bool "Transmitter Clock"
 	---help---
-		The SSC receiver clock is transmitter clock.
+		The SSC receiver clock is transmitter clock.  RX sample rate is the same
+		as the TX sample rate.
 
 config SAMA5_SSC1_RX_MCKDIV
 	bool "MCK/2"
 	---help---
-		The SSC receiver clock is the MCK/2 divided by a up to 4095.
+		The SSC receiver clock is the MCK/2 divided by a up to 4095.  Desired
+		sample rate must be provided below.
 
 endchoice # Receiver clock source
-
-config SAMA5_SSC1_RX_EXTFREQ
-	int "External reciver clock frequency"
-	default 100
-	depends on SAMA5_SSC1_RX_RKINPUT
-	---help---
-		If the receiver clock is provided via a clock input on the RK pin,
-		then the frequency of the receiver clock must be provided.
 
 if !SAMA5_SSC1_RX_RKINPUT
 choice
@@ -1626,30 +1600,24 @@ choice
 	default SAMA5_SSC1_TX_MCKDIV
 
 config SAMA5_SSC1_TX_TKINPUT
-	bool "External Clock"
+	bool "TK input"
 	---help---
 		The SSC transmitter clock is an external clock provided on the TK input
-		pin.
+		pin.  Sample rate determined by the external clock frequency.
 
 config SAMA5_SSC1_TX_RXCLK
 	bool "Receiver Clock"
 	---help---
-		The SSC transmitter clock is receiver clock.
+		The SSC transmitter clock is receiver clock.  TX sample rate is the same
+		as the RX sample rate.
 
 config SAMA5_SSC1_TX_MCKDIV
 	bool "MCK/2"
 	---help---
-		The SSC transmitter clock is the MCK/2 divided by a up to 4095.
+		The SSC transmitter clock is the MCK/2 divided by a up to 4095.  Desired
+		sample rate must be provided below.
 
 endchoice # Transmitter clock source
-
-config SAMA5_SSC1_TX_EXTFREQ
-	int "External transmitter clock frequency"
-	default 100
-	depends on SAMA5_SSC1_TX_TKINPUT
-	---help---
-		If the transmitter clock is provided via a clock input on the TK pin,
-		then the frequency of the transmitter clock must be provided.
 
 if !SAMA5_SSC1_TX_TKINPUT
 choice
@@ -1670,8 +1638,8 @@ endif # !SAMA5_SSC1_TX_TKINPUT
 endif # SAMA5_SSC1_TX
 
 config SAMA5_SSC1_MCKDIV_SAMPLERATE
-	int "Internal transmitter clock frequency"
-	default 100
+	int "Sample rate"
+	default 48000
 	depends on SAMA5_SSC1_RX_MCKDIV || SAMA5_SSC1_TX_MCKDIV
 	---help---
 		If the either the receiver or transmitter clock is provided by MCK/2 divided
@@ -1710,6 +1678,20 @@ config SAMA5_SSC_REGDEBUG
 	---help---
 		Output detailed register-level SSC device debug information.
 		Very invasive! Requires also DEBUG.
+
+config SAMA5_SSC_QDEBUG
+	bool "SSC Queue debug"
+	depends on DEBUG_I2S
+	default n
+	---help---
+		Enable instrumentation to debug audio buffer queue logic.
+
+config SAMA5_SSC_DUMPBUFFERS
+	bool "Dump Buffers"
+	depends on DEBUG_I2S
+	default n
+	---help---
+		Enable instrumentation to dump TX and RX buffers.
 
 endmenu # SSC Configuration
 endif # SAMA5_SSC0 || SAMA5_SSC1
@@ -3055,6 +3037,8 @@ config SAMA5_EBICS0_NOR
 
 config SAMA5_EBICS0_NAND
 	bool "NAND Flash"
+	select MTD
+	select MTD_NAND
 
 endchoice # CS0 Memory Type
 endif # SAMA5_EBICS0
@@ -3104,6 +3088,8 @@ config SAMA5_EBICS1_NOR
 
 config SAMA5_EBICS1_NAND
 	bool "NAND Flash"
+	select MTD
+	select MTD_NAND
 
 endchoice # CS1 Memory Type
 endif # SAMA5_EBICS1
@@ -3153,6 +3139,8 @@ config SAMA5_EBICS2_NOR
 
 config SAMA5_EBICS2_NAND
 	bool "NAND Flash"
+	select MTD
+	select MTD_NAND
 
 endchoice # CS2 Memory Type
 endif # SAMA5_EBICS2
@@ -3202,9 +3190,34 @@ config SAMA5_EBICS3_NOR
 
 config SAMA5_EBICS3_NAND
 	bool "NAND Flash"
+	select MTD
+	select MTD_NAND
 
 endchoice # CS3 Memory Type
 endif # SAMA5_EBICS3
+
+if SAMA5_EBICS0_NAND || SAMA5_EBICS1_NAND || SAMA5_EBICS2_NAND || SAMA5_EBICS3_NAND
+
+config SAMA5_NAND_READYBUSY
+	bool "NAND Ready/Busy"
+	default n
+	---help---
+		Board logic supports and interface to detect NAND Busy/Ready signal.
+		If defined, the board must provide:
+
+			bool board_nand_busy(int cs);
+
+config SAMA5_NAND_CE
+	bool "NAND Chip Enable"
+	default n
+	---help---
+		Board logic supports and interface to control the NAND Chip Enable signal.
+		If defined, the board must provide:
+
+			void board_nand_ce(int cs, bool enable);
+
+endif # SAMA5_EBICS0_NAND
+
 endmenu # External Memory Configuration
 
 choice

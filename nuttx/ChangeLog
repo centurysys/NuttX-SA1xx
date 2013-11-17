@@ -6030,3 +6030,51 @@
 	* include/nuttx/audio/i2s.h, arch/arm/src/sama5/sam_ssc.c, and
 	  drivers/audio/i2schar.c:  Improvied I2S interface design:  Simplified
 	  audio buffer queuing (2013-11-10).
+	* arch/arm/src/sam34 and arch/arm/include/sam34:  Basic support for
+	  the Atmal SAM4E family.  From Mitko (2013-11-11).
+	* libc/audio/lib_buffer.c:  Remove unused apb_prepare() function
+	  (2013-11-11).
+	* arch/arm/src/stm32:  Added header files and driver framework for the
+	  STM32F429 LTDC framebuffer driver.  From Ken Pettit (2013-11-11).
+	* configs/sama5d3x-ek/src/sam_i2schar.c: Add support for the
+	  apps/examples/i2schar test (2011-11-11).
+	* arch/arm/src/sama5/sam_ssc.c:  I2S loopback test finally works
+	  (2013-11-11).
+	* fs/procfs:  Add a little, primitive procfs file system. (2013-11-13).
+	* fs/binfs/README.txt:  Add a README file for binfs (2013-11-13).
+	* arch/arm/src/stm32/Kconfig:  Add missing setup of CAN TSEG1 and
+	  TSEG2 values.  From Martin Lederhilger (2013-11-14).
+	* arch/arm/src/sama5/sam_pck.c and .h:  Add support for programmable
+	  clock outputs (2013-11-14).
+	* configs/ea3131/nsh:  Converted to use kconfig-frontend tools
+	  (2013-11-14).
+	* arch/arm/src/lpc31: Create configuration and build support for a
+	  forthcoming USB host controller driver (2013-11-14).
+	* arch/arm/src/lpc31/lpc31_ehci.c:  First cut at an EHCI driver
+	  tailed for the LPC31 (2013-11-14).
+	* fs/fs_mount.c:  SMART FS must be included in the conditional
+	  compilation for the set of file systems that require block
+	  drivers.  From Daniel Palmer (2013-11-15).
+	* tools/mkconfig.c:  SMART FS must be included in the conditional
+	  compilation for the set of writable file systems.  Noted by
+	  Daniel Palmer (2013-11-15).
+	* arch/arm/src/sama5/sam_nand.c and .h:  Framework for an MTD driver
+	  that will provide raw access to NAND (2013-11-15).
+	* configs/sama5d3x-ek/src/sam_nandflash.c:  Provides board-specific
+	  memory controller initialize for NAND flash (2013-11-15).
+	* include/nuttx/mtd/mtd.h:  Move include/nutt/mtd.h to
+	  include/nuttx/mtd/mtd.h where it will, hopefully, soon be joined by
+	  other MTD-related header files (2013-11-15).
+	* drivers/mtd/mtd_onfi.c and include/nuttx/mtd/onfi.h:  Add sharedi
+	  NAND routines for use with ONFI compatible NAND FLASH devices
+	  (2013-11-15).
+	* configs/ea3131/src/up_usbhost.c:  Board-specific USB host support
+	  for the EA3131 board (2013-11-15).
+	* drivers/mtd/mtd_nand.c, include/nuttx/mtd/nand.h, nand_config.h,
+	  and nand_scheme.h:  Further NAND support (still incomplete).
+	  (2013-11-16).
+	* drivers/mtd/mtd_modeltab.c:  Further NAND support (still incomplete).
+	  (2013-11-16).
+	* drivers/mtd/mtd_nandmodel.c: More NAND support (same story).
+	  (2013-11-16).
+
