@@ -56,6 +56,7 @@
 #include <nuttx/usb/usbhost_trace.h>
 
 #include "up_arch.h"
+#include "cache.h"
 
 #include "lpc31_internal.h"
 #include "lpc31_cgudrvr.h"
@@ -159,6 +160,23 @@
 
 #define lpc31_physramaddr(a) (a)
 #define lpc31_virtramaddr(a) (a)
+
+/* USB trace *******************************************************************/
+
+#ifdef HAVE_USBHOST_TRACE
+#  define TR_FMT1 false
+#  define TR_FMT2 true
+
+#  define TRENTRY(id,fmt1,string) {string}
+
+#  define TRACE1_FIRST     ((int)__TRACE1_BASEVALUE + 1)
+#  define TRACE1_INDEX(id) ((int)(id) - TRACE1_FIRST)
+#  define TRACE1_NSTRINGS  TRACE1_INDEX(__TRACE1_NSTRINGS)
+
+#  define TRACE2_FIRST     ((int)__TRACE1_NSTRINGS + 1)
+#  define TRACE2_INDEX(id) ((int)(id) - TRACE2_FIRST)
+#  define TRACE2_NSTRINGS  TRACE2_INDEX(__TRACE2_NSTRINGS)
+#endif
 
 /*******************************************************************************
  * Private Types
@@ -264,6 +282,93 @@ struct lpc31_ehci_s
 
   struct lpc31_rhport_s rhport[LPC31_EHCI_NRHPORT];
 };
+
+#ifdef HAVE_USBHOST_TRACE
+/* USB trace codes */
+
+enum usbhost_trace1codes_e
+{
+  __TRACE1_BASEVALUE = 0,           /* This will force the first value to be 1 */
+
+  EHCI_TRACE1_SYSTEMERROR,          /* EHCI ERROR: System error */
+  EHCI_TRACE1_QTDFOREACH_FAILED,    /* EHCI ERROR: sam_qtd_foreach failed */
+  EHCI_TRACE1_QHALLOC_FAILED,       /* EHCI ERROR: Failed to allocate a QH */
+  EHCI_TRACE1_BUFTOOBIG,            /* EHCI ERROR: Buffer too big */
+  EHCI_TRACE1_REQQTDALLOC_FAILED,   /* EHCI ERROR: Failed to allocate request qTD */
+  EHCI_TRACE1_ADDBPL_FAILED,        /* EHCI ERROR: sam_qtd_addbpl failed */
+  EHCI_TRACE1_DATAQTDALLOC_FAILED,  /* EHCI ERROR: Failed to allocate data buffer qTD */
+  EHCI_TRACE1_DEVDISCONNECTED,      /* EHCI ERROR: Device disconnected */
+  EHCI_TRACE1_QHCREATE_FAILED,      /* EHCI ERROR: sam_qh_create failed */
+  EHCI_TRACE1_QTDSETUP_FAILED,      /* EHCI ERROR: sam_qtd_setupphase failed */
+
+  EHCI_TRACE1_QTDDATA_FAILED,       /* EHCI ERROR: sam_qtd_dataphase failed */
+  EHCI_TRACE1_QTDSTATUS_FAILED,     /* EHCI ERROR: sam_qtd_statusphase failed */
+  EHCI_TRACE1_TRANSFER_FAILED,      /* EHCI ERROR: Transfer failed */
+  EHCI_TRACE1_QHFOREACH_FAILED,     /* EHCI ERROR: sam_qh_foreach failed: */
+  EHCI_TRACE1_SYSERR_INTR,          /* EHCI: Host System Error Interrup */
+  EHCI_TRACE1_USBERR_INTR,          /* EHCI: USB Error Interrupt (USBERRINT) Interrupt */
+  EHCI_TRACE1_EPALLOC_FAILED,       /* EHCI ERROR: Failed to allocate EP info structure */
+  EHCI_TRACE1_BADXFRTYPE,           /* EHCI ERROR: Support for transfer type not implemented */
+  EHCI_TRACE1_HCHALTED_TIMEOUT,     /* EHCI ERROR: Timed out waiting for HCHalted */
+  EHCI_TRACE1_QHPOOLALLOC_FAILED,   /* EHCI ERROR: Failed to allocate the QH pool */
+
+  EHCI_TRACE1_QTDPOOLALLOC_FAILED,  /* EHCI ERROR: Failed to allocate the qTD pool */
+  EHCI_TRACE1_PERFLALLOC_FAILED,    /* EHCI ERROR: Failed to allocate the periodic frame list */
+  EHCI_TRACE1_RESET_FAILED,         /* EHCI ERROR: sam_reset failed */
+  EHCI_TRACE1_RUN_FAILED,           /* EHCI ERROR: EHCI Failed to run */
+  EHCI_TRACE1_IRQATTACH_FAILED,     /* EHCI ERROR: Failed to attach IRQ */
+
+#ifdef HAVE_USBHOST_TRACE_VERBOSE
+  EHCI_VTRACE1_PORTSC_CSC,          /* EHCI Connect Status Change */
+  EHCI_VTRACE1_PORTSC_CONNALREADY,  /* EHCI Already connected */
+  EHCI_VTRACE1_PORTSC_DISCALREADY,  /* EHCI Already disconnected */
+  EHCI_VTRACE1_TOPHALF,             /* EHCI Interrupt top half */
+  EHCI_VTRACE1_AAINTR,              /* EHCI Async Advance Interrupt */
+
+  EHCI_VTRACE1_USBINTR,             /* EHCI USB Interrupt (USBINT) Interrupt */
+  EHCI_VTRACE1_ENUM_DISCONN,        /* EHCI Enumeration not connected */
+  EHCI_VTRACE1_INITIALIZING,        /* EHCI Initializing EHCI Stack */
+  EHCI_VTRACE1_HCCPARAMS,           /* EHCI HCCPARAMS */
+  EHCI_VTRACE1_INIITIALIZED,        /* EHCI USB EHCI Initialized */
+#endif
+
+  __TRACE1_NSTRINGS,                /* Separates the format 1 from the format 2 strings */
+
+  EHCI_TRACE2_EPSTALLED,            /* EHCI EP Stalled */
+  EHCI_TRACE2_EPIOERROR,            /* EHCI ERROR: EP TOKEN */
+  EHCI_TRACE2_CLASSENUM_FAILED,     /* EHCI usbhost_enumerate() failed */
+
+#ifdef HAVE_USBHOST_TRACE_VERBOSE
+  EHCI_VTRACE2_ASYNCXFR,            /* EHCI Async transfer */
+  EHCI_VTRACE2_INTRXFR,             /* EHCI Interrupt Transfer */
+  EHCI_VTRACE2_IOCCHECK,            /* EHCI IOC */
+  EHCI_VTRACE2_PORTSC,              /* EHCI PORTSC */
+  EHCI_VTRACE2_PORTSC_CONNECTED,    /* EHCI RHPort connected */
+  EHCI_VTRACE2_PORTSC_DISCONND,     /* EHCI RHport disconnected */
+  EHCI_VTRACE2_MONWAKEUP,           /* EHCI RHPort connected wakeup */
+
+  EHCI_VTRACE2_CLASSENUM,           /* EHCI RHPort CLASS enumeration */
+  EHCI_VTRACE2_EPALLOC,             /* EHCI EPALLOC */
+  EHCI_VTRACE2_CTRLINOUT,           /* EHCI CTRLIN/OUT */
+  EHCI_VTRACE2_HCIVERSION,          /* EHCI HCIVERSION */
+  EHCI_VTRACE2_HCSPARAMS,           /* EHCI HCSPARAMS */
+#endif
+
+  __TRACE2_NSTRINGS                 /* Total number of enumeration values */
+};
+
+/* USB trace data structure */
+
+struct lpc31_ehci_trace_s
+{
+#if 0
+  uint16_t id;
+  bool fmt2;
+#endif
+  FAR const char *string;
+};
+
+#endif /* HAVE_USBHOST_TRACE */
 
 /*******************************************************************************
  * Private Function Prototypes
@@ -469,6 +574,78 @@ static struct lpc31_qh_s *g_qhpool;
 static struct lpc31_qtd_s *g_qtdpool;
 
 #endif
+
+#ifdef HAVE_USBHOST_TRACE
+/* USB trace strings */
+
+static const struct lpc31_ehci_trace_s g_trace1[TRACE1_NSTRINGS] =
+{
+  TRENTRY(EHCI_TRACE1_SYSTEMERROR,         TR_FMT1, "EHCI ERROR: System error: %06x\n"),
+  TRENTRY(EHCI_TRACE1_QTDFOREACH_FAILED,   TR_FMT1, "EHCI ERROR: sam_qtd_foreach failed: %d\n"),
+  TRENTRY(EHCI_TRACE1_QHALLOC_FAILED,      TR_FMT1, "EHCI ERROR: Failed to allocate a QH\n"),
+  TRENTRY(EHCI_TRACE1_BUFTOOBIG,           TR_FMT1, "EHCI ERROR: Buffer too big. Remaining %d\n"),
+  TRENTRY(EHCI_TRACE1_REQQTDALLOC_FAILED,  TR_FMT1, "EHCI ERROR: Failed to allocate request qTD"),
+  TRENTRY(EHCI_TRACE1_ADDBPL_FAILED,       TR_FMT1, "EHCI ERROR: sam_qtd_addbpl failed: %d\n"),
+  TRENTRY(EHCI_TRACE1_DATAQTDALLOC_FAILED, TR_FMT1, "EHCI ERROR: Failed to allocate data buffer qTD, 0"),
+  TRENTRY(EHCI_TRACE1_DEVDISCONNECTED,     TR_FMT1, "EHCI ERROR: Device disconnected %d\n"),
+  TRENTRY(EHCI_TRACE1_QHCREATE_FAILED,     TR_FMT1, "EHCI ERROR: sam_qh_create failed\n"),
+  TRENTRY(EHCI_TRACE1_QTDSETUP_FAILED,     TR_FMT1, "EHCI ERROR: sam_qtd_setupphase failed\n"),
+
+  TRENTRY(EHCI_TRACE1_QTDDATA_FAILED,      TR_FMT1, "EHCI ERROR: sam_qtd_dataphase failed\n"),
+  TRENTRY(EHCI_TRACE1_QTDSTATUS_FAILED,    TR_FMT1, "EHCI ERROR: sam_qtd_statusphase failed\n"),
+  TRENTRY(EHCI_TRACE1_TRANSFER_FAILED,     TR_FMT1, "EHCI ERROR: Transfer failed %d\n"),
+  TRENTRY(EHCI_TRACE1_QHFOREACH_FAILED,    TR_FMT1, "EHCI ERROR: sam_qh_foreach failed: %d\n"),
+  TRENTRY(EHCI_TRACE1_SYSERR_INTR,         TR_FMT1, "EHCI: Host System Error Interrupt\n"),
+  TRENTRY(EHCI_TRACE1_USBERR_INTR,         TR_FMT1, "EHCI: USB Error Interrupt (USBERRINT) Interrupt: %06x\n"),
+  TRENTRY(EHCI_TRACE1_EPALLOC_FAILED,      TR_FMT1, "EHCI ERROR: Failed to allocate EP info structure\n"),
+  TRENTRY(EHCI_TRACE1_BADXFRTYPE,          TR_FMT1, "EHCI ERROR: Support for transfer type %d not implemented\n"),
+  TRENTRY(EHCI_TRACE1_HCHALTED_TIMEOUT,    TR_FMT1, "EHCI ERROR: Timed out waiting for HCHalted. USBSTS: %06x\n"),
+  TRENTRY(EHCI_TRACE1_QHPOOLALLOC_FAILED,  TR_FMT1, "EHCI ERROR: Failed to allocate the QH pool\n"),
+
+  TRENTRY(EHCI_TRACE1_QTDPOOLALLOC_FAILED, TR_FMT1, "EHCI ERROR: Failed to allocate the qTD pool\n"),
+  TRENTRY(EHCI_TRACE1_PERFLALLOC_FAILED,   TR_FMT1, "EHCI ERROR: Failed to allocate the periodic frame list\n"),
+  TRENTRY(EHCI_TRACE1_RESET_FAILED,        TR_FMT1, "EHCI ERROR: sam_reset failed: %d\n"),
+  TRENTRY(EHCI_TRACE1_RUN_FAILED,          TR_FMT1, "EHCI ERROR: EHCI Failed to run: USBSTS=%06x\n"),
+  TRENTRY(EHCI_TRACE1_IRQATTACH_FAILED,    TR_FMT1, "EHCI ERROR: Failed to attach IRQ%d\n"),
+
+#ifdef HAVE_USBHOST_TRACE_VERBOSE
+  TRENTRY(EHCI_VTRACE1_PORTSC_CSC,         TR_FMT1, "EHCI Connect Status Change: %06x\n"),
+  TRENTRY(EHCI_VTRACE1_PORTSC_CONNALREADY, TR_FMT1, "EHCI Already connected: %06x\n"),
+  TRENTRY(EHCI_VTRACE1_PORTSC_DISCALREADY, TR_FMT1, "EHCI Already disconnected: %06x\n"),
+  TRENTRY(EHCI_VTRACE1_TOPHALF,            TR_FMT1, "EHCI Interrupt: %06x\n"),
+  TRENTRY(EHCI_VTRACE1_AAINTR,             TR_FMT1, "EHCI Async Advance Interrupt\n"),
+
+  TRENTRY(EHCI_VTRACE1_USBINTR,            TR_FMT1, "EHCI USB Interrupt (USBINT) Interrupt: %06x\n"),
+  TRENTRY(EHCI_VTRACE1_ENUM_DISCONN,       TR_FMT1, "EHCI Enumeration not connected\n"),
+  TRENTRY(EHCI_VTRACE1_INITIALIZING,       TR_FMT1, "EHCI Initializing EHCI Stack\n"),
+  TRENTRY(EHCI_VTRACE1_HCCPARAMS,          TR_FMT1, "EHCI HCCPARAMS=%06x\n"),
+  TRENTRY(EHCI_VTRACE1_INIITIALIZED,       TR_FMT1, "EHCI USB EHCI Initialized\n"),
+#endif
+};
+
+static const struct lpc31_ehci_trace_s g_trace2[TRACE2_NSTRINGS] =
+{
+  TRENTRY(EHCI_TRACE2_EPSTALLED,           TR_FMT2, "EHCI EP%d Stalled: TOKEN=%04x\n"),
+  TRENTRY(EHCI_TRACE2_EPIOERROR,           TR_FMT2, "EHCI ERROR: EP%d TOKEN=%04x\n"),
+  TRENTRY(EHCI_TRACE2_CLASSENUM_FAILED,    TR_FMT2, "EHCI RHport%d usbhost_enumerate() failed: %d\n"),
+
+#ifdef HAVE_USBHOST_TRACE_VERBOSE
+  TRENTRY(EHCI_VTRACE2_ASYNCXFR,           TR_FMT2, "EHCI Async transfer EP%d buflen=%d\n"),
+  TRENTRY(EHCI_VTRACE2_INTRXFR,            TR_FMT2, "EHCI Intr Transfer EP%d buflen=%d\n"),
+  TRENTRY(EHCI_VTRACE2_IOCCHECK,           TR_FMT2, "EHCI IOC EP%d TOKEN=%04x\n"),
+  TRENTRY(EHCI_VTRACE2_PORTSC,             TR_FMT2, "EHCI PORTSC%d: %04x\n"),
+  TRENTRY(EHCI_VTRACE2_PORTSC_CONNECTED,   TR_FMT2, "EHCI RHPort%d connected, pscwait: %d\n"),
+  TRENTRY(EHCI_VTRACE2_PORTSC_DISCONND,    TR_FMT2, "EHCI RHport%d disconnected, pscwait: %d\n"),
+  TRENTRY(EHCI_VTRACE2_MONWAKEUP,          TR_FMT2, "EHCI RHPort%d connected: %d\n"),
+
+  TRENTRY(EHCI_VTRACE2_CLASSENUM,          TR_FMT2, "EHCI RHPort%d: Enumerate the device, devaddr=%02x\n"),
+  TRENTRY(EHCI_VTRACE2_EPALLOC,            TR_FMT2, "EHCI EPALLOC: EP%d TYPE=%d\n"),
+  TRENTRY(EHCI_VTRACE2_CTRLINOUT,          TR_FMT2, "EHCI CTRLIN/OUT: RHPort%d req: %02x\n"),
+  TRENTRY(EHCI_VTRACE2_HCIVERSION,         TR_FMT2, "EHCI HCIVERSION %x.%02x\n"),
+  TRENTRY(EHCI_VTRACE2_HCSPARAMS,          TR_FMT2, "EHCI nports=%d, HCSPARAMS=%04x\n"),
+#endif
+};
+#endif /* HAVE_USBHOST_TRACE */
 
 /*******************************************************************************
  * Private Functions
@@ -1135,7 +1312,7 @@ static int lpc31_qtd_invalidate(struct lpc31_qtd_s *qtd, uint32_t **bp, void *ar
    * memory over the specified address range.
    */
 
-  up_invalidate_dcache((uintptr_t)&qtd->hw,
+  cp15_invalidate_dcache((uintptr_t)&qtd->hw,
                          (uintptr_t)&qtd->hw + sizeof(struct ehci_qtd_s));
   return OK;
 }
@@ -1154,7 +1331,7 @@ static int lpc31_qh_invalidate(struct lpc31_qh_s *qh)
 {
   /* Invalidate the QH first so that we reload the qTD list head */
 
-  up_invalidate_dcache((uintptr_t)&qh->hw,
+  cp15_invalidate_dcache((uintptr_t)&qh->hw,
                          (uintptr_t)&qh->hw + sizeof(struct ehci_qh_s));
 
   /* Then invalidate all of the qTD entries in the queue */
@@ -1179,9 +1356,9 @@ static int lpc31_qtd_flush(struct lpc31_qtd_s *qtd, uint32_t **bp, void *arg)
    * to force re-loading of the data from memory when next accessed.
    */
 
-  up_flush_dcache((uintptr_t)&qtd->hw,
-                  (uintptr_t)&qtd->hw + sizeof(struct ehci_qtd_s));
-  up_invalidate_dcache((uintptr_t)&qtd->hw,
+  cp15_flush_idcache((uintptr_t)&qtd->hw,
+                     (uintptr_t)&qtd->hw + sizeof(struct ehci_qtd_s));
+  cp15_invalidate_dcache((uintptr_t)&qtd->hw,
                          (uintptr_t)&qtd->hw + sizeof(struct ehci_qtd_s));
 
   return OK;
@@ -1202,9 +1379,9 @@ static int lpc31_qh_flush(struct lpc31_qh_s *qh)
    * reloaded from D-Cache.
    */
 
-  up_flush_dcache((uintptr_t)&qh->hw,
-                  (uintptr_t)&qh->hw + sizeof(struct ehci_qh_s));
-  up_invalidate_dcache((uintptr_t)&qh->hw,
+  cp15_flush_idcache((uintptr_t)&qh->hw,
+                     (uintptr_t)&qh->hw + sizeof(struct ehci_qh_s));
+  cp15_invalidate_dcache((uintptr_t)&qh->hw,
                          (uintptr_t)&qh->hw + sizeof(struct ehci_qh_s));
 
   /* Then flush all of the qTD entries in the queue */
@@ -1414,8 +1591,8 @@ static void lpc31_qh_enqueue(struct lpc31_qh_s *qhead, struct lpc31_qh_s *qh)
 
   physaddr = (uintptr_t)lpc31_physramaddr((uintptr_t)qh);
   qhead->hw.hlp = lpc31_swap32(physaddr | QH_HLP_TYP_QH);
-  up_flush_dcache((uintptr_t)&qhead->hw,
-                    (uintptr_t)&qhead->hw + sizeof(struct ehci_qh_s));
+  cp15_flush_idcache((uintptr_t)&qhead->hw,
+                     (uintptr_t)&qhead->hw + sizeof(struct ehci_qh_s));
 }
 
 /*******************************************************************************
@@ -1551,8 +1728,8 @@ static int lpc31_qtd_addbpl(struct lpc31_qtd_s *qtd, const void *buffer, size_t 
    * will be accessed for an OUT DMA.
    */
 
-  up_flush_dcache((uintptr_t)buffer, (uintptr_t)buffer + buflen);
-  up_invalidate_dcache((uintptr_t)buffer, (uintptr_t)buffer + buflen);
+  cp15_flush_idcache((uintptr_t)buffer, (uintptr_t)buffer + buflen);
+  cp15_invalidate_dcache((uintptr_t)buffer, (uintptr_t)buffer + buflen);
 
   /* Loop, adding the aligned physical addresses of the buffer to the buffer page
    * list.  Only the first entry need not be aligned (because only the first
@@ -2099,7 +2276,7 @@ static ssize_t lpc31_async_transfer(struct lpc31_rhport_s *rhport,
        * invalid in this memory region.
        */
 
-      up_invalidate_dcache((uintptr_t)buffer, (uintptr_t)buffer + buflen);
+      cp15_invalidate_dcache((uintptr_t)buffer, (uintptr_t)buffer + buflen);
     }
 #endif
 
@@ -2334,7 +2511,7 @@ static int lpc31_qtd_ioccheck(struct lpc31_qtd_s *qtd, uint32_t **bp, void *arg)
 
   /* Make sure we reload the QH from memory */
 
-  up_invalidate_dcache((uintptr_t)&qtd->hw,
+  cp15_invalidate_dcache((uintptr_t)&qtd->hw,
                          (uintptr_t)&qtd->hw + sizeof(struct ehci_qtd_s));
   lpc31_qtd_print(qtd);
 
@@ -2385,7 +2562,7 @@ static int lpc31_qh_ioccheck(struct lpc31_qh_s *qh, uint32_t **bp, void *arg)
 
   /* Make sure we reload the QH from memory */
 
-  up_invalidate_dcache((uintptr_t)&qh->hw,
+  cp15_invalidate_dcache((uintptr_t)&qh->hw,
                          (uintptr_t)&qh->hw + sizeof(struct ehci_qh_s));
   lpc31_qh_print(qh);
 
@@ -2439,7 +2616,7 @@ static int lpc31_qh_ioccheck(struct lpc31_qh_s *qh, uint32_t **bp, void *arg)
        */
 
       **bp = qh->hw.hlp;
-      up_flush_dcache((uintptr_t)*bp, (uintptr_t)*bp + sizeof(uint32_t));
+      cp15_flush_idcache((uintptr_t)*bp, (uintptr_t)*bp + sizeof(uint32_t));
 
       /* Check for errors, update the data toggle */
 
@@ -2539,7 +2716,7 @@ static inline void lpc31_ioc_bottomhalf(void)
   /* Check the Asynchronous Queue */
   /* Make sure that the head of the asynchronous queue is invalidated */
 
-  up_invalidate_dcache((uintptr_t)&g_asynchead.hw,
+  cp15_invalidate_dcache((uintptr_t)&g_asynchead.hw,
                          (uintptr_t)&g_asynchead.hw + sizeof(struct ehci_qh_s));
 
   /* Set the back pointer to the forward qTD pointer of the asynchronous
@@ -2565,7 +2742,7 @@ static inline void lpc31_ioc_bottomhalf(void)
   /* Check the Interrupt Queue */
   /* Make sure that the head of the interrupt queue is invalidated */
 
-  up_invalidate_dcache((uintptr_t)&g_intrhead.hw,
+  cp15_invalidate_dcache((uintptr_t)&g_intrhead.hw,
                          (uintptr_t)&g_intrhead.hw + sizeof(struct ehci_qh_s));
 
   /* Set the back pointer to the forward qTD pointer of the asynchronous
@@ -3868,12 +4045,19 @@ static int lpc31_reset(void)
   uint32_t regval;
   unsigned int timeout;
 
-  /* "... Software should not set [HCRESET] to a one when the HCHalted bit in
-   *  the USBSTS register is a zero. Attempting to reset an actively running
-   *   host controller will result in undefined behavior."
+  /* Make sure that the EHCI is halted:  "When [the Run/Stop] bit is set to 0,
+   * the Host Controller completes the current transaction on the USB and then
+   * halts. The HC Halted bit in the status register indicates when the Hos
+   * Controller has finished the transaction and has entered the stopped state..."
    */
 
   lpc31_putreg(0, &HCOR->usbcmd);
+
+  /* "... Software should not set [HCRESET] to a one when the HCHalted bit in
+   *  the USBSTS register is a zero. Attempting to reset an actively running
+   *  host controller will result in undefined behavior."
+   */
+
   timeout = 0;
   do
     {
@@ -3882,7 +4066,7 @@ static int lpc31_reset(void)
       up_udelay(1);
       timeout++;
 
-      /* Get the current valud of the USBSTS register.  This loop will terminate
+      /* Get the current value of the USBSTS register.  This loop will terminate
        * when either the timeout exceeds one millisecond or when the HCHalted
        * bit is no longer set in the USBSTS register.
        */
@@ -3914,7 +4098,7 @@ static int lpc31_reset(void)
       up_udelay(5);
       timeout += 5;
 
-      /* Get the current valud of the USBCMD register.  This loop will terminate
+      /* Get the current value of the USBCMD register.  This loop will terminate
        * when either the timeout exceeds one second or when the HCReset
        * bit is no longer set in the USBSTS register.
        */
@@ -4087,16 +4271,6 @@ FAR struct usbhost_connection_s *lpc31_ehci_initialize(int controller)
     }
 
   /* EHCI Hardware Configuration ***********************************************/
-  /* Host Controller Initialization. Paragraph 4.1 */
-  /* Reset the EHCI hardware */
-
-  ret = lpc31_reset();
-  if (ret < 0)
-    {
-      usbhost_trace1(EHCI_TRACE1_RESET_FAILED, -ret);
-      return NULL;
-    }
-
   /* Enable USB to AHB clock and to Event router */
 
   lpc31_enableclock(CLKID_USBOTGAHBCLK);
@@ -4120,7 +4294,7 @@ FAR struct usbhost_connection_s *lpc31_ehci_initialize(int controller)
 
   lpc31_enableclock (CLKID_USBOTGAHBCLK);
 
-  /* Reset the controller */
+  /* Reset the controller from the OTG peripheral */
 
   putreg32(USBDEV_USBCMD_RST, LPC31_USBDEV_USBCMD);
   while ((getreg32(LPC31_USBDEV_USBCMD) & USBDEV_USBCMD_RST) != 0)
@@ -4138,6 +4312,16 @@ FAR struct usbhost_connection_s *lpc31_ehci_initialize(int controller)
 
   putreg32(USBHOST_USBMODE_CMHOST | USBHOST_USBMODE_SDIS | USBHOST_USBMODE_VBPS,
            LPC31_USBDEV_USBMODE);
+
+  /* Host Controller Initialization. Paragraph 4.1 */
+  /* Reset the EHCI hardware */
+
+  ret = lpc31_reset();
+  if (ret < 0)
+    {
+      usbhost_trace1(EHCI_TRACE1_RESET_FAILED, -ret);
+      return NULL;
+    }
 
   /* "In order to initialize the host controller, software should perform the
    *  following steps:
@@ -4217,8 +4401,8 @@ FAR struct usbhost_connection_s *lpc31_ehci_initialize(int controller)
   g_asynchead.hw.overlay.token = lpc31_swap32(QH_TOKEN_HALTED);
   g_asynchead.fqp              = lpc31_swap32(QTD_NQP_T);
 
-  up_flush_dcache((uintptr_t)&g_asynchead.hw,
-                    (uintptr_t)&g_asynchead.hw + sizeof(struct ehci_qh_s));
+  cp15_flush_idcache((uintptr_t)&g_asynchead.hw,
+                     (uintptr_t)&g_asynchead.hw + sizeof(struct ehci_qh_s));
 
   /* Set the Current Asynchronous List Address. */
 
@@ -4248,10 +4432,10 @@ FAR struct usbhost_connection_s *lpc31_ehci_initialize(int controller)
 
   /* Set the Periodic Frame List Base Address. */
 
-  up_flush_dcache((uintptr_t)&g_intrhead.hw,
-                    (uintptr_t)&g_intrhead.hw + sizeof(struct ehci_qh_s));
-  up_flush_dcache((uintptr_t)g_framelist,
-                    (uintptr_t)g_framelist + FRAME_LIST_SIZE * sizeof(uint32_t));
+  cp15_flush_idcache((uintptr_t)&g_intrhead.hw,
+                     (uintptr_t)&g_intrhead.hw + sizeof(struct ehci_qh_s));
+  cp15_flush_idcache((uintptr_t)g_framelist,
+                     (uintptr_t)g_framelist + FRAME_LIST_SIZE * sizeof(uint32_t));
 
   physaddr = lpc31_physramaddr((uintptr_t)g_framelist);
   lpc31_putreg(lpc31_swap32(physaddr), &HCOR->periodiclistbase);
@@ -4329,8 +4513,24 @@ FAR struct usbhost_connection_s *lpc31_ehci_initialize(int controller)
    *   PORTSC register to enable power.
    */
 
-  lpc31_usbhost_vbusdrive(0, true);
-  up_mdelay(50);
+  /* Handle root hub status change on each root port */
+
+  for (i = 0; i < LPC31_EHCI_NRHPORT; i++)
+    {
+      /* Enable VBUS power for the port */
+
+      lpc31_usbhost_vbusdrive(i, true);
+      up_mdelay(25);
+
+      /* Power up the power.  REVISIT:  Is this necessary?  The PP bit never
+       * gets set unless I explicitly set it here.
+       */
+
+      regval  = lpc31_getreg(&HCOR->portsc[i]);
+      regval |= EHCI_PORTSC_PP;
+      lpc31_putreg(regval, &HCOR->portsc[i]);
+      up_mdelay(25);
+    }
 
   /* If there is a USB device in the slot at power up, then we will not
    * get the status change interrupt to signal us that the device is
@@ -4354,5 +4554,44 @@ FAR struct usbhost_connection_s *lpc31_ehci_initialize(int controller)
   g_ehciconn.enumerate = lpc31_enumerate;
   return &g_ehciconn;
 }
+
+/********************************************************************************************
+ * Name: usbhost_trformat1 and usbhost_trformat2
+ *
+ * Description:
+ *   This interface must be provided by platform specific logic that knows
+ *   the HCDs encoding of USB trace data.
+ *
+ *   Given an 9-bit index, return a format string suitable for use with, say,
+ *   printf.  The returned format is expected to handle two unsigned integer
+ *   values.
+ *
+ ********************************************************************************************/
+
+#ifdef HAVE_USBHOST_TRACE
+FAR const char *usbhost_trformat1(uint16_t id)
+{
+  int ndx = TRACE1_INDEX(id);
+
+  if (ndx < TRACE1_NSTRINGS)
+    {
+      return g_trace1[ndx].string;
+    }
+
+  return NULL;
+}
+
+FAR const char *usbhost_trformat2(uint16_t id)
+{
+  int ndx = TRACE2_INDEX(id);
+
+  if (ndx < TRACE2_NSTRINGS)
+    {
+      return g_trace2[ndx].string;
+    }
+
+  return NULL;
+}
+#endif /* HAVE_USBHOST_TRACE */
 
 #endif /* CONFIG_LPC31_USBOTG && CONFIG_USBHOST */

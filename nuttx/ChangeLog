@@ -6077,4 +6077,27 @@
 	  (2013-11-16).
 	* drivers/mtd/mtd_nandmodel.c: More NAND support (same story).
 	  (2013-11-16).
+	* drivers/mtd/mtd_rawnand.c and include/nuttx/mtd/nand_raw.h: More
+	  NAND support (2013-11-17).
+	* drivers/mtd/mtd_nandscheme.c:  More NAND support (2013-11-17).
+	* include/nuttx/mtd/nand_ecc.h: More NAND (2013-11-17).
+	* drivers/mtd/hamming.c and mtd_nandecc.c and
+	  include/nuttx/mtd/hamming.h:  Beginning of NAND software ECC
+	  calculations. (2013-11-18).
+	* configs/olimex-lpc-h3131:  Add support for the Olimex LPC-H3131
+	* board.  Does not yet boot (2013-11-18).
+	* arch/arm/src/lpc31xx/lpc31_ehci.c:  Add USB host trace support
+	  (2013-11-19).
+	* configs/olimex-lpc-h3131/include/board.h, src/lpc31_boot.c,
+	  lpc31_leds.c, lpc31_usbhost.c, and lpc_h3131.h:  Add GPIO 
+	  support for LED1/2 and for USB power enable and overcurrent
+	  detection (2013-11-19).
+	* configs/olimex-lpc-h3131/nsh/defconfig:  Drop loops-per-msec
+	  count for the Olimex-LPC-H3131.  It seems to be about 25% as
+	  fast as the Embedded Artists EA3131 at the same clocking.
+	  (2013-11-19).
+	* arch/arm/src/arm/up_cache.S and cache.h:  More cache management
+	  functions (2013-11-20).
+	* configs/olimex-lpc-h3131/src/Makefile:  Add SDRAM support.
+	  Untested and probably needs some fine tuining (2013-11-21)
 

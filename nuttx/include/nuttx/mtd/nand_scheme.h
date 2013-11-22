@@ -97,6 +97,152 @@ EXTERN const struct nand_scheme_s g_nand_sparescheme4096;
  * Public Function Prototypes
  ****************************************************************************/
 
+/****************************************************************************
+ * Name: nandscheme_readbadblockmarker
+ *
+ * Description:
+ *   Reads the bad block marker inside a spare area buffer using the provided
+ *   scheme.
+ *
+ * Input Parameters:
+ *   scheme  Pointer to a nand_scheme_s instance.
+ *   spare   Spare area buffer.
+ *   marker  Pointer to the variable to store the bad block marker.
+ *
+ * Returned Values:
+ *   None
+ *
+ ****************************************************************************/
+
+void nandscheme_readbadblockmarker(FAR const struct nand_scheme_s *scheme,
+                                   FAR const uint8_t *spare,
+                                   FAR uint8_t *marker);
+
+/****************************************************************************
+ * Name: nandscheme_readbadblockmarker
+ *
+ * Description:
+ *   Modifies the bad block marker inside a spare area, using the given
+ *   scheme.
+ *
+ * Input Parameters:
+ *   scheme  Pointer to a nand_scheme_s instance.
+ *   spare   Spare area buffer.
+ *   marker  Bad block marker to write.
+ *
+ * Returned Values:
+ *   None
+ *
+ ****************************************************************************/
+
+void nandscheme_writebadblockmarker(FAR const struct nand_scheme_s *scheme,
+                                    FAR uint8_t *spare, uint8_t marker);
+
+/****************************************************************************
+ * Name: nandscheme_readecc
+ *
+ * Description:
+ *   Reads ECC information from a spare area using the provided scheme.
+ *
+ * Input Parameters:
+ *   scheme  Pointer to a nand_scheme_s instance.
+ *   spare   Spare area buffer.
+ *   ecc     ECC buffer.
+ *
+ * Returned Values:
+ *   None
+ *
+ ****************************************************************************/
+
+void nandscheme_readecc(FAR const struct nand_scheme_s *scheme,
+                        FAR const uint8_t *spare, FAR uint8_t *ecc);
+
+/****************************************************************************
+ * Name: nandschem_writeecc
+ *
+ * Description:
+ *   Writes ECC information in a spare area, using a particular scheme.
+ *
+ * Input Parameters:
+ *   scheme  Pointer to a nand_scheme_s instance.
+ *   spare   Spare area buffer.
+ *   ecc     ECC buffer.
+ *
+ * Returned Values:
+ *   None
+ *
+ ****************************************************************************/
+
+void nandscheme_writeecc(FAR const struct nand_scheme_s *scheme,
+                         FAR uint8_t *spare, FAR const uint8_t *ecc);
+
+/****************************************************************************
+ * Name: nandscheme_readextra
+ *
+ * Description:
+ *   Reads extra bytes of information from a spare area, using the provided
+ *   scheme.
+ *
+ * Input Parameters:
+ *   scheme  Pointer to a nand_scheme_s instance.
+ *   spare   Spare area buffer.
+ *   extra   Extra bytes buffer.
+ *   size    Number of extra bytes to read.
+ *   offset  Index where to read the first extra byte.
+ *
+ * Returned Values:
+ *   None
+ *
+ ****************************************************************************/
+
+void nandscheme_readextra(FAR const struct nand_scheme_s *scheme,
+                          FAR const uint8_t *spare, FAR void *extra,
+                          unsigned int size, unsigned int offset);
+
+/****************************************************************************
+ * Name: nandscheme_readextra
+ *
+ * Description:
+ *   Write extra bytes of information inside a spare area, using the provided
+ *   scheme.
+ *
+ * Input Parameters:
+ *   scheme  Pointer to a nand_scheme_s instance.
+ *   spare   Spare area buffer.
+ *   extra   Extra bytes buffer.
+ *   size    Number of extra bytes to write.
+ *   offset  Index where to write the first extra byte.
+ *
+ * Returned Values:
+ *   None
+ *
+ ****************************************************************************/
+
+void nandscheme_writeextra(FAR const struct nand_scheme_s *scheme,
+                           FAR uint8_t *spare, FAR const void *extra,
+                           unsigned int size, unsigned int offset);
+
+/****************************************************************************
+ * Name: nandscheme_readextra
+ *
+ * Description:
+ *   Build a scheme instance for 4096 page size nand flash
+ *
+ * Input Parameters:
+ *   scheme  Pointer to a nand_scheme_s instance.
+ *   spareSize Size of spare area.
+ *   offset  Index where to write the first extra byte.
+ *   size    Number of extra bytes to write.
+ *   offset  Index where to write the first extra byte.
+ *
+ * Returned Values:
+ *   OK on success; a negated errno value on failure.
+ *
+ ****************************************************************************/
+
+int nandscheme_build4086(FAR struct nand_scheme_s *scheme,
+                         unsigned int spareSize, unsigned int eccOffset);
+
 #undef EXTERN
 #ifdef __cplusplus
 }

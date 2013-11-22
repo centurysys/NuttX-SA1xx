@@ -50,9 +50,10 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <semaphore.h>
 
 #include <nuttx/mtd/mtd.h>
-#include <nuttx/mtd/nand_model.h>
+#include <nuttx/mtd/nand_raw.h>
 
 /****************************************************************************
  * Pre-Processor Definitions
@@ -61,17 +62,17 @@
 /****************************************************************************
  * Public Types
  ****************************************************************************/
-
-/* This type represents the state of the NAND MTD device.  The struct
- * mtd_dev_s must appear at the beginning of the definition so that you can
- * freely cast between pointers to struct mtd_dev_s and struct nand_dev_s.
+/* This type represents the state of the upper-half NAND MTD device.  The
+ * struct mtd_dev_s must appear at the beginning of the definition so that
+ * you can freely cast between pointers to struct mtd_dev_s and struct
+ * nand_dev_s.
  */
 
 struct nand_dev_s
 {
   struct mtd_dev_s mtd;       /* Externally visible part of the driver */
-  struct mtd_dev_s *raw;      /* The lower-half, "raw" nand MTD driver */
-  struct nand_model_s *model; /* Reference to the model (in the raw data structure) */
+  FAR struct nand_raw_s *raw; /* Retained reference to the lower half */
+  sem_t exclsem;              /* For exclusive access to the NAND FLASH */
 };
 
 /****************************************************************************
@@ -99,12 +100,7 @@ extern "C"
  *   Probe and initialize NAND.
  *
  * Input parameters:
- *   raw      - Raw NAND FLASH MTD interface
- *   cmdaddr  - NAND command address base
- *   addraddr - NAND address address base
- *   dataaddr - NAND data address
- *   model    - A pointer to the model data (probably in the raw MTD
- *              driver instance.
+ *   raw      - Lower-half, raw NAND FLASH interface
  *
  * Returned value.
  *   A non-NULL MTD driver intstance is returned on success.  NULL is
@@ -112,9 +108,7 @@ extern "C"
  *
  ****************************************************************************/
 
-FAR struct mtd_dev_s *nand_initialize(FAR struct mtd_dev_s *raw,
-                      uintptr_t cmdaddr, uintptr_t addraddr,
-                      uintptr_t dataaddr, FAR struct nand_model_s *model);
+FAR struct mtd_dev_s *nand_initialize(FAR struct nand_raw_s *raw);
 
 #undef EXTERN
 #ifdef __cplusplus

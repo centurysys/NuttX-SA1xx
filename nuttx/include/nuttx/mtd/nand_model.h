@@ -53,6 +53,7 @@
 
 #include <nuttx/config.h>
 
+#include <sys/types.h>
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -174,8 +175,7 @@ int nandmodel_translate(FAR const struct nand_model_s *model, off_t address,
  *
  ****************************************************************************/
 
-FAR const struct nand_dev_scheme_s *
-nandmodel_getscheme(FAR const struct nand_model_s *model);
+#define nandmodel_getscheme(m) ((m)->scheme)
 
 /****************************************************************************
  * Name: nandmodel_getdevid
@@ -191,10 +191,10 @@ nandmodel_getscheme(FAR const struct nand_model_s *model);
  *
  ****************************************************************************/
 
-uint8_t nandmodel_getdevid(FAR const struct nand_model_s *model);
+#define nandmodel_getdevid(m) ((m)->devid)
 
 /****************************************************************************
- * Name: nandmodel_getdevblocksize
+ * Name: nandmodel_getdevblocks
  *
  * Description:
  *   Returns the number of blocks in the entire device.
@@ -207,23 +207,8 @@ uint8_t nandmodel_getdevid(FAR const struct nand_model_s *model);
  *
  ****************************************************************************/
 
-off_t nandmodel_getdevblocksize(FAR const struct nand_model_s *model);
-
-/****************************************************************************
- * Name: nandmodel_getdevpagesize
- *
- * Description:
- *   Returns the number of pages in the entire device.
- *
- * Input Parameters:
- *   model  Pointer to a nand_model_s instance.
- *
- * Returned Values:
- *   Number of pages in the device
- *
- ****************************************************************************/
-
-size_t nandmodel_getdevpagesize(FAR const struct nand_model_s *model);
+#define nandmodel_getdevblocks(m) \
+  ((off_t)((m)->devsize << 10) / (m)->blocksize)
 
 /****************************************************************************
  * Name: nandmodel_getdevbytesize
@@ -240,7 +225,7 @@ size_t nandmodel_getdevpagesize(FAR const struct nand_model_s *model);
  *
  ****************************************************************************/
 
-uint64_t nandmodel_getdevbytesize(FAR const struct nand_model_s *model);
+#define nandmodel_getdevbytesize(m) (((uint64_t)((m)->devsize) << 20))
 
 /****************************************************************************
  * Name: nandmodel_getdevmbsize
@@ -257,26 +242,10 @@ uint64_t nandmodel_getdevbytesize(FAR const struct nand_model_s *model);
  *
  ****************************************************************************/
 
-uint32_t nandmodel_getdevmbsize(FAR const struct nand_model_s *model);
+#define nandmodel_getdevmbsize(m) ((uint32_t)((m)->devsize))
 
 /****************************************************************************
- * Name: nandmodel_getblocksize
- *
- * Description:
- *   Returns the number of pages in one single block of a device.
- *
- * Input Parameters:
- *   model  Pointer to a nand_model_s instance.
- *
- * Returned Values:
- *
- *
- ****************************************************************************/
-
-unsigned int nandmodel_getblocksize(FAR const struct nand_model_s *model);
-
-/****************************************************************************
- * Name: nandmodel_getblockpagesize
+ * Name: nandmodel_pagesperblock
  *
  * Description:
  *   Returns the number of pages in one single block of a device.
@@ -289,10 +258,28 @@ unsigned int nandmodel_getblocksize(FAR const struct nand_model_s *model);
  *
  ****************************************************************************/
 
-unsigned int nandmodel_getblockpagesize(FAR const struct nand_model_s *model);
+#define nandmodel_pagesperblock(m) \
+  ((uint32_t)((m)->blocksize << 10) / (m)->pagesize)
 
 /****************************************************************************
- * Name: nandmodel_getblockbytesize
+ * Name: nandmodel_getdevpagesize
+ *
+ * Description:
+ *   Returns the number of pages in the entire device.
+ *
+ * Input Parameters:
+ *   model  Pointer to a nand_model_s instance.
+ *
+ * Returned Values:
+ *   Number of pages in the device
+ *
+ ****************************************************************************/
+
+#define nandmodel_getdevpagesize(m) \
+  ((uint32_t)nandmodel_getdevblocks(m) * nandmodel_pagesperblock(m))
+
+/****************************************************************************
+ * Name: nandmodel_getbyteblocksize
  *
  * Description:
  *   Returns the size in bytes of one single block of a device. This does not
@@ -306,7 +293,7 @@ unsigned int nandmodel_getblockpagesize(FAR const struct nand_model_s *model);
  *
  ****************************************************************************/
 
-unsigned int nandmodel_getblockbytesize(FAR const struct nand_model_s *model);
+#define nandmodel_getbyteblocksize(m) ((unsigned int)(m)->blocksize << 10)
 
 /****************************************************************************
  * Name: nandmodel_getpagesize
@@ -322,7 +309,7 @@ unsigned int nandmodel_getblockbytesize(FAR const struct nand_model_s *model);
  *
  ****************************************************************************/
 
-unsigned int nandmodel_getpagesize(FAR const struct nand_model_s *model);
+#define nandmodel_getpagesize(m) ((m)->pagesize)
 
 /****************************************************************************
  * Name: nandmodel_getsparesize
@@ -354,7 +341,8 @@ unsigned int nandmodel_getsparesize(FAR const struct nand_model_s *model);
  *
  ****************************************************************************/
 
-unsigned int nandmodel_getbuswidth(FAR const struct nand_model_s *model);
+#define nandmodel_getbuswidth(m) \
+  (((m)->options & NANDMODEL_DATAWIDTH16) ? 16 : 8)
 
 /****************************************************************************
  * Name: nandmodel_havesmallblocks
@@ -372,7 +360,7 @@ unsigned int nandmodel_getbuswidth(FAR const struct nand_model_s *model);
  *
  ****************************************************************************/
 
-bool nandmodel_havesmallblocks(FAR const struct nand_model_s *model);
+#define nandmodel_havesmallblocks(m) ((m)->pagesize <= 512)
 
 /****************************************************************************
  * Name: nandmodel_havecopyback
@@ -390,7 +378,7 @@ bool nandmodel_havesmallblocks(FAR const struct nand_model_s *model);
  *
  ****************************************************************************/
 
-bool nandmodel_havecopyback(FAR const struct nand_model_s *model);
+#define nandmodel_havecopyback(m) (((m)->options & NANDMODEL_COPYBACK) != 0)
 
 #undef EXTERN
 #ifdef __cplusplus
