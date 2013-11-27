@@ -41,6 +41,7 @@
  ****************************************************************************/
 
 #include <nuttx/config.h>
+#include <nuttx/mtd/nand_config.h>
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -49,6 +50,7 @@
 
 #include <nuttx/mtd/nand_raw.h>
 
+#include "up_arch.h"
 #include "chip.h"
 #include "chip/sam_hsmc.h"
 
@@ -58,41 +60,17 @@
  * Pre-processor Definitions
  ****************************************************************************/
 /* Configuration ************************************************************/
-/* Block checking and H/W ECC support must be enabled for HSIAO ECC */
+/* DMA */
 
-#if !defined(CONFIG_MTD_NAND_BLOCKCHECK) || !defined(MTD_NAND_HWECC)
-#  undef CONFIG_SAMA5_EBICS0_HSIAO
-#  undef CONFIG_SAMA5_EBICS1_HSIAO
-#  undef CONFIG_SAMA5_EBICS2_HSIAO
-#  undef CONFIG_SAMA5_EBICS3_HSIAO
-#endif
-
-/* Disable HSIAO support for any banks not enabled or configured for NAND */
-
-#if !defined(SAMA5_EBICS0) || !defined(SAMA5_EBICS0_NAND)
-#  undef CONFIG_SAMA5_EBICS0_HSIAO
-#endif
-
-#if !defined(SAMA5_EBICS1) || !defined(SAMA5_EBICS1_NAND)
-#  undef CONFIG_SAMA5_EBICS1_HSIAO
-#endif
-
-#if !defined(SAMA5_EBICS2) || !defined(SAMA5_EBICS2_NAND)
-#  undef CONFIG_SAMA5_EBICS2_HSIAO
-#endif
-
-#if !defined(SAMA5_EBICS3) || !defined(SAMA5_EBICS3_NAND)
-#  undef CONFIG_SAMA5_EBICS3_HSIAO
-#endif
-
-#undef NAND_HAVE_HSIAO
-#if defined(CONFIG_SAMA5_EBICS0_HSIAO) || defined(CONFIG_SAMA5_EBICS1_HSIAO) || \
-    defined(CONFIG_SAMA5_EBICS2_HSIAO) || defined(CONFIG_SAMA5_EBICS3_HSIAO)
-#  define NAND_HAVE_HSIAO
-#endif
-
-#ifndef CONFIG_SAMA5_DMAC1
-#  warning CONFIG_SAMA5_DMAC1 should be enabled for DMA transfers
+#ifdef CONFIG_SAMA5_NAND_DMA
+#  if defined(CONFIG_SAMA5_DMAC1)
+#    define NAND_DMAC 1
+#  elif defined(CONFIG_SAMA5_DMAC0)
+#    define NAND_DMAC 0
+#  else
+#    error "A DMA controller must be enabled to perform DMA transfers"
+#    undef CONFIG_SAMA5_NAND_DMA
+#  endif
 #endif
 
 /* Hardware ECC types.  These are extensions to the NANDECC_HWECC value
@@ -100,12 +78,160 @@
  *
  *   NANDECC_CHIPECC ECC is performed internal to chip
  *   NANDECC_PMECC   Programmable Multibit Error Correcting Code (PMECC)
- *   NANDECC_HSIAO   HSIAO ECC
  */
 
 #define NANDECC_CHIPECC (NANDECC_HWECC + 0)
 #define NANDECC_PMECC   (NANDECC_HWECC + 1)
-#define NANDECC_HSIAO   (NANDECC_HWECC + 2)
+
+/* Per NAND bank ECC selections */
+
+#if defined(CONFIG_SAMA5_EBICS0_NAND)
+#  if defined(CONFIG_SAMA5_EBICS0_ECCNONE)
+#    define SAMA5_EBICS0_ECCTYPE NANDECC_NONE
+
+#  elif defined(CONFIG_SAMA5_EBICS0_SWECC)
+#    if !defined(CONFIG_MTD_NAND_BLOCKCHECK) || !defined(CONFIG_MTD_NAND_SWECC)
+#      error CONFIG_SAMA5_EBICS0_SWECC is an invalid selection
+#    endif
+#    define SAMA5_EBICS0_ECCTYPE NANDECC_SWECC
+
+#  elif defined(CONFIG_SAMA5_EBICS0_PMECC)
+#    if !defined(CONFIG_MTD_NAND_BLOCKCHECK) || !defined(CONFIG_MTD_NAND_HWECC)
+#      error CONFIG_SAMA5_EBICS0_PMECC is an invalid selection
+#    endif
+#    define SAMA5_EBICS0_ECCTYPE NANDECC_PMECC
+
+#  elif defined(CONFIG_SAMA5_EBICS0_CHIPECC)
+#    if !defined(CONFIG_MTD_NAND_BLOCKCHECK) || !defined(CONFIG_MTD_NAND_EMBEDDEDECC)
+#      error CONFIG_SAMA5_EBICS0_CHIPECC is an invalid selection
+#    endif
+#    define SAMA5_EBICS0_ECCTYPE NANDECC_CHIPECC
+
+#  else
+#    error "No ECC type specified for CS0"
+#  endif
+#endif /* CONFIG_SAMA5_EBICS0_NAND */
+
+#if defined(CONFIG_SAMA5_EBICS1_NAND)
+#  if defined(CONFIG_SAMA5_EBICS1_ECCNONE)
+#    define SAMA5_EBICS1_ECCTYPE NANDECC_NONE
+
+#  elif defined(CONFIG_SAMA5_EBICS1_SWECC)
+#    if !defined(CONFIG_MTD_NAND_BLOCKCHECK) || !defined(CONFIG_MTD_NAND_SWECC)
+#      error CONFIG_SAMA5_EBICS1_SWECC is an invalid selection
+#    endif
+#    define SAMA5_EBICS1_ECCTYPE NANDECC_SWECC
+
+#  elif defined(CONFIG_SAMA5_EBICS1_PMECC)
+#    if !defined(CONFIG_MTD_NAND_BLOCKCHECK) || !defined(CONFIG_MTD_NAND_HWECC)
+#      error CONFIG_SAMA5_EBICS1_PMECC is an invalid selection
+#    endif
+#    define SAMA5_EBICS1_ECCTYPE NANDECC_PMECC
+
+#  elif defined(CONFIG_SAMA5_EBICS1_CHIPECC)
+#    if !defined(CONFIG_MTD_NAND_BLOCKCHECK) || !defined(CONFIG_MTD_NAND_EMBEDDEDECC)
+#      error CONFIG_SAMA5_EBICS1_CHIPECC is an invalid selection
+#    endif
+#    define SAMA5_EBICS1_ECCTYPE NANDECC_CHIPECC
+
+#  else
+#    error "No ECC type specified for CS1"
+#  endif
+#endif /* CONFIG_SAMA5_EBICS1_NAND */
+
+#if defined(CONFIG_SAMA5_EBICS2_NAND)
+#  if defined(CONFIG_SAMA5_EBICS2_ECCNONE)
+#    define SAMA5_EBICS2_ECCTYPE NANDECC_NONE
+
+#  elif defined(CONFIG_SAMA5_EBICS2_SWECC
+#    if !defined(CONFIG_MTD_NAND_BLOCKCHECK) || !defined(CONFIG_MTD_NAND_SWECC)
+#      error CONFIG_SAMA5_EBICS2_SWECC is an invalid selection
+#    endif
+#    define SAMA5_EBICS2_ECCTYPE NANDECC_SWECC
+
+#  elif defined(CONFIG_SAMA5_EBICS2_PMECC)
+#    if !defined(CONFIG_MTD_NAND_BLOCKCHECK) || !defined(CONFIG_MTD_NAND_HWECC)
+#      error CONFIG_SAMA5_EBICS2_PMECC is an invalid selection
+#    endif
+#    define SAMA5_EBICS2_ECCTYPE NANDECC_PMECC
+
+#  elif defined(CONFIG_SAMA5_EBICS2_CHIPECC)
+#    if !defined(CONFIG_MTD_NAND_BLOCKCHECK) || !defined(CONFIG_MTD_NAND_EMBEDDEDECC)
+#      error CONFIG_SAMA5_EBICS2_CHIPECC is an invalid selection
+#    endif
+#    define SAMA5_EBICS2_ECCTYPE NANDECC_CHIPECC
+
+#  else
+#    error "No ECC type specified for CS2"
+#  endif
+#endif /* CONFIG_SAMA5_EBICS2_NAND */
+
+#if defined(CONFIG_SAMA5_EBICS3_NAND)
+#  if defined(CONFIG_SAMA5_EBICS3_ECCNONE)
+#    define SAMA5_EBICS3_ECCTYPE NANDECC_NONE
+
+#  elif defined(CONFIG_SAMA5_EBICS3_SWECC)
+#    if !defined(CONFIG_MTD_NAND_BLOCKCHECK) || !defined(CONFIG_MTD_NAND_SWECC)
+#      error CONFIG_SAMA5_EBICS3_SWECC is an invalid selection
+#    endif
+#    define SAMA5_EBICS3_ECCTYPE NANDECC_SWECC
+
+#  elif defined(CONFIG_SAMA5_EBICS3_PMECC)
+#    if !defined(CONFIG_MTD_NAND_BLOCKCHECK) || !defined(CONFIG_MTD_NAND_HWECC)
+#      error CONFIG_SAMA5_EBICS3_PMECC is an invalid selection
+#    endif
+#    define SAMA5_EBICS3_ECCTYPE NANDECC_PMECC
+
+#  elif defined(CONFIG_SAMA5_EBICS3_CHIPECC)
+#    if !defined(CONFIG_MTD_NAND_BLOCKCHECK) || !defined(CONFIG_MTD_NAND_EMBEDDEDECC)
+#      error CONFIG_SAMA5_EBICS3_CHIPECC is an invalid selection
+#    endif
+#    define SAMA5_EBICS3_ECCTYPE NANDECC_CHIPECC
+
+#  else
+#    error "No ECC type specified for CS3"
+#  endif
+#endif /* CONFIG_SAMA5_EBICS3_NAND */
+
+/* Count the number of banks that configured for NAND with PMECC support
+ * enabled.
+ */
+
+#undef CONFIG_SAMA5_HAVE_NAND
+#ifdef CONFIG_SAMA5_EBICS0_NAND
+#  define CONFIG_SAMA5_HAVE_NAND 1
+#  define NAND_HAVE_EBICS0 1
+#else
+#  define NAND_HAVE_EBICS0 0
+#endif
+
+#ifdef CONFIG_SAMA5_EBICS1_NAND
+#  define CONFIG_SAMA5_HAVE_NAND 1
+#  define NAND_HAVE_EBICS1 1
+#else
+#  define NAND_HAVE_EBICS1 0
+#endif
+
+#ifdef CONFIG_SAMA5_EBICS2_NAND
+#  define CONFIG_SAMA5_HAVE_NAND 1
+#  define NAND_HAVE_EBICS2 1
+#else
+#  define NAND_HAVE_EBICS2 0
+#endif
+
+#ifdef CONFIG_SAMA5_EBICS3_NAND
+#  define CONFIG_SAMA5_HAVE_NAND 1
+#  define NAND_HAVE_EBICS3 1
+#else
+#  define NAND_HAVE_EBICS3 0
+#endif
+
+/* Count the number of banks configured for NAND */
+
+#define NAND_NBANKS \
+   (NAND_HAVE_EBICS0 + NAND_HAVE_EBICS1 + NAND_HAVE_EBICS2 + NAND_HAVE_EBICS3)
+
+#ifdef CONFIG_SAMA5_HAVE_NAND
 
 /****************************************************************************
  * Public Types
@@ -122,25 +248,38 @@ struct sam_nandcs_s
 
   /* Static configuration */
 
-  uint8_t cs      :2;        /* Chip select number (0..3) */
-  uint8_t nfcsram :1;        /* True: Use NFC SRAM */
-  uint8_t dmaxfr  :1;        /* True: Use DMA transfers */
+  uint8_t cs;                /* Chip select number (0..3) */
+#ifdef CONFIG_SAMA5_NAND_DMA
+  volatile bool dmadone;     /* True:  DMA has completed */
+#endif
+
+#ifdef CONFIG_SAMA5_PMECC_TRIMPAGE
+  bool dropjss;              /* Enable page trimming */
+  uint16_t g_trimpage;       /* Trim page number boundary */
+#endif
+
+#ifdef CONFIG_SAMA5_NAND_DMA
+  sem_t waitsem;             /* Used to wait for DMA done */
+  DMA_HANDLE dma;            /* DMA channel assigned to this CS */
+  int result;                /* The result of the DMA */
+#endif
+};
+
+struct sam_nand_s
+{
+  bool initialized;          /* True:  One time initialization is complete */
+  sem_t exclsem;             /* Enforce exclusive access to the SMC hardware */
 
   /* Dynamic state */
 
   volatile bool cmddone;     /* True:  NFC commnad has completed */
   volatile bool xfrdone;     /* True:  Transfer has completed */
   volatile bool rbedge;      /* True:  Ready/busy edge detected */
-  volatile bool dmadone;     /* True:  DMA has completed */
   sem_t waitsem;             /* Used to wait for one of the above states */
 
-  DMA_HANDLE dma;            /* DMA channel assigned to this CS */
-  int result;                /* The result of the DMA */
-};
-
-struct sam_nand_s
-{
-  bool initialized;
+#ifdef CONFIG_SAMA5_HAVE_PMECC
+  uint8_t ecctab[CONFIG_MTD_NAND_MAX_PMECCSIZE];
+#endif
 
 #ifdef CONFIG_SAMA5_NAND_REGDEBUG
   /* Register debug state */
@@ -325,10 +464,101 @@ static inline void nand_putreg(uintptr_t regaddr, uint32_t regval)
   putreg32(regval, regaddr);
 }
 
+/****************************************************************************
+ * Name: nand_trimffs_enable
+ *
+ * Description:
+ *   Set current trimffs status.
+ *
+ * Input Parameters:
+ *
+ * Returned Value:
+ *
+ *
+ ****************************************************************************/
+
+#ifdef CONFIG_SAMA5_PMECC_TRIMPAGE
+static inline void nand_trimffs_enable(struct sam_nandcs_s *priv, bool enable)
+{
+  priv->dropjss = enable;
+}
+#else
+#  define nand_trimffs_enable(p,e)
+#endif
+
+/****************************************************************************
+ * Name: nand_trrimffs
+ *
+ * Description:
+ *   Get current trimffs status.
+ *
+ * Input Parameters:
+ *
+ * Returned Value:
+ *
+ *
+ ****************************************************************************/
+
+#ifdef CONFIG_SAMA5_PMECC_TRIMPAGE
+static inline bool nand_trrimffs(struct sam_nandcs_s *priv)
+{
+  return priv->dropjss;
+}
+#else
+#  define nand_trrimffs(p) (false)
+#endif
+
+/****************************************************************************
+ * Name: nand_set_trimpage
+ *
+ * Description:
+ *   Set current trimffs page.
+ *
+ * Input Parameters:
+ *   page - Start trim page.
+ *
+ * Returned Value:
+ *
+ *
+ ****************************************************************************/
+
+#ifdef CONFIG_SAMA5_PMECC_TRIMPAGE
+static inline void nand_set_trimpage(struct sam_nandcs_s *priv, uint16_t page)
+{
+  priv->trimpage = page;
+}
+#else
+#  define nand_set_trimpage(p,t)
+#endif
+
+/****************************************************************************
+ * Name: nand_get_trimpage
+ *
+ * Description:
+ *   Get current trimffs page.
+ *
+ * Input Parameters:
+ *   None
+ *
+ * Returned Value:
+ *    Start trim page.
+ *
+ ****************************************************************************/
+
+#ifdef CONFIG_SAMA5_PMECC_TRIMPAGE
+uint16_t nand_get_trimpage(struct sam_nandcs_s *priv)
+{
+  return priv->trimpage;
+}
+#else
+#  define nand_get_trimpage(p) (0)
+#endif
+
 #undef EXTERN
 #if defined(__cplusplus)
 }
 #endif
 
 #endif /* __ASSEMBLY__ */
+#endif /* CONFIG_SAMA5_HAVE_NAND */
 #endif /* __ARCH_ARM_SRC_SAMA5_SAM_NAND_H */

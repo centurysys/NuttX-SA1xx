@@ -57,12 +57,14 @@
 #include <assert.h>
 #include <debug.h>
 
+#include <nuttx/arch.h>
 #include <nuttx/fs/ioctl.h>
 #include <nuttx/mtd/mtd.h>
 #include <nuttx/mtd/nand.h>
 #include <nuttx/mtd/nand_raw.h>
 #include <nuttx/mtd/nand_model.h>
 
+#include <arch/irq.h>
 #include <arch/board/board.h>
 
 #include "up_arch.h"
@@ -87,16 +89,21 @@
 
 /* Nand flash chip status codes */
 
-#define STATUS_ERROR       (1 << 0)
-#define STATUS_READY       (1 << 6)
+#define STATUS_ERROR         (1 << 0)
+#define STATUS_READY         (1 << 6)
 
 /* NFC ALE CLE command parameter */
 
-#define SMC_ALE_COL_EN     (1 << 0)
-#define SMC_ALE_ROW_EN     (1 << 1)
-#define SMC_CLE_WRITE_EN   (1 << 2)
-#define SMC_CLE_DATA_EN    (1 << 3)
-#define SMC_CLE_VCMD2_EN   (1 << 4)
+#define HSMC_ALE_COL_EN      (1 << 0)
+#define HSMC_ALE_ROW_EN      (1 << 1)
+#define HSMC_CLE_WRITE_EN    (1 << 2)
+#define HSMC_CLE_DATA_EN     (1 << 3)
+#define HSMC_CLE_VCMD2_EN    (1 << 4)
+
+/* Number of tries for erasing or writing block */
+
+#define NAND_ERASE_NRETRIES  2
+#define NAND_WRITE_NRETRIES  2
 
 /* DMA Configuration */
 
@@ -127,14 +134,18 @@
  ****************************************************************************/
 /* Low-level HSMC Helpers */
 
+#if NAND_NBANKS > 1
+void            nand_lock(void);
+void            nand_unlock(void);
+#else
+#  define       nand_lock()
+#  define       nand_unlock()
+#endif
+
 static void     nand_wait_ready(struct sam_nandcs_s *priv);
 static void     nand_cmdsend(struct sam_nandcs_s *priv, uint32_t cmd,
                   uint32_t acycle, uint32_t cycle0);
 static bool     nand_operation_complete(struct sam_nandcs_s *priv);
-static void     nand_coladdr_write(struct sam_nandcs_s *priv,
-                  uint16_t coladdr);
-static void     nand_rowaddr_write(struct sam_nandcs_s *priv,
-                  uint32_t rowaddr);
 static int      nand_translate_address(struct sam_nandcs_s *priv,
                   uint16_t coladdr, uint32_t rowaddr, uint32_t *acycle0,
                   uint32_t *acycle1234, bool rowonly);
@@ -146,13 +157,23 @@ static void     nand_nfc_configure(struct sam_nandcs_s *priv,
 /* Interrupt Handling */
 
 static void     nand_wait_cmddone(struct sam_nandcs_s *priv);
+static void     nand_setup_cmddone(struct sam_nandcs_s *priv);
 static void     nand_wait_xfrdone(struct sam_nandcs_s *priv);
+static void     nand_setup_xfrdone(struct sam_nandcs_s *priv);
 static void     nand_wait_rbedge(struct sam_nandcs_s *priv);
+static void     nand_setup_rbedge(struct sam_nandcs_s *priv);
+static int      hsmc_interrupt(int irq, void *context);
 
 /* DMA Helpers */
 
+#ifdef CONFIG_SAMA5_NAND_DMA
 static int      nand_wait_dma(struct sam_nandcs_s *priv);
 static void     nand_dmacallback(DMA_HANDLE handle, void *arg, int result);
+static int      nand_dma_read(struct sam_nandcs_s *priv,
+                  uintptr_t vsrc, uintptr_t vdest, size_t nbytes);
+static int      nand_dma_write(struct sam_nandcs_s *priv,
+                  uintptr_t vsrc, uintptr_t vdest, size_t nbytes)
+#endif
 
 /* Raw Data Transfer Helpers */
 
@@ -163,6 +184,11 @@ static int      nand_smc_read16(uintptr_t src, uint8_t *dest,
                   size_t buflen);
 static int      nand_read(struct sam_nandcs_s *priv, bool nfcsram,
                   uint8_t *buffer, size_t buflen);
+
+#ifdef CONFIG_SAMA5_HAVE_PMECC
+static int      nand_read_pmecc(struct sam_nandcs_s *priv, off_t block,
+                  unsigned int page, void *data);
+#endif
 
 static int      nand_nfcsram_write(const uint8_t *src, uintptr_t dest,
                   size_t buflen);
@@ -178,12 +204,7 @@ static int      nand_write(struct sam_nandcs_s *priv, bool nfcsram,
 static int      nand_readpage_noecc(struct sam_nandcs_s *priv, off_t block,
                   unsigned int page, void *data, void *spare);
 
-#ifdef NAND_HAVE_HSIAO
-static int      nand_readpage_hsiao(struct sam_nandcs_s *priv, off_t block,
-                  unsigned int page, void *data, void *spare);
-#endif
-
-#ifdef NAND_HAVE_PMECC
+#ifdef CONFIG_SAMA5_HAVE_PMECC
 static int      nand_readpage_pmecc(struct sam_nandcs_s *priv, off_t block,
                   unsigned int page, void *data);
 #endif
@@ -191,12 +212,7 @@ static int      nand_readpage_pmecc(struct sam_nandcs_s *priv, off_t block,
 static int      nand_writepage_noecc(struct sam_nandcs_s *priv, off_t block,
                   unsigned int page, const void *data, const void *spare);
 
-#ifdef NAND_HAVE_HSIAO
-static int      nand_writepage_hsiao(struct sam_nandcs_s *priv, off_t block,
-                  unsigned int page, const void *data, const void *spare);
-#endif
-
-#ifdef NAND_HAVE_PMECC
+#ifdef CONFIG_SAMA5_HAVE_PMECC
 static int      nand_writepage_pmecc(struct sam_nandcs_s *priv, off_t block,
                   unsigned int page, const void *data);
 #endif
@@ -215,6 +231,10 @@ static int      nand_readpage(struct nand_raw_s *raw, off_t block,
 static int      nand_writepage(struct nand_raw_s *raw, off_t block,
                   unsigned int page, const void *data, const void *spare);
 #endif
+
+/* Initialization */
+
+static void     nand_reset(struct sam_nandcs_s *priv);
 
 /****************************************************************************
  * Private Data
@@ -247,6 +267,55 @@ struct sam_nand_s g_nand;
 /****************************************************************************
  * Private Functions
  ****************************************************************************/
+
+/****************************************************************************
+ * Name: nand_lock
+ *
+ * Description:
+ *   Get exclusive access to PMECC hardware
+ *
+ * Input Parameters:
+ *   None
+ *
+ * Returned Value:
+ *   None
+ *
+ ****************************************************************************/
+
+#if NAND_NBANKS > 1
+void nand_lock(void)
+{
+  int ret;
+
+  do
+    {
+      ret = sem_wait(&g_nand.exclsem);
+      DEBUGASSERT(ret == OK || errno == EINTR);
+    }
+  while (ret != OK);
+}
+#endif
+
+/****************************************************************************
+ * Name: nand_unlock
+ *
+ * Description:
+ *   Relinquish exclusive access to PMECC hardware
+ *
+ * Input Parameters:
+ *   None
+ *
+ * Returned Value:
+ *   None
+ *
+ ****************************************************************************/
+
+#if NAND_NBANKS > 1
+void nand_unlock(void)
+{
+  sem_post(&g_nand.exclsem);
+}
+#endif
 
 /****************************************************************************
  * Name: nand_wait_ready
@@ -296,8 +365,8 @@ static void nand_cmdsend(struct sam_nandcs_s *priv, uint32_t cmd,
 
   /* Wait until host controller is not busy. */
 
-  while ((nand_getreg(NFCCMD_BASE + NFCADDR_CMD_NFCCMD) & 0x8000000) != 0);
-  priv->cmddone = false;
+  while ((nand_getreg(NFCCMD_BASE + NFCADDR_CMD_NFCCMD) & 0x08000000) != 0);
+  nand_setup_cmddone(priv);
 
   /* Send the command plus the ADDR_CYCLE */
 
@@ -337,87 +406,6 @@ static bool nand_operation_complete(struct sam_nandcs_s *priv)
     }
 
   return true;
-}
-
-/****************************************************************************
- * Name: nand_coladdr_write
- *
- * Description:
- *   Send a column address to the NAND FLASH chip.
- *
- * Input parameters:
- *   priv - Lower-half, private NAND FLASH device state
- *
- * Returned value.
- *   None
- *
- ****************************************************************************/
-
-static void nand_coladdr_write(struct sam_nandcs_s *priv, uint16_t coladdr)
-{
-  uint16_t pagesize = nandmodel_getpagesize(&priv->raw.model);
-
-  /* Check the data bus width of the NAND FLASH */
-
-  if (nandmodel_getbuswidth(&priv->raw.model) == 16)
-    {
-      /* Use word vs byte addressing */
-
-      coladdr >>= 1;
-    }
-
-  /* Send single column address byte for small block devices, or two column
-   * address bytes for large block devices
-   */
-
-  while (pagesize > 2)
-    {
-      if (nandmodel_getbuswidth(&priv->raw.model) == 16)
-        {
-          WRITE_ADDRESS16(&priv->raw, coladdr & 0xff);
-        }
-      else
-        {
-          WRITE_ADDRESS8(&priv->raw, coladdr & 0xff);
-        }
-
-      pagesize >>= 8;
-      coladdr >>= 8;
-    }
-}
-
-/****************************************************************************
- * Name: nand_rowaddr_write
- *
- * Description:
- *   Send a row address to the NAND FLASH chip.
- *
- * Input parameters:
- *   priv - Lower-half, private NAND FLASH device state
- *
- * Returned value.
- *   None
- *
- ****************************************************************************/
-
-static void nand_rowaddr_write(struct sam_nandcs_s *priv, uint32_t rowaddr)
-{
-  uint32_t npages = nandmodel_getdevpagesize(&priv->raw.model);
-
-  while (npages > 0)
-    {
-      if (nandmodel_getbuswidth(&priv->raw.model) == 16)
-        {
-          WRITE_ADDRESS16(&priv->raw, rowaddr & 0xff);
-        }
-      else
-        {
-          WRITE_ADDRESS8(&priv->raw, rowaddr & 0xff);
-        }
-
-      npages >>= 8;
-      rowaddr >>= 8;
-    }
 }
 
 /****************************************************************************
@@ -604,7 +592,7 @@ static void nand_nfc_configure(struct sam_nandcs_s *priv, uint8_t mode,
   uint32_t acycle1234 = 0;
   int ncycles;
 
-  if ((mode & SMC_CLE_WRITE_EN) != 0)
+  if ((mode & HSMC_CLE_WRITE_EN) != 0)
     {
       rw = NFCADDR_CMD_NFCWR;
     }
@@ -613,7 +601,7 @@ static void nand_nfc_configure(struct sam_nandcs_s *priv, uint8_t mode,
       rw = NFCADDR_CMD_NFCRD;
     }
 
-  if ((mode & SMC_CLE_DATA_EN) != 0 && priv->nfcsram)
+  if ((mode & HSMC_CLE_DATA_EN) != 0)
     {
       regval = NFCADDR_CMD_DATAEN;
     }
@@ -622,11 +610,9 @@ static void nand_nfc_configure(struct sam_nandcs_s *priv, uint8_t mode,
       regval = NFCADDR_CMD_DATADIS;
     }
 
-  if (((mode & SMC_ALE_COL_EN) == SMC_ALE_COL_EN) ||
-      ((mode & SMC_ALE_ROW_EN) == SMC_ALE_ROW_EN))
+  if (((mode & HSMC_ALE_COL_EN) != 0) || ((mode & HSMC_ALE_ROW_EN) != 0))
     {
-      bool rowonly = (((mode & SMC_ALE_COL_EN) == 0) &&
-                      ((mode & SMC_ALE_ROW_EN) == SMC_ALE_ROW_EN));
+      bool rowonly = ((mode & HSMC_ALE_COL_EN) == 0);
       nand_translate_address(priv, coladdr, rowaddr, &acycle0, &acycle1234, rowonly);
       acycle = nand_get_acycle(ncycles);
     }
@@ -635,8 +621,8 @@ static void nand_nfc_configure(struct sam_nandcs_s *priv, uint8_t mode,
       acycle = NFCADDR_CMD_ACYCLE_NONE;
     }
 
-  cmd = (rw | regval | NFCADDR_CMD_CSID_3 | acycle |
-         (((mode & SMC_CLE_VCMD2_EN) == SMC_CLE_VCMD2_EN) ? NFCADDR_CMD_VCMD2 : 0) |
+  cmd = (rw | regval | NFCADDR_CMD_CSID(priv->cs) | acycle |
+         (((mode & HSMC_CLE_VCMD2_EN) == HSMC_CLE_VCMD2_EN) ? NFCADDR_CMD_VCMD2 : 0) |
          (cmd1 << NFCADDR_CMD_CMD1_SHIFT) | (cmd2 << NFCADDR_CMD_CMD2_SHIFT));
 
   nand_cmdsend(priv, cmd, acycle1234, acycle0);
@@ -658,18 +644,62 @@ static void nand_nfc_configure(struct sam_nandcs_s *priv, uint8_t mode,
 
 static void nand_wait_cmddone(struct sam_nandcs_s *priv)
 {
+  irqstate_t flags;
   int ret;
 
-  while (!priv->cmddone)
+  /* Wait for the CMDDONE interrupt to occur */
+
+  flags = irqsave();
+  do
     {
-      ret = sem_wait(&priv->waitsem);
+      ret = sem_wait(&g_nand.waitsem);
       if (ret < 0)
         {
           DEBUGASSERT(errno == EINTR);
         }
     }
+  while (!g_nand.cmddone);
 
-  priv->cmddone = false;
+  /* Disable further CMDDONE interrupts */
+
+  g_nand.cmddone = false;
+  nand_putreg(SAM_HSMC_IDR, HSMC_NFCINT_CMDDONE);
+  irqrestore(flags);
+}
+
+/****************************************************************************
+ * Name: nand_setup_cmddone
+ *
+ * Description:
+ *   Setup to wait for CMDDONE event
+ *
+ * Input parameters:
+ *   None
+ *
+ * Returned value.
+ *   None
+ *
+ ****************************************************************************/
+
+static void nand_setup_cmddone(struct sam_nandcs_s *priv)
+{
+  irqstate_t flags;
+
+  /* Clear all pending interrupts.  This must be done with interrupts
+   * enabled or we could lose interrupts.
+   */
+
+  nand_getreg(SAM_HSMC_SR);
+  flags = irqsave();
+
+  /* Mark CMDDONE not received */
+
+  g_nand.cmddone = false;
+
+  /* Enable the CMDDONE interrupt */
+
+  nand_putreg(SAM_HSMC_IER, HSMC_NFCINT_CMDDONE);
+  irqrestore(flags);
 }
 
 /****************************************************************************
@@ -688,18 +718,62 @@ static void nand_wait_cmddone(struct sam_nandcs_s *priv)
 
 static void nand_wait_xfrdone(struct sam_nandcs_s *priv)
 {
+  irqstate_t flags;
   int ret;
 
-  while (!priv->xfrdone)
+  /* Wait for the XFRDONE interrupt to occur */
+
+  flags = irqsave();
+  do
     {
-      ret = sem_wait(&priv->waitsem);
+      ret = sem_wait(&g_nand.waitsem);
       if (ret < 0)
         {
           DEBUGASSERT(errno == EINTR);
         }
     }
+  while (!g_nand.xfrdone);
 
-  priv->xfrdone = false;
+  /* Disable further XFRDONE interrupts */
+
+  g_nand.xfrdone = false;
+  nand_putreg(SAM_HSMC_IDR, HSMC_NFCINT_XFRDONE);
+  irqrestore(flags);
+}
+
+/****************************************************************************
+ * Name: nand_setup_xfrdone
+ *
+ * Description:
+ *   Setup to wait for XFDONE event
+ *
+ * Input parameters:
+ *   None
+ *
+ * Returned value.
+ *   None
+ *
+ ****************************************************************************/
+
+static void nand_setup_xfrdone(struct sam_nandcs_s *priv)
+{
+  irqstate_t flags;
+
+  /* Clear all pending interrupts.  This must be done with interrupts
+   * enabled or we could lose interrupts.
+   */
+
+  nand_getreg(SAM_HSMC_SR);
+  flags = irqsave();
+
+  /* Mark XFRDONE not received */
+
+  g_nand.xfrdone = false;
+
+  /* Enable the XFRDONE interrupt */
+
+  nand_putreg(SAM_HSMC_IER, HSMC_NFCINT_XFRDONE);
+  irqrestore(flags);
 }
 
 /****************************************************************************
@@ -718,18 +792,119 @@ static void nand_wait_xfrdone(struct sam_nandcs_s *priv)
 
 static void nand_wait_rbedge(struct sam_nandcs_s *priv)
 {
+  irqstate_t flags;
   int ret;
 
-  while (!priv->rbedge)
+  /* Wait for the RBEDGE interrupt to occur */
+
+  flags = irqsave();
+  do
     {
-      ret = sem_wait(&priv->waitsem);
+      ret = sem_wait(&g_nand.waitsem);
       if (ret < 0)
         {
           DEBUGASSERT(errno == EINTR);
         }
     }
+  while (!g_nand.rbedge);
 
-  priv->rbedge = false;
+  /* Disable further RBEDGE interrupts */
+
+  g_nand.rbedge = false;
+  nand_putreg(SAM_HSMC_IDR, HSMC_NFCINT_RBEDGE0);
+  irqrestore(flags);
+}
+
+/****************************************************************************
+ * Name: nand_setup_rbedge
+ *
+ * Description:
+ *   Setup to wait for RBEDGE0 event
+ *
+ * Input parameters:
+ *   None
+ *
+ * Returned value.
+ *   None
+ *
+ ****************************************************************************/
+
+static void nand_setup_rbedge(struct sam_nandcs_s *priv)
+{
+  irqstate_t flags;
+
+  /* Clear all pending interrupts.  This must be done with interrupts
+   * enabled or we could lose interrupts.
+   */
+
+  nand_getreg(SAM_HSMC_SR);
+  flags = irqsave();
+
+  /* Mark RBEDGE0 not received */
+
+  g_nand.rbedge = false;
+
+  /* Enable the EBEDGE0 interrupt */
+
+  nand_putreg(SAM_HSMC_IER, HSMC_NFCINT_RBEDGE0);
+  irqrestore(flags);
+}
+
+/****************************************************************************
+ * Name: hsmc_interrupt
+ *
+ * Description:
+ *   HSMC interrupt handler
+ *
+ * Input parameters:
+ *   Standard interrupt arguments
+ *
+ * Returned value.
+ *   Always returns OK
+ *
+ ****************************************************************************/
+
+static int hsmc_interrupt(int irq, void *context)
+{
+  uint32_t sr      = nand_getreg(SAM_HSMC_SR);
+  uint32_t imr     = nand_getreg(SAM_HSMC_IMR);
+  uint32_t pending = sr & imr;
+
+  fllvdbg("sr=%08x imr=%08x pending=%08x\n", sr, imr, pending);
+
+  /* When set to one, this XFRDONE indicates that the NFC has terminated
+   * the data transfer. This flag is reset after the status read.
+   */
+
+  if ((pending & HSMC_NFCINT_XFRDONE) != 0)
+    {
+      g_nand.xfrdone = true;
+      sem_post(&g_nand.waitsem);
+    }
+
+  /* When set to one, the CMDDONE flag indicates that the NFC has terminated
+   * the Command. This flag is reset after the status read.
+   */
+
+  if ((pending & HSMC_NFCINT_CMDDONE) != 0)
+    {
+      g_nand.cmddone = true;
+      sem_post(&g_nand.waitsem);
+    }
+
+ /* If set to one, the RBEDGE0 flag indicates that an edge has been detected
+  * on the Ready/Busy Line x. Depending on the EDGE CTRL field located in the
+  * SMC_CFG register, only rising or falling edge is detected. This flag is
+  * reset after the status read.
+  */
+
+  if ((pending & HSMC_NFCINT_RBEDGE0) != 0)
+    {
+      g_nand.rbedge = true;
+      sem_post(&g_nand.waitsem);
+    }
+
+  return OK;
 }
 
 /****************************************************************************
@@ -746,6 +921,7 @@ static void nand_wait_rbedge(struct sam_nandcs_s *priv)
  *
  ****************************************************************************/
 
+#ifdef CONFIG_SAMA5_NAND_DMA
 static int nand_wait_dma(struct sam_nandcs_s *priv)
 {
   int ret;
@@ -759,9 +935,11 @@ static int nand_wait_dma(struct sam_nandcs_s *priv)
         }
     }
 
+  fvdbg("Awakened: result=%d\n", priv->result);
   priv->dmadone = false;
   return priv->result;
 }
+#endif
 
 /****************************************************************************
  * Name: sam_adc_dmacallback
@@ -772,6 +950,7 @@ static int nand_wait_dma(struct sam_nandcs_s *priv)
  *
  ****************************************************************************/
 
+#ifdef CONFIG_SAMA5_NAND_DMA
 static void nand_dmacallback(DMA_HANDLE handle, void *arg, int result)
 {
   struct sam_nandcs_s *priv = (struct sam_nandcs_s *)arg;
@@ -784,6 +963,7 @@ static void nand_dmacallback(DMA_HANDLE handle, void *arg, int result)
   priv->dmadone = true;
   sem_post(&priv->waitsem);
 }
+#endif
 
 /****************************************************************************
  * Name: nand_dma_read
@@ -802,6 +982,7 @@ static void nand_dmacallback(DMA_HANDLE handle, void *arg, int result)
  *
  ****************************************************************************/
 
+#ifdef CONFIG_SAMA5_NAND_DMA
 static int nand_dma_read(struct sam_nandcs_s *priv,
                           uintptr_t vsrc, uintptr_t vdest, size_t nbytes)
 {
@@ -810,6 +991,9 @@ static int nand_dma_read(struct sam_nandcs_s *priv,
   int ret;
 
   DEBUGASSERT(priv->dma);
+
+  fvdbg("vsrc=%08x vdest=%08x nbytes=%d\n",
+        (int)vsrc, (int)vdest, (int)nbytes);
 
   /* Invalidate the destination memory buffer before performing the DMA (so
    * that nothing gets flushed later, corrupting the DMA transfer, and so
@@ -853,6 +1037,7 @@ static int nand_dma_read(struct sam_nandcs_s *priv,
 
   return ret;
 }
+#endif
 
 /****************************************************************************
  * Name: nand_dma_write
@@ -871,6 +1056,7 @@ static int nand_dma_read(struct sam_nandcs_s *priv,
  *
  ****************************************************************************/
 
+#ifdef CONFIG_SAMA5_NAND_DMA
 static int nand_dma_write(struct sam_nandcs_s *priv,
                           uintptr_t vsrc, uintptr_t vdest, size_t nbytes)
 {
@@ -921,6 +1107,7 @@ static int nand_dma_write(struct sam_nandcs_s *priv,
 
   return ret;
 }
+#endif
 
 /****************************************************************************
  * Name: nand_nfcsram_read
@@ -1010,7 +1197,7 @@ static int nand_smc_read16(uintptr_t src, uint8_t *dest, size_t buflen)
 }
 
 /****************************************************************************
- * Name: nand_write
+ * Name: nand_read
  *
  * Description:
  *   Read data from NAND using the appropriate method
@@ -1042,18 +1229,23 @@ static int nand_read(struct sam_nandcs_s *priv, bool nfcsram,
       src = priv->raw.dataaddr;
     }
 
-  /* Then perform the transfer via DMA or not */
+#ifdef CONFIG_SAMA5_NAND_DMA
+  /* Then perform the transfer via DMA or not, depending on if we have
+   * a DMA channel assigned.
+   */
 
-  if (priv->dmaxfr)
+  if (priv->dma)
     {
       /* Transfer using DMA */
 
       return nand_dma_read(priv, src, (uintptr_t)buffer, buflen);
     }
+  else
+#endif
 
   /* Transfer without DMA */
 
-  else if (nfcsram)
+  if (nfcsram)
     {
       return nand_nfcsram_read(src, buffer, buflen);
     }
@@ -1072,6 +1264,126 @@ static int nand_read(struct sam_nandcs_s *priv, bool nfcsram,
         }
     }
 }
+
+/****************************************************************************
+ * Name: nand_read_pmecc
+ *
+ * Description:
+ *   Reads the data and/or the spare areas of a page of a NAND FLASH into the
+ *   provided buffers.
+ *
+ * Input parameters:
+ *   priv   - Lower-half, raw NAND FLASH interface
+ *   block - Number of the block where the page to read resides.
+ *   page  - Number of the page to read inside the given block.
+ *   data  - Buffer where the data area will be stored.
+ *   spare - Buffer where the spare area will be stored.
+ *
+ * Returned value.
+ *   OK is returned in succes; a negated errno value is returned on failure.
+ *
+ ****************************************************************************/
+
+#ifdef CONFIG_SAMA5_HAVE_PMECC
+static int nand_read_pmecc(struct sam_nandcs_s *priv, off_t block,
+                           unsigned int page, void *data)
+{
+  uint32_t rowaddr;
+  uint32_t regval;
+  uint16_t pagesize;
+  uint16_t sparesize;
+  int ret;
+
+  fvdbg("block=%d page=%d data=%p\n", (int)block, page, data);
+  DEBUGASSERT(priv && data);
+
+  /* Get page and spare sizes */
+
+  pagesize  = nandmodel_getpagesize(&priv->raw.model);
+  sparesize = nandmodel_getsparesize(&priv->raw.model);
+
+  /* Convert the page size to something understood by the hardware */
+
+  switch (pagesize)
+    {
+    case 512:
+      regval = HSMC_CFG_PAGESIZE_512;
+      break;
+
+    case 1024:
+      regval = HSMC_CFG_PAGESIZE_1024;
+      break;
+
+    case 2048:
+      regval = HSMC_CFG_PAGESIZE_2048;
+      break;
+
+    case 4096:
+      regval = HSMC_CFG_PAGESIZE_4096;
+      break;
+
+    case 8192:
+      regval = HSMC_CFG_PAGESIZE_8192;
+      break;
+
+    default:
+      fdbg("ERROR:  Unsupported page size: %d\n", pagesize);
+      return -EINVAL;
+    }
+
+  /* Configure the SMC */
+
+  regval |= (HSMC_CFG_RSPARE |HSMC_CFG_RBEDGE | HSMC_CFG_DTOCYC(15) |
+             HSMC_CFG_DTOMUL_1048576 |
+             HSMC_CFG_NFCSPARESIZE((sparesize-1) >> 2));
+  nand_putreg(SAM_HSMC_CFG, regval);
+
+  /* Calculate actual address of the page */
+
+  rowaddr = block * nandmodel_pagesperblock(&priv->raw.model) + page;
+
+  /* Reset and enable the PMECC */
+
+  nand_putreg(SAM_HSMC_PMECCTRL, HSMC_PMECCTRL_RST);
+  nand_putreg(SAM_HSMC_PMECCTRL, HSMC_PMECCTRL_ENABLE);
+
+  regval = nand_getreg(SAM_HSMC_PMECCFG);
+  if ((regval & HSMC_PMECCFG_SPAREEN_MASK) == HSMC_PMECCFG_SPARE_DISABLE)
+    {
+      regval |= HSMC_PMECCFG_AUTO_ENABLE;
+    }
+
+  regval |= HSMC_PMECCTRL_DATA;
+  nand_putreg(SAM_HSMC_PMECCFG, regval);
+
+  nand_nfc_configure(priv,
+                     HSMC_ALE_COL_EN | HSMC_ALE_ROW_EN | HSMC_CLE_VCMD2_EN | HSMC_CLE_DATA_EN,
+                     COMMAND_READ_1, COMMAND_READ_2, 0, rowaddr);
+
+  /* Reset the ECC module*/
+
+  nand_putreg(SAM_HSMC_PMECCTRL, HSMC_PMECCTRL_RST);
+
+  /* Start a Data Phase */
+
+  regval  = nand_getreg(SAM_HSMC_PMECCTRL);
+  regval |= HSMC_PMECCTRL_DATA;
+  nand_putreg(SAM_HSMC_PMECCFG, regval);
+
+  regval = nand_getreg(SAM_HSMC_PMECCEADDR);
+  ret = nand_read(priv, true, (uint8_t *)data, pagesize + (regval + 1));
+  if (ret < 0)
+    {
+      fdbg("ERROR: nand_read for data region failed: %d\n", ret);
+      return ret;
+    }
+
+  /* Wait until the kernel of the PMECC is not busy */
+
+  while((nand_getreg(SAM_HSMC_PMECCSR) & HSMC_PMECCSR_BUSY) != 0);
+  return OK;
+}
+#endif
 
 /****************************************************************************
  * Name: nand_nfcsram_write
@@ -1198,18 +1510,23 @@ static int nand_write(struct sam_nandcs_s *priv, bool nfcsram,
 
   dest += offset;
 
-  /* Then perform the transfer via DMA or not */
+  /* Then perform the transfer via DMA or not, depending on if we have
+   * a DMA channel assigned.
+   */
 
-  if (priv->dmaxfr)
+#ifdef CONFIG_SAMA5_NAND_DMA
+  if (priv->dma)
     {
       /* Transfer using DMA */
 
       return nand_dma_write(priv, (uintptr_t)buffer, dest, buflen);
     }
+  else
+#endif
 
   /* Transfer without DMA */
 
-  else if (nfcsram)
+  if (nfcsram)
     {
       return nand_nfcsram_write(buffer, dest, buflen);
     }
@@ -1252,37 +1569,95 @@ static int nand_write(struct sam_nandcs_s *priv, bool nfcsram,
 static int nand_readpage_noecc(struct sam_nandcs_s *priv, off_t block,
              unsigned int page, void *data, void *spare)
 {
-#warning Missing logic
-  return -ENOSYS;
-}
+  uint32_t regval;
+  uint16_t pagesize;
+  uint16_t sparesize;
+  off_t rowaddr;
+  off_t coladdr;
+  int ret;
 
-/****************************************************************************
- * Name: nand_readpage_hsiao
- *
- * Description:
- *   Reads the data and/or the spare areas of a page of a NAND FLASH into the
- *   provided buffers.  HSIAO ECC is used
- *
- * Input parameters:
- *   priv  - Lower-half, private NAND FLASH device state
- *   block - Number of the block where the page to read resides.
- *   page  - Number of the page to read inside the given block.
- *   data  - Buffer where the data area will be stored.
- *   spare - Buffer where the spare area will be stored.
- *
- * Returned value.
- *   OK is returned in succes; a negated errno value is returned on failure.
- *
- ****************************************************************************/
+  fvdbg("block=%d page=%d data=%p spare=%p\n", (int)block, page, data, spare);
+  DEBUGASSERT(priv && (data || spare));
 
-#ifdef NAND_HAVE_HSIAO
-static int nand_readpage_hsiao(struct sam_nandcs_s *priv, off_t block,
-             unsigned int page, void *data, void *spare)
-{
-#warning Missing logic
-  return -ENOSYS;
+  /* Get page and spare sizes */
+
+  pagesize  = nandmodel_getpagesize(&priv->raw.model);
+  sparesize = nandmodel_getsparesize(&priv->raw.model);
+
+  /* Convert the page size to something understood by the hardware */
+
+  switch (pagesize)
+    {
+    case 512:
+      regval = HSMC_CFG_PAGESIZE_512;
+      break;
+
+    case 1024:
+      regval = HSMC_CFG_PAGESIZE_1024;
+      break;
+
+    case 2048:
+      regval = HSMC_CFG_PAGESIZE_2048;
+      break;
+
+    case 4096:
+      regval = HSMC_CFG_PAGESIZE_4096;
+      break;
+
+    case 8192:
+      regval = HSMC_CFG_PAGESIZE_8192;
+      break;
+
+    default:
+      fdbg("ERROR:  Unsupported page size: %d\n", pagesize);
+      return -EINVAL;
+    }
+
+  /* Configure the SMC */
+
+  regval |= (HSMC_CFG_RBEDGE | HSMC_CFG_DTOCYC(15) | HSMC_CFG_DTOMUL_1048576 |
+             HSMC_CFG_NFCSPARESIZE((sparesize-1) >> 2));
+  nand_putreg(SAM_HSMC_CFG, regval);
+
+  /* Calculate actual address of the page */
+
+  rowaddr = block * nandmodel_pagesperblock(&priv->raw.model) + page;
+  coladdr = data ? 0 : pagesize;
+
+  /* Initialize the NFC */
+
+  nand_setup_xfrdone(priv);
+  nand_nfc_configure(priv,
+                     HSMC_ALE_COL_EN | HSMC_ALE_ROW_EN | HSMC_CLE_VCMD2_EN | HSMC_CLE_DATA_EN,
+                     COMMAND_READ_1, COMMAND_READ_2, coladdr, rowaddr);
+  nand_wait_xfrdone(priv);
+
+  /* Read data area if so requested */
+
+  if (data)
+    {
+      ret = nand_read(priv, true, (uint8_t *)data, pagesize);
+      if (ret < 0)
+        {
+          fdbg("ERROR: nand_read for data region failed: %d\n", ret);
+          return ret;
+        }
+    }
+
+  /* Read the spare are is so requested */
+
+  if (spare)
+    {
+      ret = nand_read(priv, true, (uint8_t *)spare, sparesize);
+      if (ret < 0)
+        {
+          fdbg("ERROR: nand_read for spare region failed: %d\n", ret);
+          return ret;
+        }
+    }
+
+  return OK;
 }
-#endif /* NAND_HAVE_HSIAO */
 
 /****************************************************************************
  * Name: nand_readpage_pmecc
@@ -1302,14 +1677,77 @@ static int nand_readpage_hsiao(struct sam_nandcs_s *priv, off_t block,
  *
  ****************************************************************************/
 
-#ifdef NAND_HAVE_PMECC
+#ifdef CONFIG_SAMA5_HAVE_PMECC
 static int nand_readpage_pmecc(struct sam_nandcs_s *priv, off_t block,
              unsigned int page, void *data)
 {
-#warning Missing logic
-  return -ENOSYS;
+  uint32_t regval;
+  uint16_t sparesize;
+  int ret;
+  int i;
+
+  DEBUGASSERT(priv && data);
+
+  /* Make sure that we have exclusive access to the PMECC and that the PMECC
+   * is properly configured for this CS.
+   */
+
+  pmecc_lock();
+  pmecc_configure(priv, 0, false);
+
+  /* Start by reading the spare data */
+
+  sparesize = nandmodel_getsparesize(&priv->raw.model);
+
+  ret = nand_read_pmecc(priv, block, page, data);
+  if (ret < 0)
+    {
+      fdbg("ERROR: Failed to read page\n");
+      goto errout;
+    }
+
+  regval = nand_getreg(SAM_HSMC_PMECCISR);
+  if (regval)
+    {
+      /* Check if the spare area was erased */
+
+      nand_readpage_noecc(priv, block, page, NULL, priv->raw.spare);
+      for (i = 0 ; i < sparesize; i++)
+        {
+          if (priv->raw.spare[i] != 0xff)
+            {
+              break;
+            }
+        }
+
+      /* The spare area has been erased */
+
+      if (i >= sparesize)
+        {
+          regval = 0;
+        }
+    }
+
+  /* Bit correction will be done directly in destination buffer. */
+
+  ret = pmecc_correction(regval, (uintptr_t)data);
+  if (ret < 0)
+    {
+      fdbg("ERROR: block=%d page=%d Unrecoverable data\n", block, page);
+    }
+
+  /* Disable auto mode */
+
+errout:
+  regval  = nand_getreg(SAM_HSMC_PMECCFG);
+  regval &= ~HSMC_PMECCFG_AUTO_MASK;
+  nand_putreg(SAM_HSMC_PMECCFG, regval);
+
+  nand_putreg(SAM_HSMC_PMECCTRL, HSMC_PMECCTRL_DISABLE);
+  pmecc_unlock();
+  return ret;
 }
-#endif /* NAND_HAVE_PMECC */
+#endif /* CONFIG_SAMA5_HAVE_PMECC */
 
 /****************************************************************************
  * Name: nand_writepage_noecc
@@ -1336,12 +1774,14 @@ static int nand_writepage_noecc(struct sam_nandcs_s *priv, off_t block,
   uint32_t regval;
   uint16_t pagesize;
   uint16_t sparesize;
-  off_t rawaddr;
+  off_t rowaddr;
   int ret = OK;
+
+  fvdbg("block=%d page=%d data=%p spare=%p\n", (int)block, page, data, spare);
 
   /* Get page and spare sizes */
 
-  pagesize = nandmodel_getpagesize(&priv->raw.model);
+  pagesize  = nandmodel_getpagesize(&priv->raw.model);
   sparesize = nandmodel_getsparesize(&priv->raw.model);
 
   /* Convert the page size to something understood by the hardware */
@@ -1389,25 +1829,27 @@ static int nand_writepage_noecc(struct sam_nandcs_s *priv, off_t block,
 
   /* Calculate physical address of the page */
 
-  rawaddr = block * nandmodel_pagesperblock(&priv->raw.model) + page;
-  fvdbg("Block %d Page %d\n", block, page);
+  rowaddr = block * nandmodel_pagesperblock(&priv->raw.model) + page;
 
   /* Handle the case where we use NFC SRAM */
 
-  if (priv->nfcsram)
+  if (data)
     {
-      if (data)
+      ret = nand_write(priv, true, (uint8_t *)data, pagesize, 0);
+      if (ret < 0)
         {
-          nand_write(priv, true, (uint8_t *)data, pagesize, 0);
-
-          if (spare)
-            {
-              nand_write(priv, true, (uint8_t *)spare, sparesize, pagesize);
-            }
+          fdbg("ERROR: nand_write for data region failed: %d\n", ret);
+          return ret;
         }
-      else if (spare)
+
+      if (spare)
         {
-          nand_write(priv, true, (uint8_t *)spare, sparesize, 0);
+          ret = nand_write(priv, true, (uint8_t *)spare, sparesize, pagesize);
+          if (ret < 0)
+            {
+              fdbg("ERROR: nand_write for data region failed: %d\n", ret);
+              return ret;
+            }
         }
     }
 
@@ -1417,31 +1859,15 @@ static int nand_writepage_noecc(struct sam_nandcs_s *priv, off_t block,
     {
       /* Start a Data Phase */
 
-      if (priv->nfcsram)
-        {
-          priv->xfrdone = false;
-          nand_nfc_configure(priv,
-                             SMC_CLE_WRITE_EN | SMC_ALE_COL_EN |SMC_ALE_ROW_EN |SMC_CLE_DATA_EN,
-                             COMMAND_WRITE_1, 0, 0, rawaddr);
-          nand_wait_xfrdone(priv);
-        }
-      else
-        {
-          nand_nfc_configure(priv,
-                             SMC_CLE_WRITE_EN | SMC_ALE_COL_EN |SMC_ALE_ROW_EN,
-                             COMMAND_WRITE_1, 0, 0, rawaddr);
-        }
+      nand_setup_xfrdone(priv);
+      nand_nfc_configure(priv,
+                         HSMC_CLE_WRITE_EN | HSMC_ALE_COL_EN |
+                         HSMC_ALE_ROW_EN | HSMC_CLE_DATA_EN,
+                         COMMAND_WRITE_1, 0, 0, rowaddr);
+      nand_wait_xfrdone(priv);
 
-      if (!priv->nfcsram)
-        {
-          nand_write(priv, false, (uint8_t *)data, pagesize, 0);
-          if (spare)
-            {
-              nand_write(priv, false, (uint8_t *)spare, sparesize, pagesize);
-            }
-        }
-
-      nand_nfc_configure(priv, SMC_CLE_WRITE_EN, COMMAND_WRITE_2, 0, 0, 0);
+      nand_setup_rbedge(priv);
+      nand_nfc_configure(priv, HSMC_CLE_WRITE_EN, COMMAND_WRITE_2, 0, 0, 0);
       nand_wait_rbedge(priv);
 
       if (!nand_operation_complete(priv))
@@ -1456,58 +1882,22 @@ static int nand_writepage_noecc(struct sam_nandcs_s *priv, off_t block,
   else if (spare)
     {
       nand_nfc_configure(priv,
-                         SMC_CLE_WRITE_EN|SMC_ALE_COL_EN|SMC_ALE_ROW_EN,
-                         COMMAND_WRITE_1,0,  pagesize, rawaddr);
+                         HSMC_CLE_WRITE_EN | HSMC_ALE_COL_EN | HSMC_ALE_ROW_EN,
+                         COMMAND_WRITE_1,0,  pagesize, rowaddr);
 
       ret = nand_write(priv, false, (uint8_t *)spare, sparesize, 0);
       if (ret < 0)
         {
-          fdbg("ERROR: Failed writing data area\n");
+          fdbg("ERROR: nand_write for spare region failed: %d\n", ret);
           ret = -EPERM;
         }
 
-      nand_nfc_configure(priv, SMC_CLE_WRITE_EN, COMMAND_WRITE_2,0, 0, 0);
+      nand_nfc_configure(priv, HSMC_CLE_WRITE_EN, COMMAND_WRITE_2,0, 0, 0);
       nand_wait_ready(priv);
     }
 
   return ret;
 }
-
-/****************************************************************************
- * Name: nand_writepage_hsaio
- *
- * Description:
- *   Writes the data and/or the spare area of a page on a NAND FLASH chip.
- *   HSIAO ECC calculations are performed.
- *
- * Input parameters:
- *   priv  - Lower-half, private NAND FLASH device state
- *   block - Number of the block where the page to write resides.
- *   page  - Number of the page to write inside the given block.
- *   data  - Buffer containing the data to be writting
- *   spare - Buffer conatining the spare data to be written.
- *
- * Returned value.
- *   OK is returned in succes; a negated errno value is returned on failure.
- *
- ****************************************************************************/
-
-#ifdef NAND_HAVE_HSIAO
-static int nand_writepage_hsiao(struct sam_nandcs_s *priv, off_t block,
-             unsigned int page, const void *data, const void *spare)
-{
-  int ret;
-
-  /* Disable the PMECC */
-
-  pmecc_disable();
-
-  /* Perform write operation */
-# warning Missing logic
-
-  return ret;
-}
-#endif /* NAND_HAVE_HSIAO */
 
 /****************************************************************************
  * Name: nand_writepage_pmecc
@@ -1529,21 +1919,178 @@ static int nand_writepage_hsiao(struct sam_nandcs_s *priv, off_t block,
  *
  ****************************************************************************/
 
-#ifdef NAND_HAVE_PMECC
+#ifdef CONFIG_SAMA5_HAVE_PMECC
 static int nand_writepage_pmecc(struct sam_nandcs_s *priv, off_t block,
              unsigned int page, const void *data)
 {
-  int ret;
+  uint32_t pagesize;
+  uint32_t rowaddr;
+  uint32_t startaddr;
+  uint32_t eccpersector;
+  uint32_t sectornumber;
+  uint32_t sectorindex;
+  uint32_t regval;
+  uint8_t *pmecc[8];
+  uint8_t sectersperpage;
+  int i;
+  int ret = 0;
 
-  /* Perform write operation */
-# warning Missing logic
+  fvdbg("block=%d page=%d data=%p\n", (int)block, page, data);
+
+  /* Make sure that we have exclusive access to the PMECC and that the PMECC
+   * is properly configured for this CS.
+   */
+
+  pmecc_lock();
+  pmecc_configure(priv, 0, false);
+
+  /* Calculate the start page address */
+
+  regval    = nand_getreg(SAM_HSMC_PMECCSADDR);
+  pagesize  = nandmodel_getpagesize(&priv->raw.model);
+  startaddr = regval + pagesize;
+
+  /* Calculate physical address of the page */
+
+  rowaddr   = block * nandmodel_pagesperblock(&priv->raw.model) + page;
+
+  /* Write data area if needed */
+
+  if (data)
+    {
+      ret = nand_write(priv, true, (uint8_t *)data, pagesize, 0);
+      if (ret < 0)
+        {
+          fdbg("ERROR: nand_write for data region failed: %d\n", ret);
+          goto errout;
+        }
+    }
+
+  /* Get the number of sectors per page */
+
+  switch (pmecc_get_pagesize())
+    {
+    case HSMC_PMECCFG_PAGESIZE_1SEC:
+      sectersperpage = 1;
+      break;
+
+    case HSMC_PMECCFG_PAGESIZE_2SEC:
+      sectersperpage = 2;
+      break;
+
+    case HSMC_PMECCFG_PAGESIZE_4SEC:
+      sectersperpage = 4;
+      break;
+
+    case HSMC_PMECCFG_PAGESIZE_8SEC:
+      sectersperpage = 8;
+      break;
+
+    default:
+      sectersperpage = 1;
+      break;
+    }
+
+  /* Reset and enable the PMECC */
+
+  nand_putreg(SAM_HSMC_PMECCTRL, HSMC_PMECCTRL_RST);
+  nand_putreg(SAM_HSMC_PMECCTRL, HSMC_PMECCTRL_ENABLE);
+
+  /* Read the PMECC redundancy base address for each of (up to) 8 sectors */
+
+  for (i = 0; i < 8; i++)
+    {
+      pmecc[i] = (uint8_t*)(SAM_HSMC_PMECC_BASE(i));
+    }
+
+  /* Start a data phase */
+
+  regval  = nand_getreg(SAM_HSMC_PMECCTRL);
+  regval |= HSMC_PMECCTRL_DATA;
+  nand_putreg(SAM_HSMC_PMECCTRL, regval);
+
+  regval  = nand_getreg(SAM_HSMC_PMECCFG);
+  regval |= HSMC_PMECCFG_NANDWR_WRITE;
+  nand_putreg(SAM_HSMC_PMECCFG, regval);
+
+  /* Configure the NFC */
+
+  nand_setup_xfrdone(priv);
+  nand_nfc_configure(priv,
+                     HSMC_CLE_WRITE_EN | HSMC_ALE_COL_EN |
+                     HSMC_ALE_ROW_EN | HSMC_CLE_DATA_EN,
+                     COMMAND_WRITE_1, 0, 0, rowaddr);
+  nand_wait_xfrdone(priv);
+
+  nand_nfc_configure(priv,
+                    HSMC_CLE_WRITE_EN | HSMC_ALE_COL_EN,
+                    COMMAND_RANDOM_IN, 0, startaddr, 0);
+
+  /* Wait until the kernel of the PMECC is not busy */
+
+  while ((nand_getreg(SAM_HSMC_PMECCSR) & HSMC_PMECCSR_BUSY) != 0);
+
+  /* Write the ECC */
+
+  eccpersector = (pmecc_get_eccsize()) / sectersperpage;
+  sectornumber = 1 << pmecc_get_pagesize();
+
+#ifdef CONFIG_SAMA5_PMECC_TRIMPAGE
+  if (nand_trrimffs(priv) && page >= nand_get_trimpage(priv))
+    {
+      /* This behaviour was found to fix both UBI and JFFS2 images written to
+       * cleanly erased NAND partitions
+       */
+
+      for (sectorindex = 0; sectorindex < sectornumber; sectorindex++)
+        {
+          for (i = 0; i < eccpersector; i++)
+            {
+              g_nand.ecctab[sectorindex * eccpersector + i] = 0xff;
+            }
+        }
+    }
+  else
+#endif
+    {
+      /* Read all ECC registers */
+
+      for (sectorindex = 0; sectorindex < sectornumber; sectorindex++)
+        {
+          for(i = 0; i < eccpersector; i++)
+            {
+              g_nand.ecctab[sectorindex * eccpersector + i] = pmecc[sectorindex][i];
+            }
+        }
+    }
+
+  ret = nand_write(priv, false, (uint8_t *)(uint8_t *)g_nand.ecctab,
+                   sectornumber * eccpersector, 0);
+  if (ret < 0)
+    {
+      fdbg("ERROR: nand_write for spare region failed: %d\n", ret);
+      goto errout;
+    }
+
+  nand_nfc_configure(priv, HSMC_CLE_WRITE_EN, COMMAND_WRITE_2, 0, 0, 0);
+  nand_wait_ready(priv);
+
+  /* Check for success */
+
+  if (!nand_operation_complete(priv))
+    {
+      fdbg("ERROR: Failed writing data area\n");
+      ret = -EPERM;
+    }
 
   /* Disable the PMECC */
 
-  pmecc_disable();
+errout:
+  nand_putreg(SAM_HSMC_PMECCTRL, HSMC_PMECCTRL_DISABLE);
+  pmecc_unlock();
   return ret;
 }
-#endif /* NAND_HAVE_PMECC */
+#endif /* CONFIG_SAMA5_HAVE_PMECC */
 
 /****************************************************************************
  * Name: nand_eraseblock
@@ -1560,24 +2107,19 @@ static int nand_writepage_pmecc(struct sam_nandcs_s *priv, off_t block,
  *
  ****************************************************************************/
 
-static int nand_eraseblock(struct nand_raw_s *raw, off_t block)
+static inline int nand_tryeraseblock(struct sam_nandcs_s *priv, off_t block)
 {
-  struct sam_nandcs_s *priv = (struct sam_nandcs_s *)raw;
-  uint32_t rawaddr;
+  uint32_t rowaddr;
   int ret = OK;
-
-  DEBUGASSERT(raw);
-
-  fvdbg("Block %d\n", (int)block);
 
   /* Calculate address used for erase */
 
-  rawaddr = block * nandmodel_pagesperblock(&raw->model);
+  rowaddr = block * nandmodel_pagesperblock(&priv->raw.model);
 
   /* Configure the NFC for the block erase */
 
-  nand_nfc_configure(priv, (SMC_CLE_VCMD2_EN | SMC_ALE_ROW_EN),
-                     COMMAND_ERASE_1, COMMAND_ERASE_2, 0, rawaddr);
+  nand_nfc_configure(priv, HSMC_CLE_VCMD2_EN | HSMC_ALE_ROW_EN,
+                     COMMAND_ERASE_1, COMMAND_ERASE_2, 0, rowaddr);
 
   /* Wait for the erase operation to complete */
 
@@ -1589,6 +2131,43 @@ static int nand_eraseblock(struct nand_raw_s *raw, off_t block)
     }
 
   return ret;
+}
+
+static int nand_eraseblock(struct nand_raw_s *raw, off_t block)
+{
+  struct sam_nandcs_s *priv = (struct sam_nandcs_s *)raw;
+  int retries = NAND_ERASE_NRETRIES;
+  int ret = OK;
+
+  DEBUGASSERT(priv);
+
+  fvdbg("block=%d\n", (int)block);
+
+  /* Get exclusvie access to the HSMC hardware.
+   * REVISIT:  The scope of this exclusivity is just NAND.
+   */
+
+  nand_lock();
+
+  /* Try up to NAND_ERASE_NRETRIES times to erase the FLASH */
+
+  while (retries > 0)
+    {
+      ret = nand_tryeraseblock(priv, block);
+      if (ret == OK)
+        {
+          nand_unlock();
+          return OK;
+        }
+
+      retries--;
+    }
+
+  fdbg("ERROR: Failed to erase %d after %d tries\n",
+       (int)block, NAND_ERASE_NRETRIES);
+
+  nand_unlock();
+  return -EAGAIN;
 }
 
 /****************************************************************************
@@ -1614,9 +2193,18 @@ static int nand_rawread(struct nand_raw_s *raw, off_t block,
                         unsigned int page, void *data, void *spare)
 {
   struct sam_nandcs_s *priv = (struct sam_nandcs_s *)raw;
+  int ret;
+
   DEBUGASSERT(raw);
 
-  return nand_readpage_noecc(priv, block, page, data, spare);
+  /* Get exclusvie access to the HSMC hardware.
+   * REVISIT:  The scope of this exclusivity is just NAND.
+   */
+
+  nand_lock();
+  ret = nand_readpage_noecc(priv, block, page, data, spare);
+  nand_unlock();
+  return ret;
 }
 
 /****************************************************************************
@@ -1643,9 +2231,18 @@ static int nand_rawwrite(struct nand_raw_s *raw, off_t block,
                          const void *spare)
 {
   struct sam_nandcs_s *priv = (struct sam_nandcs_s *)raw;
+  int ret;
+
   DEBUGASSERT(raw);
 
-  return nand_writepage_noecc(priv, block, page, data, spare);
+  /* Get exclusvie access to the HSMC hardware.
+   * REVISIT:  The scope of this exclusivity is just NAND.
+   */
+
+  nand_lock();
+  ret = nand_writepage_noecc(priv, block, page, data, spare);
+  nand_unlock();
+  return ret;
 }
 
 /****************************************************************************
@@ -1673,34 +2270,42 @@ static int nand_readpage(struct nand_raw_s *raw, off_t block,
                          unsigned int page, void *data, void *spare)
 {
   struct sam_nandcs_s *priv = (struct sam_nandcs_s *)raw;
+  int ret;
+
   DEBUGASSERT(raw);
 
+  /* Get exclusvie access to the HSMC hardware.
+   * REVISIT:  The scope of this exclusivity is just NAND.
+   */
+
+  nand_lock();
+
+  /* Read the page */
+
 #ifndef CONFIG_MTD_NAND_BLOCKCHECK
-  return nand_readpage_noecc(priv, block, page, data, spare);
+  ret = nand_readpage_noecc(priv, block, page, data, spare);
 #else
   DEBUGASSERT(raw->ecctype != NANDECC_SWECC);
   switch (raw->ecctype)
     {
     case NANDECC_NONE:
     case NANDECC_CHIPECC:
-      return nand_readpage_noecc(priv, block, page, data, spare);
+      ret = nand_readpage_noecc(priv, block, page, data, spare);
 
-#ifdef NAND_HAVE_HSIAO
-    case NANDECC_HSIAO:
-      return nand_readpage_hsiao(priv, block, page, data, spare);
-#endif
-
-#ifdef NAND_HAVE_PMECC
+#ifdef CONFIG_SAMA5_HAVE_PMECC
     case NANDECC_PMECC:
       DEBUGASSERT(!spare);
-      return nand_readpage_pmecc(priv, block, page, data);
+      ret = nand_readpage_pmecc(priv, block, page, data);
 #endif
 
     case NANDECC_SWECC:
     default:
-      return -EINVAL;
+      ret = -EINVAL;
     }
 #endif
+
+  nand_unlock();
+  return ret;
 }
 #endif
 
@@ -1729,36 +2334,65 @@ static int nand_writepage(struct nand_raw_s *raw, off_t block,
                           const void *spare)
 {
   struct sam_nandcs_s *priv = (struct sam_nandcs_s *)raw;
+  int ret;
+
   DEBUGASSERT(raw);
 
+  /* Get exclusvie access to the HSMC hardware.
+   * REVISIT:  The scope of this exclusivity is just NAND.
+   */
+
+  nand_lock();
+
+  /* Write the page */
+
 #ifndef CONFIG_MTD_NAND_BLOCKCHECK
-  return nand_writepage_noecc(priv, block, page, data, spare);
+  ret = nand_writepage_noecc(priv, block, page, data, spare);
 #else
   DEBUGASSERT(raw->ecctype != NANDECC_SWECC);
   switch (raw->ecctype)
     {
     case NANDECC_NONE:
     case NANDECC_CHIPECC:
-      return nand_writepage_noecc(priv, block, page, data, spare);
+      ret = nand_writepage_noecc(priv, block, page, data, spare);
 
-#ifdef NAND_HAVE_HSIAO
-    case NANDECC_HSIAO:
-      return nand_writepage_hsiao(priv, block, page, data, spare);
-#endif
-
-#ifdef NAND_HAVE_PMECC
+#ifdef CONFIG_SAMA5_HAVE_PMECC
     case NANDECC_PMECC:
       DEBUGASSERT(!spare);
-      return nand_writepage_pmecc(priv, block, page, data);
+      ret = nand_writepage_pmecc(priv, block, page, data);
 #endif
 
     case NANDECC_SWECC:
     default:
-      return -EINVAL;
+      ret = -EINVAL;
     }
 #endif
+
+  nand_unlock();
+  return ret;
 }
 #endif
+
+/****************************************************************************
+ * Name: nand_reset
+ *
+ * Description:
+ *   Resets a NAND FLASH device
+ *
+ * Input parameters:
+ *   priv - Lower-half, private NAND FLASH device state
+ *
+ * Returned value.
+ *   None
+ *
+ ****************************************************************************/
+
+static void nand_reset(struct sam_nandcs_s *priv)
+{
+  fvdbg("Resetting\n");
+  nand_nfc_configure(priv, 0, COMMAND_RESET, 0, 0, 0);
+  nand_wait_ready(priv);
+}
 
 /****************************************************************************
  * Public Functions
@@ -1790,6 +2424,7 @@ struct mtd_dev_s *sam_nand_initialize(int cs)
   uintptr_t cmdaddr;
   uintptr_t addraddr;
   uintptr_t dataaddr;
+  uint8_t ecctype;
   int ret;
 
   fvdbg("CS%d\n", cs);
@@ -1810,6 +2445,11 @@ struct mtd_dev_s *sam_nand_initialize(int cs)
       cmdaddr  = BOARD_EBICS0_NAND_CMDADDR;
       addraddr = BOARD_EBICS0_NAND_ADDRADDR;
       dataaddr = BOARD_EBICS0_NAND_DATAADDR;
+
+      /* Pass on the configured ECC type */
+
+      ecctype = SAMA5_EBICS0_ECCTYPE;
+    }
   else
 #endif
 #ifdef CONFIG_SAMA5_EBICS1_NAND
@@ -1826,6 +2466,10 @@ struct mtd_dev_s *sam_nand_initialize(int cs)
       cmdaddr  = BOARD_EBICS1_NAND_CMDADDR;
       addraddr = BOARD_EBICS1_NAND_ADDRADDR;
       dataaddr = BOARD_EBICS1_NAND_DATAADDR;
+
+      /* Pass on the configured ECC type */
+
+      ecctype = SAMA5_EBICS1_ECCTYPE;
     }
   else
 #endif
@@ -1843,6 +2487,10 @@ struct mtd_dev_s *sam_nand_initialize(int cs)
       cmdaddr  = BOARD_EBICS2_NAND_CMDADDR;
       addraddr = BOARD_EBICS2_NAND_ADDRADDR;
       dataaddr = BOARD_EBICS2_NAND_DATAADDR;
+
+      /* Pass on the configured ECC type */
+
+      ecctype = SAMA5_EBICS2_ECCTYPE;
     }
   else
 #endif
@@ -1860,6 +2508,10 @@ struct mtd_dev_s *sam_nand_initialize(int cs)
       cmdaddr  = BOARD_EBICS3_NAND_CMDADDR;
       addraddr = BOARD_EBICS3_NAND_ADDRADDR;
       dataaddr = BOARD_EBICS3_NAND_DATAADDR;
+
+      /* Pass on the configured ECC type */
+
+      ecctype = SAMA5_EBICS3_ECCTYPE;
     }
   else
 #endif
@@ -1874,6 +2526,7 @@ struct mtd_dev_s *sam_nand_initialize(int cs)
   priv->raw.cmdaddr    = cmdaddr;
   priv->raw.addraddr   = addraddr;
   priv->raw.dataaddr   = dataaddr;
+  priv->raw.ecctype    = ecctype;
   priv->raw.eraseblock = nand_eraseblock;
   priv->raw.rawread    = nand_rawread;
   priv->raw.rawwrite   = nand_rawwrite;
@@ -1883,9 +2536,56 @@ struct mtd_dev_s *sam_nand_initialize(int cs)
 #endif
   priv->cs             = cs;
 
+#ifdef CONFIG_SAMA5_NAND_DMA
   sem_init(&priv->waitsem, 0, 0);
+#endif
 
-  /* Initialize the NAND hardware */
+  /* Perform one-time, global NFC/PMECC initialization */
+
+  if (!g_nand.initialized)
+    {
+      /* Initialize the global nand state structure */
+
+      sem_init(&g_nand.exclsem, 0, 1);
+      sem_init(&g_nand.waitsem, 0, 0);
+
+      /* Enable the NAND FLASH Controller (The NFC is always used) */
+
+      nand_putreg(SAM_HSMC_CTRL, HSMC_CTRL_NFCEN);
+
+#ifdef CONFIG_SAMA5_HAVE_PMECC
+      /* Perform one-time initialization of the PMECC */
+
+      pmecc_initialize();
+
+#else
+      /* Disable the PMECC if it is not being used */
+
+      nand_putreg(SAM_SMC_PMECCTRL, HSMC_PMECCTRL_RST);
+      nand_putreg(SAM_SMC_PMECCTRL, HSMC_PMECCTRL_DISABLE);
+      nand_putreg(SAM_SMC_PMECCFG, 0);
+#endif
+
+      /* Attach the CAN interrupt handler */
+
+      ret = irq_attach(SAM_IRQ_HSMC, hsmc_interrupt);
+      if (ret < 0)
+        {
+          fdbg("Failed to attach HSMC IRQ (%d)", SAM_IRQ_HSMC);
+          return NULL;
+        }
+
+      /* Disable all interrupts at the HSMC */
+
+      nand_putreg(SAM_HSMC_IDR, HSMC_NFCINT_ALL);
+
+      /* Enable the HSMC interrupts at the interrupt controller */
+
+      up_enable_irq(SAM_IRQ_HSMC);
+      g_nand.initialized = true;
+    }
+
+  /* Initialize the NAND hardware for this CS */
   /* Perform board-specific SMC intialization for this CS */
 
   ret = board_nandflash_config(cs);
@@ -1895,6 +2595,10 @@ struct mtd_dev_s *sam_nand_initialize(int cs)
            cs, ret);
       return NULL;
     }
+
+  /* Reset the NAND FLASH part */
+
+  nand_reset(priv);
 
   /* Probe the NAND part.  On success, an MTD interface that wraps
    * our raw NAND interface is returned.
@@ -1907,33 +2611,23 @@ struct mtd_dev_s *sam_nand_initialize(int cs)
       return NULL;
     }
 
-  /* Allocate a DMA channel for NAND transfers
-   * REVISIT:  Need DMA channel setup.
-   */
+  /* Allocate a DMA channel for NAND transfers */
 
+#ifdef CONFIG_SAMA5_NAND_DMA
   if (nandmodel_getbuswidth(&priv->raw.model) == 16)
     {
-      priv->dma = sam_dmachannel(1, DMA_FLAGS16);
+      priv->dma = sam_dmachannel(NAND_DMAC, DMA_FLAGS16);
     }
   else
     {
-      priv->dma = sam_dmachannel(1, DMA_FLAGS8);
+      priv->dma = sam_dmachannel(NAND_DMAC, DMA_FLAGS8);
     }
 
   if (!priv->dma)
     {
       fdbg("ERROR: Failed to allocate the DMA channel for CS%d\n", cs);
     }
-
-  /* Enable the NAND FLASH controller */
-
-  if (!g_nand.initialized)
-    {
-      nand_putreg(SAM_HSMC_CTRL, HSMC_CTRL_NFCEN);
-
-#warning Missing logic
-      g_nand.initialized = true;
-    }
+#endif
 
   /* Return the MTD wrapper interface as the MTD device */
 

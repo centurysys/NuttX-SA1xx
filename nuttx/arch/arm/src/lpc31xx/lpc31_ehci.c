@@ -543,7 +543,7 @@ static uint32_t g_framelist[FRAME_LIST_SIZE] __attribute__ ((aligned(4096)));
 #else
 static uint32_t *g_framelist;
 #endif
-#endif
+#endif /* CONFIG_USBHOST_INT_DISABLE */
 
 #ifdef CONFIG_LPC31_EHCI_PREALLOCATE
 /* Pools of pre-allocated data structures.  These will all be linked into the
@@ -3055,7 +3055,7 @@ static void lpc31_ehci_bottomhalf(FAR void *arg)
   lpc31_givesem(&g_ehci.exclsem);
 
   /* Re-enable relevant EHCI interrupts.  Interrupts should still be enabled
-   * at the level of the AIC.
+   * at the level of the interrupt controller.
    */
 
   lpc31_putreg(EHCI_HANDLED_INTS, &HCOR->usbintr);
@@ -4168,7 +4168,7 @@ FAR struct usbhost_connection_s *lpc31_ehci_initialize(int controller)
 #ifdef CONFIG_LPC31_EHCI_PREALLOCATE
   DEBUGASSERT(((uintptr_t)g_framelist & 0xfff) == 0);
 #endif
-#endif
+#endif /* CONFIG_USBHOST_INT_DISABLE */
 
   /* Software Configuration ****************************************************/
 
@@ -4247,7 +4247,7 @@ FAR struct usbhost_connection_s *lpc31_ehci_initialize(int controller)
     }
 #endif
 
-#ifndef CONFIG_LPC31_EHCI_PREALLOCATE
+#if !defined(CONFIG_LPC31_EHCI_PREALLOCATE) || !defined(CONFIG_USBHOST_INT_DISABLE)
   /* Allocate the periodic framelist  */
 
   g_framelist = (uint32_t *)
@@ -4497,7 +4497,7 @@ FAR struct usbhost_connection_s *lpc31_ehci_initialize(int controller)
     }
 
   /* Enable EHCI interrupts.  Interrupts are still disabled at the level of
-   * the AIC.
+   * the interrupt controller.
    */
 
   lpc31_putreg(EHCI_HANDLED_INTS, &HCOR->usbintr);
