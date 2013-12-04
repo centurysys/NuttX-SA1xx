@@ -6106,3 +6106,56 @@
 	  (2013-11-23)
 	* configs/sama5d3x-ek/src/sam_nand.c:  Add support for auto-mounting
 	  NAND MTD block or NXFFS devices (2013-11-25).
+	* include/mtd/mtd.h:  Packed the geometry structure so that it can
+	  support larger erase block sizes without increasing the size of
+	  the geometry structure (2013-11-27).
+	* drivers/mtd/sst25xx.c:  Add another SST25 SerialFlash driver.  This
+	  one differs from sst25.c because it supports larger SST25 parts:  In
+	  the larger parts support page write instead of byte/word writes like
+	  the smaller parts.  From Ken Pettit (2013-11-28).
+	* drivers/mtd/smart.c: Fixes a minor bug with SMART partition number
+	  reporting (that would only be seen if both partition support and
+	  multi-root directory support are enabled at the same time).  From Ken
+	  Pettit (2013-11-28).
+	* arch/arm/src/stm32/chip/stm32f40xxx_gpio.h: Add support for GPIOK and
+	  GPIOJ.  From Ken Pettit (2013-11-28).
+	* configs/stm32f429i-disco/extflash, Kconfig, include/board.h,
+	  src/stm32f429i-disco-internal.h, up_nsh.c, and up_spi.h:  Add a
+	  configuration and board support for an external SST25 FLASH.  From Ken
+	  Pettit (2013-11-28).
+	* fs/fs_inode.c: The inode semaphore must be re-entrant.  Here is the
+	  re-entering path that I found:  (1) USB host connects to FLASH drive
+	  and creates /dev/sda, (2) /dev/sda is mounted, (3) FLASH drive is
+	  removed but /dev/sda is not destroyed because there is still a\
+	  reference on the device because of the mount, (4) umount() is called,
+	  taking the inode semaphore, now the driver tries to destroy the block
+	  driver by calling unregister_blockdriver().  But (5)
+	  unregister_blockdriver() also takes the inode semaphore causing a
+	  deadlock if the inode semaphore is not re-entry. (2013-11-28).
+	* configs/viewtool-stm32f107:  Add board support for the ViewTool
+	  STM32F103/F107 board with the STM32F107VCT6 installed.  Initial
+	  check-in is the unverfied board-support framework only
+	  (2013-11-30).
+	* configs/viewtool-stm32f107/src/stm32_buttons.c and stm32_leds.c:
+	  Add support for LEDs an buttons on the ViewTools STM32F107 board
+	  (2013-11-30).
+	* fs/nxffs/nxffs_initialize.c:  First of probably several changes for
+	  NAND FLASH.  NAND can report read errors because of bad ECC.  Logic
+	  in NXFFS must account for it and not just throw in th towel every
+	  time a read fails (2013-11-30).
+	* drivers/mtd/mtd_nand* and arch/arm/src/sama5/sam_nand.c:  NAND
+	  accesses now work (at least with software ECC and now DMA).  Still
+	  lots of testing to be done (2013-11-30).
+	* fs/nxffs/nxffs_dump.c: Do not abort on a read error.  Just not
+	  the error and continue.  Otherwise, we would not be able to dump
+	  NAND FLASH (2013-11-30).
+	* fs/nxffs:  All read error logic has been revisited and modified in
+	  most places.  If we are using NAND, then read errors probably mean
+	  that the block that was read contains uncorrectable bit errors.  In
+	  this case, we cannot just give up and abort the operations.  Rather,
+	  we need to treat read error like normal bad blocks in order to work
+	  with NAND (2013-12-2).
+	* fs/nxffs/Kconfig and nxffs_initialize.c:  Make the start up scan of
+	  the media option. It just takes to long! (2013-12-02).
+	* drivers/mtd/mtd_nand.c: Fix a typo in calculation of page number
+	  (2013-12-02).

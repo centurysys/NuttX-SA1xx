@@ -95,7 +95,7 @@ static int     nand_checkblock(FAR struct nand_dev_s *nand, off_t block);
 static int     nand_devscan(FAR struct nand_dev_s *nand);
 #else
 #  define      nand_checkblock(n,b) (GOODBLOCK)
-#  define      nand_devscan(n)
+#  define      nand_devscan(n) (0)
 #endif
 
 /* Misc. NAND helpers */
@@ -104,18 +104,18 @@ static uint32_t nand_chipid(struct nand_raw_s *raw);
 static int      nand_eraseblock(FAR struct nand_dev_s *nand,
                   off_t block, bool scrub);
 static int      nand_readpage(FAR struct nand_dev_s *nand, off_t block,
-                  unsigned int page, FAR uint8_t *buf);
+                  unsigned int page, FAR uint8_t *data);
 static int      nand_writepage(FAR struct nand_dev_s *nand, off_t block,
-                  unsigned int page, FAR const void *buf);
+                  unsigned int page, FAR const void *data);
 
 /* MTD driver methods */
 
 static int     nand_erase(struct mtd_dev_s *dev, off_t startblock,
                  size_t nblocks);
 static ssize_t nand_bread(struct mtd_dev_s *dev, off_t startblock,
-                 size_t nblocks, uint8_t *buf);
+                 size_t nblocks, uint8_t *buffer);
 static ssize_t nand_bwrite(struct mtd_dev_s *dev, off_t startblock,
-                 size_t nblocks, const uint8_t *buf);
+                 size_t nblocks, const uint8_t *buffer);
 static int     nand_ioctl(struct mtd_dev_s *dev, int cmd,
                  unsigned long arg);
 
@@ -237,6 +237,11 @@ static int nand_checkblock(FAR struct nand_dev_s *nand, off_t block)
  * Description:
  *   Scans the device to retrieve or create block status information.
  *
+ *   Currently, this functin does nothing but scan the NAND and eat up time.
+ *   This is a goot thing to do if you are debugging NAND, but otherwise,
+ *   just a waste of time.  This logic could, however, be integrated into
+ *   some bad block checking logic at sometime in the future.
+ *
  * Input Parameters:
  *   nand - Pointer to a struct nand_dev_s instance.
  *
@@ -245,7 +250,8 @@ static int nand_checkblock(FAR struct nand_dev_s *nand, off_t block)
  *
  ****************************************************************************/
 
-#ifdef CONFIG_MTD_NAND_BLOCKCHECK
+//#ifdef CONFIG_MTD_NAND_BLOCKCHECK
+#if defined(CONFIG_MTD_NAND_BLOCKCHECK) && defined(CONFIG_DEBUG_VERBOSE) && defined(CONFIG_DEBUG_FS)
 static int nand_devscan(FAR struct nand_dev_s *nand)
 {
   FAR struct nand_raw_s *raw;
@@ -444,7 +450,7 @@ static int nand_eraseblock(FAR struct nand_dev_s *nand, off_t block,
  *   nand  - Upper-half, NAND FLASH interface
  *   block - Number of the block where the page to read resides.
  *   page  - Number of the page to read inside the given block.
- *   buf   - Buffer where the data area will be stored.
+ *   data  - Buffer where the data area will be stored.
  *
  * Returned value.
  *   OK is returned in success; a negated errno value is returned on failure.
@@ -452,8 +458,10 @@ static int nand_eraseblock(FAR struct nand_dev_s *nand, off_t block,
  ****************************************************************************/
 
 static int nand_readpage(FAR struct nand_dev_s *nand, off_t block,
-                         unsigned int page, FAR uint8_t *buf)
+                         unsigned int page, FAR uint8_t *data)
 {
+  fvdbg("block=%d page=%d data=%p\n", (int)block, page, data);
+
 #ifdef CONFIG_MTD_NAND_BLOCKCHECK
   /* Check that the block is not BAD if data is requested */
 
@@ -462,6 +470,7 @@ static int nand_readpage(FAR struct nand_dev_s *nand, off_t block,
       fdbg("ERROR: Block is BAD\n");
       return -EAGAIN;
    }
+#endif
 
 #ifdef CONFIG_MTD_NAND_SWECC
   /* nandecc_readpage will handle the software ECC case */
@@ -471,7 +480,7 @@ static int nand_readpage(FAR struct nand_dev_s *nand, off_t block,
     {
       /* Read data with software ECC verification */
 
-      return nandecc_readpage(nand, block, page, buf, NULL);
+      return nandecc_readpage(nand, block, page, data, NULL);
     }
 
   /* The lower half will handle the No ECC and all hardware assisted
@@ -480,9 +489,8 @@ static int nand_readpage(FAR struct nand_dev_s *nand, off_t block,
 
   else
 #endif
-#endif
     {
-      return NAND_READPAGE(nand->raw, block, page, buf, NULL);
+      return NAND_READPAGE(nand->raw, block, page, data, NULL);
     }
 }
 
@@ -497,7 +505,7 @@ static int nand_readpage(FAR struct nand_dev_s *nand, off_t block,
  *   nand  - Upper-half, NAND FLASH interface
  *   block - Number of the block where the page to read resides.
  *   page  - Number of the page to read inside the given block.
- *   buf   - Buffer where the data area will be stored.
+ *   data  - Buffer where the data area will be stored.
  *
  * Returned value.
  *   OK is returned in success; a negated errno value is returned on failure.
@@ -505,7 +513,7 @@ static int nand_readpage(FAR struct nand_dev_s *nand, off_t block,
  ****************************************************************************/
 
 static int nand_writepage(FAR struct nand_dev_s *nand, off_t block,
-                          unsigned int page, FAR const void *buf)
+                          unsigned int page, FAR const void *data)
 {
 #ifdef CONFIG_MTD_NAND_BLOCKCHECK
   /* Check that the block is good */
@@ -515,6 +523,7 @@ static int nand_writepage(FAR struct nand_dev_s *nand, off_t block,
       fdbg("ERROR: Block is BAD\n");
       return -EAGAIN;
     }
+#endif
 
 #ifdef CONFIG_MTD_NAND_SWECC
   /* nandecc_writepage will handle the software ECC case */
@@ -524,7 +533,7 @@ static int nand_writepage(FAR struct nand_dev_s *nand, off_t block,
     {
       /* Write data with software ECC calculation */
 
-      return nandecc_writepage(nand, block, page, buf, NULL);
+      return nandecc_writepage(nand, block, page, data, NULL);
     }
 
   /* The lower half will handle the No ECC and all hardware assisted
@@ -533,9 +542,8 @@ static int nand_writepage(FAR struct nand_dev_s *nand, off_t block,
 
  else
 #endif
-#endif
     {
-      return NAND_WRITEPAGE(nand->raw, block, page, buf, NULL);
+      return NAND_WRITEPAGE(nand->raw, block, page, data, NULL);
     }
 }
 
@@ -588,7 +596,7 @@ static int nand_erase(struct mtd_dev_s *dev, off_t startblock,
  ****************************************************************************/
 
 static ssize_t nand_bread(struct mtd_dev_s *dev, off_t startpage,
-                          size_t npages, FAR uint8_t *buf)
+                          size_t npages, FAR uint8_t *buffer)
 {
   FAR struct nand_dev_s *nand = (FAR struct nand_dev_s *)dev;
   FAR struct nand_raw_s *raw;
@@ -601,7 +609,7 @@ static ssize_t nand_bread(struct mtd_dev_s *dev, off_t startpage,
   off_t block;
   int ret;
 
-  fvdbg("startpage: %08lx npages: %d\n", (long)startpage, (int)npages);
+  fvdbg("startpage: %ld npages: %d\n", (long)startpage, (int)npages);
   DEBUGASSERT(nand && nand->raw);
 
   /* Retrieve the model */
@@ -620,7 +628,7 @@ static ssize_t nand_bread(struct mtd_dev_s *dev, off_t startpage,
   /* Get the block and page offset associated with the startpage */
 
   block = startpage / pagesperblock;
-  page  = pagesperblock % pagesperblock;
+  page  = startpage % pagesperblock;
 
   /* Lock access to the NAND until we complete the read */
 
@@ -632,7 +640,7 @@ static ssize_t nand_bread(struct mtd_dev_s *dev, off_t startpage,
     {
       /* Read the next page from NAND */
 
-      ret = nand_readpage(nand, block, page, buf);
+      ret = nand_readpage(nand, block, page, buffer);
       if (ret < 0)
         {
           fdbg("ERROR: nand_readpage failed block=%ld page=%d: %d\n",
@@ -659,7 +667,7 @@ static ssize_t nand_bread(struct mtd_dev_s *dev, off_t startpage,
 
       /* Increment the buffer point by the size of one page */
 
-      buf += pagesize;
+      buffer += pagesize;
     }
 
   nand_unlock(nand);
@@ -679,7 +687,7 @@ errout_with_lock:
  ****************************************************************************/
 
 static ssize_t nand_bwrite(struct mtd_dev_s *dev, off_t startpage,
-                           size_t npages, const uint8_t *buf)
+                           size_t npages, const uint8_t *buffer)
 {
   FAR struct nand_dev_s *nand = (FAR struct nand_dev_s *)dev;
   FAR struct nand_raw_s *raw;
@@ -711,7 +719,7 @@ static ssize_t nand_bwrite(struct mtd_dev_s *dev, off_t startpage,
   /* Get the block and page offset associated with the startpage */
 
   block = startpage / pagesperblock;
-  page  = pagesperblock % pagesperblock;
+  page  = startpage % pagesperblock;
 
   /* Lock access to the NAND until we complete the write */
 
@@ -723,7 +731,7 @@ static ssize_t nand_bwrite(struct mtd_dev_s *dev, off_t startpage,
     {
       /* Write the next page into NAND */
 
-      ret = nand_writepage(nand, block, page, buf);
+      ret = nand_writepage(nand, block, page, buffer);
       if (ret < 0)
         {
           fdbg("ERROR: nand_writepage failed block=%ld page=%d: %d\n",
@@ -750,7 +758,7 @@ static ssize_t nand_bwrite(struct mtd_dev_s *dev, off_t startpage,
 
       /* Increment the buffer point by the size of one page */
 
-      buf += pagesize;
+      buffer += pagesize;
     }
 
   nand_unlock(nand);
@@ -898,14 +906,14 @@ FAR struct mtd_dev_s *nand_initialize(FAR struct nand_raw_s *raw)
       size             = (uint64_t)onfi.pagesperblock *
                          (uint64_t)onfi.blocksperlun *
                          (uint64_t)onfi.pagesize;
-      DEBUGASSERT(size < (uint64_t)(1 << 21));
 
+      DEBUGASSERT(size < ((uint64_t)1 << 36));
       model->devsize   = (uint16_t)(size >> 20);
 
       size             = (uint64_t)onfi.pagesperblock *
                          (uint64_t)onfi.pagesize;
-      DEBUGASSERT(size < (uint64_t)(1 << 11));
 
+      DEBUGASSERT(size < ((uint64_t)1 << 26));
       model->blocksize = (uint16_t)(size >> 10);
 
       switch (onfi.pagesize)

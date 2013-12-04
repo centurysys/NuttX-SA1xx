@@ -60,15 +60,16 @@
  * Pre-processor Definitions
  ****************************************************************************/
 /* Configuration ************************************************************/
-/* DMA */
+/* DMA.  DMA support requires that DMAC0 be enabled.  According to
+ * "Table 15-2. SAMA5 Master to Slave Access", DMAC1 does not have access
+ * to NFC SRAM.
+ */
 
 #ifdef CONFIG_SAMA5_NAND_DMA
-#  if defined(CONFIG_SAMA5_DMAC1)
-#    define NAND_DMAC 1
-#  elif defined(CONFIG_SAMA5_DMAC0)
+#  ifdef CONFIG_SAMA5_DMAC0
 #    define NAND_DMAC 0
 #  else
-#    error "A DMA controller must be enabled to perform DMA transfers"
+#    error "DMA controller 0 (DMAC0) must be enabled to perform DMA transfers"
 #    undef CONFIG_SAMA5_NAND_DMA
 #  endif
 #endif
@@ -84,25 +85,30 @@
 #define NANDECC_PMECC   (NANDECC_HWECC + 1)
 
 /* Per NAND bank ECC selections */
+/* Only CS3 can support NAND.  The rest is a fantasy */
+
+# undef CONFIG_SAMA5_EBICS0_NAND
+# undef CONFIG_SAMA5_EBICS1_NAND
+# undef CONFIG_SAMA5_EBICS2_NAND
 
 #if defined(CONFIG_SAMA5_EBICS0_NAND)
 #  if defined(CONFIG_SAMA5_EBICS0_ECCNONE)
 #    define SAMA5_EBICS0_ECCTYPE NANDECC_NONE
 
 #  elif defined(CONFIG_SAMA5_EBICS0_SWECC)
-#    if !defined(CONFIG_MTD_NAND_BLOCKCHECK) || !defined(CONFIG_MTD_NAND_SWECC)
+#    ifndef CONFIG_MTD_NAND_SWECC
 #      error CONFIG_SAMA5_EBICS0_SWECC is an invalid selection
 #    endif
 #    define SAMA5_EBICS0_ECCTYPE NANDECC_SWECC
 
 #  elif defined(CONFIG_SAMA5_EBICS0_PMECC)
-#    if !defined(CONFIG_MTD_NAND_BLOCKCHECK) || !defined(CONFIG_MTD_NAND_HWECC)
+#    ifndef CONFIG_MTD_NAND_HWECC
 #      error CONFIG_SAMA5_EBICS0_PMECC is an invalid selection
 #    endif
 #    define SAMA5_EBICS0_ECCTYPE NANDECC_PMECC
 
 #  elif defined(CONFIG_SAMA5_EBICS0_CHIPECC)
-#    if !defined(CONFIG_MTD_NAND_BLOCKCHECK) || !defined(CONFIG_MTD_NAND_EMBEDDEDECC)
+#    ifndef CONFIG_MTD_NAND_EMBEDDEDECC
 #      error CONFIG_SAMA5_EBICS0_CHIPECC is an invalid selection
 #    endif
 #    define SAMA5_EBICS0_ECCTYPE NANDECC_CHIPECC
@@ -117,19 +123,19 @@
 #    define SAMA5_EBICS1_ECCTYPE NANDECC_NONE
 
 #  elif defined(CONFIG_SAMA5_EBICS1_SWECC)
-#    if !defined(CONFIG_MTD_NAND_BLOCKCHECK) || !defined(CONFIG_MTD_NAND_SWECC)
+#    ifndef CONFIG_MTD_NAND_SWECC
 #      error CONFIG_SAMA5_EBICS1_SWECC is an invalid selection
 #    endif
 #    define SAMA5_EBICS1_ECCTYPE NANDECC_SWECC
 
 #  elif defined(CONFIG_SAMA5_EBICS1_PMECC)
-#    if !defined(CONFIG_MTD_NAND_BLOCKCHECK) || !defined(CONFIG_MTD_NAND_HWECC)
+#    ifndef CONFIG_MTD_NAND_HWECC
 #      error CONFIG_SAMA5_EBICS1_PMECC is an invalid selection
 #    endif
 #    define SAMA5_EBICS1_ECCTYPE NANDECC_PMECC
 
 #  elif defined(CONFIG_SAMA5_EBICS1_CHIPECC)
-#    if !defined(CONFIG_MTD_NAND_BLOCKCHECK) || !defined(CONFIG_MTD_NAND_EMBEDDEDECC)
+#    ifndef CONFIG_MTD_NAND_EMBEDDEDECC
 #      error CONFIG_SAMA5_EBICS1_CHIPECC is an invalid selection
 #    endif
 #    define SAMA5_EBICS1_ECCTYPE NANDECC_CHIPECC
@@ -144,19 +150,19 @@
 #    define SAMA5_EBICS2_ECCTYPE NANDECC_NONE
 
 #  elif defined(CONFIG_SAMA5_EBICS2_SWECC
-#    if !defined(CONFIG_MTD_NAND_BLOCKCHECK) || !defined(CONFIG_MTD_NAND_SWECC)
+#    ifndef CONFIG_MTD_NAND_SWECC
 #      error CONFIG_SAMA5_EBICS2_SWECC is an invalid selection
 #    endif
 #    define SAMA5_EBICS2_ECCTYPE NANDECC_SWECC
 
 #  elif defined(CONFIG_SAMA5_EBICS2_PMECC)
-#    if !defined(CONFIG_MTD_NAND_BLOCKCHECK) || !defined(CONFIG_MTD_NAND_HWECC)
+#    ifndef CONFIG_MTD_NAND_HWECC
 #      error CONFIG_SAMA5_EBICS2_PMECC is an invalid selection
 #    endif
 #    define SAMA5_EBICS2_ECCTYPE NANDECC_PMECC
 
 #  elif defined(CONFIG_SAMA5_EBICS2_CHIPECC)
-#    if !defined(CONFIG_MTD_NAND_BLOCKCHECK) || !defined(CONFIG_MTD_NAND_EMBEDDEDECC)
+#    ifndef CONFIG_MTD_NAND_EMBEDDEDECC
 #      error CONFIG_SAMA5_EBICS2_CHIPECC is an invalid selection
 #    endif
 #    define SAMA5_EBICS2_ECCTYPE NANDECC_CHIPECC
@@ -171,19 +177,19 @@
 #    define SAMA5_EBICS3_ECCTYPE NANDECC_NONE
 
 #  elif defined(CONFIG_SAMA5_EBICS3_SWECC)
-#    if !defined(CONFIG_MTD_NAND_BLOCKCHECK) || !defined(CONFIG_MTD_NAND_SWECC)
+#    ifndef CONFIG_MTD_NAND_SWECC
 #      error CONFIG_SAMA5_EBICS3_SWECC is an invalid selection
 #    endif
 #    define SAMA5_EBICS3_ECCTYPE NANDECC_SWECC
 
 #  elif defined(CONFIG_SAMA5_EBICS3_PMECC)
-#    if !defined(CONFIG_MTD_NAND_BLOCKCHECK) || !defined(CONFIG_MTD_NAND_HWECC)
+#    ifndef CONFIG_MTD_NAND_HWECC
 #      error CONFIG_SAMA5_EBICS3_PMECC is an invalid selection
 #    endif
 #    define SAMA5_EBICS3_ECCTYPE NANDECC_PMECC
 
 #  elif defined(CONFIG_SAMA5_EBICS3_CHIPECC)
-#    if !defined(CONFIG_MTD_NAND_BLOCKCHECK) || !defined(CONFIG_MTD_NAND_EMBEDDEDECC)
+#    ifndef CONFIG_MTD_NAND_EMBEDDEDECC
 #      error CONFIG_SAMA5_EBICS3_CHIPECC is an invalid selection
 #    endif
 #    define SAMA5_EBICS3_ECCTYPE NANDECC_CHIPECC
@@ -226,12 +232,46 @@
 #  define NAND_HAVE_EBICS3 0
 #endif
 
+#ifdef CONFIG_SAMA5_HAVE_NAND
+
 /* Count the number of banks configured for NAND */
 
 #define NAND_NBANKS \
    (NAND_HAVE_EBICS0 + NAND_HAVE_EBICS1 + NAND_HAVE_EBICS2 + NAND_HAVE_EBICS3)
 
-#ifdef CONFIG_SAMA5_HAVE_NAND
+/* Debug */
+
+#if !defined(CONFIG_DEBUG) || !defined(CONFIG_DEBUG_FS)
+#  undef CONFIG_DEBUG_FS
+#  undef CONFIG_SAMA5_NAND_DMADEBUG
+#  undef CONFIG_SAMA5_NAND_REGDEBUG
+#  undef CONFIG_SAMA5_NAND_DUMP
+#endif
+
+#if !defined(CONFIG_SAMA5_NAND_DMA) || !defined(CONFIG_DEBUG_DMA)
+#  undef CONFIG_SAMA5_NAND_DMADEBUG
+#endif
+
+/* An early version of this driver used SMC interrupts to determine when
+ * NAND commands completed, transfers completed, and RB edges occurred.  It
+ * turns out that those interrupts occurred so quickly that some really
+ * nasty race conditions were created.  Rather than resolve those, I simply
+ * disabled the interrupt logic with this setting.  The setting is retained
+ * in case, for some reason, someone wants to restore the interrupt-driven
+ * logic. Polling should be better solution in this case.
+ */
+
+#undef CONFIG_SAMA5_NAND_HSMCINTERRUPTS
+
+/* DMA Debug */
+
+#define DMA_INITIAL      0
+#define DMA_AFTER_SETUP  1
+#define DMA_AFTER_START  2
+#define DMA_CALLBACK     3
+#define DMA_TIMEOUT      3 /* No timeout */
+#define DMA_END_TRANSFER 4
+#define DMA_NSAMPLES     5
 
 /****************************************************************************
  * Public Types
@@ -240,6 +280,9 @@
  * select.  The struct nand_raw_s must appear at the beginning of the
  * definition so that you can freely cast between pointers to struct
  * nand_raw_s and struct sam_nandcs_s.
+ *
+ * NOTE: Currently, only SAMA5D3x CS3 can support NAND.  The logic here would
+ * support NAND on any CS, but that capability is not needed.
  */
 
 struct sam_nandcs_s
@@ -255,27 +298,41 @@ struct sam_nandcs_s
 
 #ifdef CONFIG_SAMA5_PMECC_TRIMPAGE
   bool dropjss;              /* Enable page trimming */
-  uint16_t g_trimpage;       /* Trim page number boundary */
+  uint16_t trimpage;         /* Trim page number boundary */
 #endif
 
 #ifdef CONFIG_SAMA5_NAND_DMA
   sem_t waitsem;             /* Used to wait for DMA done */
   DMA_HANDLE dma;            /* DMA channel assigned to this CS */
   int result;                /* The result of the DMA */
+
+#ifdef CONFIG_SAMA5_NAND_DMADEBUG
+  struct sam_dmaregs_s dmaregs[DMA_NSAMPLES];
+#endif
 #endif
 };
 
 struct sam_nand_s
 {
   bool initialized;          /* True:  One time initialization is complete */
+#if NAND_NBANKS > 1
   sem_t exclsem;             /* Enforce exclusive access to the SMC hardware */
+#endif
 
   /* Dynamic state */
 
-  volatile bool cmddone;     /* True:  NFC commnad has completed */
-  volatile bool xfrdone;     /* True:  Transfer has completed */
-  volatile bool rbedge;      /* True:  Ready/busy edge detected */
+#ifdef CONFIG_SAMA5_NAND_HSMCINTERRUPTS
+  volatile bool cmddone;     /* True:  NFC command has completed (latching) */
+  volatile bool xfrdone;     /* True:  Transfer has completed (latching)  */
+  volatile bool rbedge;      /* True:  Ready/busy edge detected (latching) */
   sem_t waitsem;             /* Used to wait for one of the above states */
+
+#else
+  bool cmddone;              /* True:  NFC command has completed (latching)  */
+  bool xfrdone;              /* True:  Transfer has completed (latching)  */
+  bool rbedge;               /* True:  Ready/busy edge detected (latching) */
+
+#endif
 
 #ifdef CONFIG_SAMA5_HAVE_PMECC
   uint8_t ecctab[CONFIG_MTD_NAND_MAX_PMECCSIZE];
@@ -342,7 +399,12 @@ struct mtd_dev_s *sam_nand_initialize(int cs);
  *   If CONFIG_SAMA5_BOOT_CS3FLASH is defined, then NAND FLASH support is
  *   enabled.  This function provides the board-specific implementation of
  *   the logic to reprogram the SMC to support NAND FLASH on the specified
- *   CS.
+ *   CS.  As a minimum, this board-specific initialization should do the
+ *   following:
+ *
+ *     1. Enable clocking to the HSMC
+ *     2. Configure timing for the HSMC CS
+ *     3. Configure NAND PIO pins
  *
  * Input Parameters:
  *   cs - Chip select number (in the event that multiple NAND devices
@@ -379,7 +441,7 @@ bool board_nand_busy(int cs);
 #endif
 
 /****************************************************************************
- * Name: board_nandflash_config
+ * Name: board_nand_ce
  *
  * Description:
  *   Must be provided if the board logic supports and interface to control

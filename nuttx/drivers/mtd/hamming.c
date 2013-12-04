@@ -57,7 +57,7 @@
  ****************************************************************************/
 
 /****************************************************************************
- * Name: bitsinbyte
+ * Name: hamming_bitsinbyte
  *
  * Description:
  *   Counts the number of bits set to '1' in the given byte.
@@ -70,7 +70,7 @@
  *
  ****************************************************************************/
 
-static unsigned int bitsinbyte(uint8_t byte)
+static unsigned int hamming_bitsinbyte(uint8_t byte)
 {
   unsigned int count = 0;
 
@@ -87,7 +87,7 @@ static unsigned int bitsinbyte(uint8_t byte)
 }
 
 /****************************************************************************
- * Name: bitsincode256
+ * Name: hamming_bitsincode256
  *
  * Description:
  *   Counts the number of bits set to '1' in the given hamming code.
@@ -100,13 +100,15 @@ static unsigned int bitsinbyte(uint8_t byte)
  *
  ****************************************************************************/
 
-static uint8_t bitsincode256(FAR uint8_t *code)
+static uint8_t hamming_bitsincode256(FAR uint8_t *code)
 {
-  return bitsinbyte(code[0]) + bitsinbyte(code[1]) + bitsinbyte(code[2]);
+  return hamming_bitsinbyte(code[0]) +
+         hamming_bitsinbyte(code[1]) +
+         hamming_bitsinbyte(code[2]);
 }
 
 /****************************************************************************
- * Name: compute256
+ * Name: hamming_compute256
  *
  * Description:
  *   Calculates the 22-bit hamming code for a 256-bytes block of data.
@@ -120,7 +122,7 @@ static uint8_t bitsincode256(FAR uint8_t *code)
  *
  ****************************************************************************/
 
-static void compute256(FAR const uint8_t *data, FAR uint8_t *code)
+static void hamming_compute256(FAR const uint8_t *data, FAR uint8_t *code)
 {
   uint8_t colsum = 0;
   uint8_t evenline = 0;
@@ -141,7 +143,7 @@ static void compute256(FAR const uint8_t *data, FAR uint8_t *code)
        * the computed code; so check if the sum is 1.
        */
 
-      if ((bitsinbyte(data[i]) & 1) == 1)
+      if ((hamming_bitsinbyte(data[i]) & 1) == 1)
         {
           /* Parity groups are formed by forcing a particular index bit to 0
            * (even) or 1 (odd).
@@ -257,12 +259,10 @@ static void compute256(FAR const uint8_t *data, FAR uint8_t *code)
   code[0] = (~(uint32_t)code[0]);
   code[1] = (~(uint32_t)code[1]);
   code[2] = (~(uint32_t)code[2]);
-
-  fvdbg("Computed code = %02X %02X %02X\n", code[0], code[1], code[2]);
 }
 
 /****************************************************************************
- * Name: verify256
+ * Name: hamming_verify256
  *
  * Description:
  *   Verifies and corrects a 256-bytes block of data using the given 22-bits
@@ -277,14 +277,14 @@ static void compute256(FAR const uint8_t *data, FAR uint8_t *code)
  *
  ****************************************************************************/
 
-static int verify256(FAR uint8_t *data, FAR const uint8_t *original)
+static int hamming_verify256(FAR uint8_t *data, FAR const uint8_t *original)
 {
   /* Calculate new code */
 
   uint8_t computed[3];
   uint8_t correction[3];
 
-  compute256(data, computed);
+  hamming_compute256(data, computed);
 
   /* Xor both codes together */
 
@@ -292,19 +292,25 @@ static int verify256(FAR uint8_t *data, FAR const uint8_t *original)
   correction[1] = computed[1] ^ original[1];
   correction[2] = computed[2] ^ original[2];
 
-  fvdbg("Correction code: %02x %02x %02x\n",
-        correction[0], correction[1], correction[2]);
-
   /* If all bytes are 0, there is no error */
 
   if ((correction[0] == 0) && (correction[1] == 0) && (correction[2] == 0))
-  {
+    {
       return 0;
-  }
+    }
+
+  /* There are bit errors */
+
+  fvdbg("Read:       %02x %02x %02x\n",
+        original[0], original[1], original[2]);
+  fvdbg("Computed:   %02x %02x %02x\n",
+        computed[0], computed[1], computed[2]);
+  fvdbg("Correction: %02x %02x %02x\n",
+        correction[0], correction[1], correction[2]);
 
   /* If there is a single bit error, there are 11 bits set to 1 */
 
-  if (bitsincode256(correction) == 11)
+  if (hamming_bitsincode256(correction) == 11)
     {
       uint8_t byte;
       uint8_t bit;
@@ -331,19 +337,21 @@ static int verify256(FAR uint8_t *data, FAR const uint8_t *original)
       data[byte] ^= (1 << bit);
 
       return HAMMING_ERROR_SINGLEBIT;
-  }
+    }
 
   /* Check if ECC has been corrupted */
 
-  if (bitsincode256(correction) == 1)
+  if (hamming_bitsincode256(correction) == 1)
     {
+      fdbg("ERROR: ECC has been correupted\n");
       return HAMMING_ERROR_ECC;
     }
 
-  /* Otherwise, this is a multi-bit error */
+  /* Otherwise, there are multiple bit errors */
 
   else
     {
+      fdbg("ERROR: Multiple bit errors\n");
       return HAMMING_ERROR_MULTIPLEBITS;
     }
 }
@@ -378,7 +386,7 @@ void hamming_compute256x(FAR const uint8_t *data, size_t size, uint8_t *code)
 
   while (remaining > 0)
     {
-      compute256(data, code);
+      hamming_compute256(data, code);
 
       /* Setup for the next 256 byte chunk */
 
@@ -419,7 +427,7 @@ int hamming_verify256x(FAR uint8_t *data, size_t size, FAR const uint8_t *code)
 
   while (remaining > 0)
     {
-      result = verify256(data, code);
+      result = hamming_verify256(data, code);
       if (result != HAMMING_SUCCESS)
         {
           /* Check for the case of a single bit error that was corrected */

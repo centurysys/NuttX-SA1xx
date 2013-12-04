@@ -79,9 +79,9 @@
 
 struct mtd_geometry_s
 {
-  uint16_t blocksize;     /* Size of one read/write block */
-  uint16_t erasesize;     /* Size of one erase blocks -- must be a multiple
-                           * of blocksize. */
+  uint32_t blocksize :14; /* Size of one read/write block.  Largest: 16KB-1 */
+  uint32_t erasesize :18; /* Size of one erase blocks -- must be a multiple
+                           * of blocksize.  Largest: 512KB-1 */
   size_t neraseblocks;    /* Number of erase blocks */
 };
 
@@ -307,7 +307,7 @@ FAR struct mtd_dev_s *rammtd_initialize(FAR uint8_t *start, size_t size);
  * Name: sst25_initialize
  *
  * Description:
- *   Initializes the drvier for SPI-based SST25 FLASH
+ *   Initializes the driver for SPI-based SST25 FLASH
  *
  *   Supports SST25VF512, SST25VF010, SST25VF520, SST25VF540, SST25VF080,
  *   and SST25VF016
@@ -315,6 +315,18 @@ FAR struct mtd_dev_s *rammtd_initialize(FAR uint8_t *start, size_t size);
  ****************************************************************************/
 
 FAR struct mtd_dev_s *sst25_initialize(FAR struct spi_dev_s *dev);
+
+/****************************************************************************
+ * Name: sst25xx_initialize
+ *
+ * Description:
+ *   Initializes the driver for SPI-based SST25XX FLASH
+ *
+ *   Supports SST25VF064
+ *
+ ****************************************************************************/
+
+FAR struct mtd_dev_s *sst25xx_initialize(FAR struct spi_dev_s *dev);
 
 /****************************************************************************
  * Name: sst39vf_initialize
