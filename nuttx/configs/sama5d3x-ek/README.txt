@@ -440,7 +440,7 @@ Creating and Using NORBOOT
    7. An option is to use the SAM-BA tool to write the NORBOOT image into
       Serial FLASH.  Then, the system will boot from Serial FLASH by
       copying the NORBOOT image in SRAM which will run and then start the
-      image in NOR FLASH automatically.
+      image in NOR FLASH automatically.  This is a very convenient usage!
 
       NOTES: (1) There is jumper on the CM module that must be closed to
       enable use of the AT25 Serial Flash.  (2) If using SAM-BA, make sure
@@ -1278,7 +1278,8 @@ NOR FLASH Support
   STATUS:  I have been unable to execute these configurations from NOR FLASH
   by closing the BMS jumper (J9).  As far as I can tell, this jumper does
   nothing on my board???  So I have been using the norboot configuration
-  exclusively to start the program-under-test in NOR FLASH (see below).
+  exclusively to start the program-under-test in NOR FLASH (see the section
+  entitled "Creating and Using NORBOOT" above.)
 
 SDRAM Support
 =============
@@ -1352,10 +1353,10 @@ SDRAM Support
 NAND Support
 ============
 
-  NAND support is only partial and there is no file system that works with
-  it properly.  It should be considered a work in progress.  You will not
-  want to use NAND unless you are interested in investing a little effort.
-  See the STATUS section below.
+  NAND support is only partial in that there is no file system that works
+  with it properly.  It should be considered a work in progress.  You will
+  not want to use NAND unless you are interested in investing a little
+  effort. See the STATUS section below.
 
   NAND Support
   ------------
@@ -1390,26 +1391,36 @@ NAND Support
     Application Configuration -> NSH Library
       CONFIG_NSH_ARCHINIT=y             : Use architecture-specific initialization
 
-    WARNING:  This will wipe out everything that you may have on the NAND
-    FLASH!  I have found that using the JTAG with no valid image on NAND
-    or Serial FLASH is a problem:  In that case, the code always ends up
-    in the SAM-BA bootloader.
+    NOTES:
 
-    The work around for this case is to put the NORBOOT image into Serial
-    FLASH.  Then, the system will boot from Serial FLASH by copying the
-    NORBOOT image in SRAM which will run and then start the image in NOR
-    FLASH.  See the discussion of the NORBOOT configuration in the
-    "Creating and Using NORBOOT" section above.
+    1. WARNING:  This will wipe out everything that you may have on the NAND
+       FLASH!  I have found that using the JTAG with no valid image on NAND
+       or Serial FLASH is a problem:  In that case, the code always ends up
+       in the SAM-BA bootloader.
 
-    NOTES: (1) There is jumper on the CM module that must be closed to
-    enable use of the AT25 Serial Flash.  (2) If using SAM-BA, make sure
-    that you load the NOR boot program into the boot area via the pull-
-    down menu.
+       My understanding is that you can enable JTAG in this case by simply
+       entering any data on the DBG serial port.  I have not tried this.
+       Instead, I just changed to boot from Serial Flash:
+
+    2. Booting from Serial Flash. The work around for this case is to put
+       the NORBOOT image into Serial FLASH.  Then, the system will boot from
+       Serial FLASH by copying the NORBOOT image in SRAM which will run and
+       then start the image in NOR FLASH.  See the discussion of the NORBOOT
+       configuration in the "Creating and Using NORBOOT" section above.
+
+       NOTE thathere is jumper on the CM module that must be closed to enable
+       use of the AT25 Serial Flash.  Also, if you are using using SAM-BA,
+       make sure that you load the NOR boot program into the boot area via
+       the pull-down menu.
+
+    3. Unfortunately, there are no appropriate NAND file system in NuttX as
+       of this writing.  The following sections discussion issues/problems
+       with using NXFFS and FAT.
 
     NXFFS
     -----
 
-    The NuttX FLASH File System (NXFFS) works will with NOR-like FLASH
+    The NuttX FLASH File System (NXFFS) works well with NOR-like FLASH
     but does not work well with NAND (See comments below under STATUS)
 
     File Systems:
@@ -1442,13 +1453,21 @@ NAND Support
 
       Defaults for all other NXFFS settings should be okay.
 
-      NOTE:  NXFFS will require some significant buffering because of
-      the large size of the NAND flash blocks.  You will also need
-      to enable SDRAM as described above.
-
     Board Selection
       CONFIG_SAMA5_NAND_AUTOMOUNT=y     : Enable FS support on NAND
       CONFIG_SAMA5_NAND_FTL=y           : Use an flash translation layer
+
+      NOTE:  FTL will require some significant buffering because of
+      the large size of the NAND flash blocks.  You will also need
+      to enable SDRAM as described above.
+
+    SMART FS
+    --------
+
+    Another option is Smart FS.  Smart FS is another small file system
+    designed to work with FLASH.  Properties:  It does support some wear-
+    leveling like NXFFS, but like FAT, cannot handle bad blocks and like
+    NXFFS, it will try to re-write erased bits.
 
     Using NAND with NXFFS
     ---------------------
@@ -1532,7 +1551,7 @@ NAND Support
     You will not that the system comes up immediately because there is not
     need to scan the volume in this case..
 
-    The NSH 'mkfatfs' command can be used to format a FATfile system on
+    The NSH 'mkfatfs' command can be used to format a FAT file system on
     NAND.
 
       nsh> mkfatfs /dev/mtdblock0
@@ -1579,7 +1598,7 @@ NAND Support
     perform bad block detection and sparing so that FAT works transparently
     on top of the NAND.
 
-    Another, less general option would be support bad blocks within FAT.
+    Another, less general, option would be support bad blocks within FAT.
 
   STATUS
   ------
@@ -2685,7 +2704,8 @@ Configurations
     - Waits for you to break in with GDB.
 
     At that point, you can set the PC and begin executing from NOR FLASH
-    under debug control.
+    under debug control.  See the section entitled "Creating and Using
+    NORBOOT" above.
 
     NOTES:
 
