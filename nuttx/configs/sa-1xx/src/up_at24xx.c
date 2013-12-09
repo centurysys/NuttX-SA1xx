@@ -43,7 +43,7 @@
 #include <errno.h>
 
 #include <nuttx/i2c.h>
-#include <nuttx/mtd.h>
+#include <nuttx/mtd/mtd.h>
 #include <nuttx/fs/fs.h>
 
 #include "stm32.h"
