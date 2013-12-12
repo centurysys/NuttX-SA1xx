@@ -1,5 +1,5 @@
 /****************************************************************************
- * configs/pcduino-a10/scripts/ddram.ld
+ * configs/pcduino-a10/scripts/sdram.ld
  *
  *   Copyright (C) 2013 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
@@ -33,11 +33,13 @@
  *
  ****************************************************************************/
 
-/* The pcDuino and 256MB of SDRAM beginning at virtual address 0x4000:0000 */
+/* The pcDuino and 1GB of SDRAM beginning at virtual address 0x4000:0000.
+ * Execution begins at address 0x4a00000, leaving 864MB for NuttX.
+ */
 
 MEMORY
 {
-	sdram (W!RX) : ORIGIN = 0x40000000, LENGTH = 256M
+	sdram (W!RX) : ORIGIN = 0x4a000000, LENGTH = 864M
 }
 
 OUTPUT_FORMAT("elf32-littlearm", "elf32-littlearm", "elf32-littlearm")

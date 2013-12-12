@@ -42,30 +42,32 @@
 #include <stdlib.h>
 #include <debug.h>
 
-#include <nuttx/fb.h>
-#include <nuttx/nx/nx.h>
+#include <nuttx/i2c.h>
+#include <nuttx/video/fb.h>
+#include <nuttx/video/ov2640.h>
 
 #include "up_arch.h"
 
 #include "sam_periphclks.h"
 #include "sam_lcd.h"
 #include "sam_pck.h"
+#include "sam_pio.h"
+#include "chip/sam_pinmap.h"
+
 #include "sama5d3x-ek.h"
 
-#if defined(CONFIG_SAMA5_ISI) && defined(CONFIG_SAMA5_OV2640_DEMO)
+#ifdef HAVE_CAMERA
 
 /****************************************************************************
  * Definitions
  ****************************************************************************/
-/* Configuration ************************************************************/
+/* Typical OV2640 XVCLK is 24MHz */
+
+#define OV2640_FREQUENCY 24000000
 
 /****************************************************************************
  * Private Data
  ****************************************************************************/
-
-/* The connection handler */
-
-static NXHANDLE g_hnx = NULL;
 
 /****************************************************************************
  * Private Functions
@@ -75,132 +77,141 @@ static NXHANDLE g_hnx = NULL;
  * Name: ov2640_lcd_initialize
  ****************************************************************************/
 
-#ifndef CONFIG_NX_MULTIUSER
-static inline int ov2640_lcd_initialize(void)
+static inline FAR struct fb_vtable_s *ov2640_lcd_initialize(void)
 {
-  FAR NX_DRIVERTYPE *dev;
+  FAR struct fb_vtable_s *vplane;
   int ret;
 
   /* Initialize the frame buffer device */
 
-  gvdbg("Initializing framebuffer\n");
   ret = up_fbinitialize();
   if (ret < 0)
     {
       gdbg("ERROR: up_fbinitialize failed: %d\n", -ret);
-      return EXIT_FAILURE;
+      return NULL;
     }
 
-  dev = up_fbgetvplane(0);
-  if (!dev)
+  vplane = up_fbgetvplane(0);
+  if (!vplane)
     {
       gdbg("ERROR: up_fbgetvplane failed\n");
-      return EXIT_FAILURE;
     }
 
-  /* Then open NX */
-
-  gvdbg("Open NX\n");
-  g_hnx = nx_open(dev);
-  if (!g_hnx)
-    {
-      gdbg("ERROR: nx_open failed: %d\n", errno);
-      return EXIT_FAILURE;
-    }
-
-  return EXIT_SUCCESS;
+  return vplane;
 }
-#endif
-
-#ifdef CONFIG_NX_MULTIUSER
-static inline int ov2640_lcd_initialize(void)
-{
-  struct sched_param param;
-  pthread_t thread;
-  pid_t servrid;
-  int ret;
-
-  /* Set the client task priority */
-
-  param.sched_priority = CONFIG_EXAMPLES_NX_CLIENTPRIO;
-  ret = sched_setparam(0, &param);
-  if (ret < 0)
-    {
-      gdbg("ERROR: sched_setparam failed: %d\n" , ret);
-      return EXIT_FAILURE;
-    }
-
-  /* Start the server task */
-
-  gvdbg("Starting nx_servertask task\n");
-  servrid = task_create("NX Server", CONFIG_EXAMPLES_NX_SERVERPRIO,
-                        CONFIG_EXAMPLES_NX_STACKSIZE, nx_servertask, NULL);
-  if (servrid < 0)
-    {
-      gdbg("ERROR: Failed to create nx_servertask task: %d\n", errno);
-      return EXIT_FAILURE;
-    }
-
-  /* Wait a bit to let the server get started */
-
-  sleep(1);
-
-  /* Connect to the server */
-
-  g_hnx = nx_connect();
-  if (g_hnx)
-    {
-       pthread_attr_t attr;
-
-       /* Start a separate thread to listen for server events.  This is probably
-        * the least efficient way to do this, but it makes this example flow more
-        * smoothly.
-        */
-
-       (void)pthread_attr_init(&attr);
-       param.sched_priority = CONFIG_EXAMPLES_NX_LISTENERPRIO;
-       (void)pthread_attr_setschedparam(&attr, &param);
-       (void)pthread_attr_setstacksize(&attr, CONFIG_EXAMPLES_NX_STACKSIZE);
-
-       ret = pthread_create(&thread, &attr, nx_listenerthread, NULL);
-       if (ret != 0)
-         {
-            printf("pthread_create failed: %d\n", ret);
-            return EXIT_FAILURE;
-         }
-
-       /* Don't return until we are connected to the server */
-
-       while (!g_connected)
-         {
-           /* Wait for the listener thread to wake us up when we really
-            * are connected.
-            */
-
-           (void)sem_wait(&g_semevent);
-         }
-    }
-  else
-    {
-      gdbg("ERROR: nx_connect failed: %d\n", errno);
-      return EXIT_FAILURE;
-    }
-
-  return EXIT_SUCCESS;
-}
-#endif
 
 /****************************************************************************
  * Name: ov2640_camera_initialize
+ *
+ * Description:
+ *   Initialize the OV2640 camera in the correct mode of operation
+ *
+ * OV2640 Camera Interface
+ *
+ *   SAMA5D3x PIN             SAMA5D3x-EK    OV2640
+ *   PIO  PER SIGNAL        ISI Socket J11
+ *   ---- --- ------------- --- ------------ ----------------------------------------
+ *   ---                     1  VDDISI       ---
+ *   ---                     2  GND          ---
+ *   ---                     3  VDDISI       ---
+ *   ---                     4  GND          ---
+ *   PE28  ?  ?              5  ZB_SLPTR     ???
+ *   PE29  ?  ?              6  ZB_RST       C6 RESETB Reset mode (?)
+ *   PC27  B  TWI1_CK        7  TWCK1        C2 SIO_C SCCB serial interface clock input
+ *   PC26  B  TWI1_D         8  TWD1         C1 SIO_D SCCB serial interface data I/O
+ *   ---                     9  GND          ---
+ *   PD31  B  PCK1 (ISI_MCK) 10 ISI_MCK      C4 XVCLK System clock input (?)
+ *   ---                     11 GND          ---
+ *   PA30  C  ISI_VSYNC      12 ISI_VSYNC    D2 VSYNC Vertical synchronization
+ *   ---                     13 GND          ---
+ *   PA31  C  ISI_HSYNC      14 ISI_HSYNC    C3 HREF Horizontal reference output (?)
+ *   ---                     15 GND          ---
+ *   PC30  C  ISI_PCK        16 ISI_PCK      E3 PCLK Pixel clock output
+ *   ---                     17 GND          ---
+ *   PA16  C  ISI_D0         18 ISI_D0       E2 Y0 Video port output bit[0]
+ *   PA17  C  ISI_D1         19 ISI_D1       E1 Y1 Video port output bit[1]
+ *   PA18  C  ISI_D2         20 ISI_D2       F3 Y2 Video port output bit[2]
+ *   PA19  C  ISI_D3         21 ISI_D3       G3 Y3 Video port output bit[3]
+ *   PA20  C  ISI_D4         22 ISI_D4       F4 Y4 Video port output bit[4]
+ *   PA21  C  ISI_D5         23 ISI_D5       G4 Y5 Video port output bit[5]
+ *   PA22  C  ISI_D6         24 ISI_D6       E5 Y6 Video port output bit[6]
+ *   PA23  C  ISI_D7         25 ISI_D7       G5 Y7 Video port output bit[7]
+ *   PC29  C  ISI_D8         26 ISI_D8       F5 Y8 Video port output bit[8]
+ *   PC28  C  ISI_D9         27 ISI_D9       G6 Y9 Video port output bit[9]
+ *   PC27  C  ISI_D10        28 ISI_D10      ---
+ *   PC26  C  ISI_D11        29 ISI_D11      ---
+ *   ---                     30 GND          ---
+ *
+ *   ???                     ??              A2 EXPST_B Snapshot exposure start trigger
+ *   ???                     ??              A6 STROBE  Flash control output
+ *   ???                     ??              B2 FREX    Snapshot trigger
+ *   ???                     ??              B6 PWDN    Power-down mode enable
+ *
  ****************************************************************************/
 
 static inline int ov2640_camera_initialize(void)
 {
+  FAR struct i2c_dev_s *i2c;
+  uint32_t actual;
+  int ret;
+
+  /* Get the I2C driver that interfaces with the camers (OV2640_BUS)*/
+
+  i2c = up_i2cinitialize(OV2640_BUS);
+  if (!i2c)
+    {
+      gdbg("ERROR: Failed to initialize TWI%d\n", OV2640_BUS);
+      return EXIT_FAILURE;
+    }
+
   /* Enable clocking to the ISI peripheral */
 
   sam_isi_enableclk();
 
+  /* Configure OV2640 pins
+   *
+   * ISI:
+   * - HSYNC, VSYNC, PCK
+   * - 8 data bits for 8-bit color
+   * PCK
+   * - PCK1 provides OV2640 system clock
+   */
+
+  sam_configpio(PIO_ISI_HSYNC);
+  sam_configpio(PIO_ISI_VSYNC);
+  sam_configpio(PIO_ISI_PCK);
+
+  sam_configpio(PIO_ISI_D0);
+  sam_configpio(PIO_ISI_D1);
+  sam_configpio(PIO_ISI_D2);
+  sam_configpio(PIO_ISI_D3);
+  sam_configpio(PIO_ISI_D4);
+  sam_configpio(PIO_ISI_D5);
+  sam_configpio(PIO_ISI_D6);
+  sam_configpio(PIO_ISI_D7);
+
+  sam_configpio(PIO_PMC_PCK1);
+
+  /* Configure and enable the PCK1 output */
+
+  actual = sam_pck_configure(PCK1, OV2640_FREQUENCY);
+  gvdbg("Desired PCK1 frequency: %ld Actual: %ld\n",
+        (long)OV2640_FREQUENCY, (long)actual);
+
+  sam_pck_enable(PCK1, true);
+
+  /* Configure the ISI peripheral */
 #warning Missing Logic
+
+  /* Initialize the OV2640 camera */
+
+  ret = ov2640_initialize(i2c);
+  if (ret < 0)
+    {
+      gdbg("ERROR: Failed to initialize the OV2640: %d\n", ret);
+      return EXIT_FAILURE;
+    }
+
   return EXIT_FAILURE;
 }
 
@@ -218,12 +229,13 @@ static inline int ov2640_camera_initialize(void)
 
 int ov2640_main(int argc, char *argv[])
 {
+  FAR struct fb_vtable_s *vplane;
   int ret;
 
   /* First, initialize the display */
 
-  ret = ov2640_lcd_initialize();
-  if (ret != EXIT_SUCCESS)
+  vplane = ov2640_lcd_initialize();
+  if (!vplane)
     {
       gdbg("ERROR: ov2640_lcd_initialize failed\n");
       return  EXIT_FAILURE;
@@ -235,24 +247,14 @@ int ov2640_main(int argc, char *argv[])
   if (ret != EXIT_SUCCESS)
     {
       gdbg("ERROR: ov2640_camera_initialize failed\n");
-      goto  errout_with_nx;
+      return  EXIT_FAILURE;
     }
 
+  /* Now if everything is set up properly, the camera output should be
+   * visible on the LCD.
+   */
+
   return EXIT_SUCCESS;
-
-errout_with_nx:
-#ifdef CONFIG_NX_MULTIUSER
-  /* Disconnect from the server */
-
-  gvdbg("Disconnect from the server\n");
-  nx_disconnect(g_hnx);
-#else
-  /* Close the server */
-
-  gvdbg("Close NX\n");
-  nx_close(g_hnx);
-#endif
-  return EXIT_FAILURE;
 }
 
-#endif /* CONFIG_SAMA5_ISI && CONFIG_SAMA5_OV2640_DEMO */
+#endif /* HAVE_CAMERA */

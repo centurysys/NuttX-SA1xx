@@ -1,9 +1,8 @@
 /****************************************************************************
- * include/nuttx/smart.h
- * Sector Mapped Allocation for Really Tiny (SMART) FLASH interface
+ * include/nuttx/fs/ramdisk.h
  *
- *   Copyright (C) 2013 Ken Pettit. All rights reserved.
- *   Author: Ken Pettit <pettitkd@gmail.com>
+ *   Copyright (C) 2008-2009, 2012-2013 Gregory Nutt. All rights reserved.
+ *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,8 +33,8 @@
  *
  ****************************************************************************/
 
-#ifndef __INCLUDE_NUTTX_SMART_H
-#define __INCLUDE_NUTTX_SMART_H
+#ifndef __INCLUDE_NUTTX_FS_RAMDISK_H
+#define __INCLUDE_NUTTX_FS_RAMDISK_H
 
 /****************************************************************************
  * Included Files
@@ -43,74 +42,58 @@
 
 #include <nuttx/config.h>
 
-#include <sys/types.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 /****************************************************************************
- * Pre-Processor Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
-
-/* Macros to hide implementation */
-
-#define SMART_FMT_ISFORMATTED   0x01
-#define SMART_FMT_HASBYTEWRITE  0x02
 
 /****************************************************************************
- * Public Types
+ * Type Definitions
  ****************************************************************************/
-
-/* The following defines the format information for the device.  This 
- * information is retrieved via the BIOC_GETFORMAT ioctl.
- */
-
-struct smart_format_s
-{
-  uint16_t sectorsize;      /* Size of one read/write sector */
-  uint16_t availbytes;      /* Number of bytes available in each sector */
-  uint16_t nsectors;        /* Total number of sectors on device */
-  uint16_t nfreesectors;    /* Number of free sectors on device */
-  uint8_t  flags;           /* Format flags (see above) */  
-  uint8_t  namesize;        /* Size of filenames on this volume */
-#ifdef CONFIG_SMARTFS_MULTI_ROOT_DIRS
-  uint8_t  nrootdirentries; /* Number of root directories on this device */
-  uint8_t  rootdirnum;      /* Root directory number for this dev entry */
-#endif
-};
-
-/* The following defines the information for writing a logical sector
- * to the device.
- */
-
-struct smart_read_write_s
-{
-  uint16_t logsector;     /* The logical sector number */
-  uint16_t offset;        /* Offset within the sector to write to */
-  uint16_t count;         /* Number of bytes to write */
-  const uint8_t *buffer;        /* Pointer to the data to write */
-};
 
 /****************************************************************************
- * Public Data
+ * Public Function Prototypes
  ****************************************************************************/
-
-#ifndef __ASSEMBLY__
 
 #ifdef __cplusplus
 #define EXTERN extern "C"
-extern "C"
-{
+extern "C" {
 #else
 #define EXTERN extern
 #endif
 
 /****************************************************************************
- * Public Function Prototypes
+ * Name: ramdisk_register or romdisk_register
+ *
+ * Description:
+ *   Non-standard function to register a ramdisk or a romdisk
+ *
+ * Input Parmeters:
+ *   minor:         Selects suffix of device named /dev/ramN, N={1,2,3...}
+ *   nsectors:      Number of sectors on device
+ *   sectize:       The size of one sector
+ *   writeenabled:  true: can write to ram disk
+ *   buffer:        RAM disk backup memory
+ *
+ * Returned Valued:
+ *   Zero on success; a negated errno value on failure.
+ *
  ****************************************************************************/
+
+#ifdef CONFIG_FS_WRITABLE
+EXTERN int ramdisk_register(int minor, FAR uint8_t *buffer, uint32_t nsectors,
+                            uint16_t sectize, bool writeenabled);
+#define romdisk_register(m,b,n,s) ramdisk_register(m,b,n,s,0)
+#else
+EXTERN int romdisk_register(int minor, FAR uint8_t *buffer, uint32_t nsectors,
+                            uint16_t sectize);
+#endif
 
 #undef EXTERN
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* __ASSEMBLY__ */
-#endif /* __INCLUDE_NUTTX_SMART_H */
+#endif /* __INCLUDE_NUTTX_FS_RAMDISK_H */
