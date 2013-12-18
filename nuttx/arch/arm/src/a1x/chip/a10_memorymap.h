@@ -257,7 +257,8 @@
 
 /* Force configured sizes that might exceed 2GB to be unsigned long */
 
-#define A1X_DDR_SIZE         MKULONG(CONFIG_A1X_DDR_SIZE)
+#define A1X_DDR_MAPOFFSET    MKULONG(CONFIG_A1X_DDR_MAPOFFSET)
+#define A1X_DDR_MAPSIZE      MKULONG(CONFIG_A1X_DDR_MAPSIZE)
 #define A1X_DDR_HEAP_OFFSET  MKULONG(CONFIG_A1X_DDR_HEAP_OFFSET)
 #define A1X_DDR_HEAP_SIZE    MKULONG(CONFIG_A1X_DDR_HEAP_SIZE)
 
@@ -280,7 +281,7 @@
 #define A1X_PERIPH_NSECTIONS _NSECTIONS(A1X_PERIPH_SIZE)
 #define A1X_SRAMC_NSECTIONS  _NSECTIONS(A1X_SRAMC_SIZE)
 #define A1X_DE_NSECTIONS     _NSECTIONS(A1X_DE_SIZE)
-#define A1X_DDR_NSECTIONS    _NSECTIONS(CONFIG_RAM_SIZE)
+#define A1X_DDR_NSECTIONS    _NSECTIONS(A1X_DDR_MAPSIZE)
 #define A1X_BROM_NSECTIONS   _NSECTIONS(A1X_BROM_SIZE)
 
 /* Section MMU Flags */
@@ -410,6 +411,11 @@
 
 #define A1X_BROM_VADDR       (A1X_BROM_VSECTION+A1X_BROM_OFFSET)
 
+/* Offset SDRAM address */
+
+#define A1X_DDR_MAPPADDR     (A1X_DDR_PSECTION+A1X_DDR_MAPOFFSET)
+#define A1X_DDR_MAPVADDR     (A1X_DDR_VSECTION+A1X_DDR_MAPOFFSET)
+
 /* NuttX virtual base address
  *
  * The boot logic will create a temporarily mapping based on where NuttX is
@@ -447,6 +453,8 @@
 #    error "CONFIG_ARCH_ROMPGTABLE defined; PGTABLE_BASE_P/VADDR not defined"
 #  endif
 
+#else /* PGTABLE_BASE_PADDR || PGTABLE_BASE_VADDR */
+
   /* If CONFIG_PAGING is selected, then parts of the 1-to-1 virtual memory
    * map probably do not apply because paging logic will probably partition
    * the SRAM section differently.  In particular, if the page table is located
@@ -459,20 +467,31 @@
    * in the way at that position.
    */
 
-#elif defined(CONFIG_ARCH_LOWVECTORS)
-  /* In this case, table must lie in SRAM A1 after the vectors */
+  #if defined(CONFIG_ARCH_LOWVECTORS)
+  /* In this case, table must lie in SRAM A2 after the vectors in SRAM A1 */
 
-#  define PGTABLE_BASE_PADDR (A1X_SRAMA1_PADDR + 16384)
-#  define PGTABLE_BASE_VADDR (A1X_SRAMA1_VADDR + 16384)
+#    define PGTABLE_BASE_PADDR  A1X_SRAMA2_PADDR
+#    define PGTABLE_BASE_VADDR  A1X_SRAMA2_VADDR
 
-#else
+#  else /* CONFIG_ARCH_LOWVECTORS */
+
   /* Otherwise, the vectors lie at another location.  The page table will
    * then be positioned at the beginning of SRAM A1.
    */
 
-#  define PGTABLE_BASE_PADDR  A1X_SRAMA1_PADDR
-#  define PGTABLE_BASE_VADDR  A1X_SRAMA1_VADDR
-#endif
+#    define PGTABLE_BASE_PADDR  A1X_SRAMA1_PADDR
+#    define PGTABLE_BASE_VADDR  A1X_SRAMA1_VADDR
+
+#  endif /* CONFIG_ARCH_LOWVECTORS */
+
+  /* Note that the page table does not lie in the same address space as does the
+   * mapped RAM in either case.  So we will need to create a special mapping for
+   * the page table at boot time.
+   */
+
+#  define ARMV7A_PGTABLE_MAPPING 1
+
+#endif /* PGTABLE_BASE_PADDR || PGTABLE_BASE_VADDR */
 
 /* Level 2 Page table start addresses.
  *
@@ -527,14 +546,15 @@
 
 #  define VECTOR_L2_END_PADDR     (VECTOR_L2_PBASE+VECTOR_L2_SIZE)
 #  define VECTOR_L2_END_VADDR     (VECTOR_L2_VBASE+VECTOR_L2_SIZE)
-#endif
+
+#endif /* !CONFIG_ARCH_LOWVECTORS */
 
 /* Paging L2 page table offset/size */
 
-#define PGTABLE_START_PADDR       (A1X_DDR_PSECTION+CONFIG_RAM_SIZE)
+#define PGTABLE_L2_START_PADDR    (A1X_DDR_PSECTION+A1X_DDR_MAPOFFSET+A1X_DDR_MAPSIZE)
 #define PGTABLE_BROM_OFFSET       0x3ffc
 
-#define PGTABLE_L2_OFFSET         ((PGTABLE_START_PADDR >> 18) & ~3)
+#define PGTABLE_L2_OFFSET         ((PGTABLE_L2_START_PADDR >> 18) & ~3)
 #define PGTABLE_L2_SIZE           (PGTABLE_BROM_OFFSET - PGTABLE_L2_OFFSET)
 
 /* Paging L2 page table base addresses
@@ -559,11 +579,15 @@
  */
 
 #define VECTOR_TABLE_SIZE         0x00010000
+
 #ifdef CONFIG_ARCH_LOWVECTORS  /* Vectors located at 0x0000:0000  */
+
 #  define A1X_VECTOR_PADDR        A1X_SRAMA1_PADDR
 #  define A1X_VECTOR_VSRAM        A1X_SRAMA1_VADDR
 #  define A1X_VECTOR_VADDR        0x00000000
+
 #else  /* Vectors located at 0xffff:0000 -- this probably does not work */
+
 #  ifdef A1X_ISRAM1_SIZE >= VECTOR_TABLE_SIZE
 #    define A1X_VECTOR_PADDR      (A1X_SRAMA1_PADDR+A1X_ISRAM1_SIZE-VECTOR_TABLE_SIZE)
 #    define A1X_VECTOR_VSRAM      (A1X_SRAMA1_VADDR+A1X_ISRAM1_SIZE-VECTOR_TABLE_SIZE)
@@ -572,6 +596,7 @@
 #    define A1X_VECTOR_VSRAM      (A1X_SRAMA1_VADDR+A1X_ISRAM0_SIZE-VECTOR_TABLE_SIZE)
 #  endif
 #  define A1X_VECTOR_VADDR        0xffff0000
+
 #endif
 
 /************************************************************************************

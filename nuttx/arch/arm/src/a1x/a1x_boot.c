@@ -98,7 +98,7 @@ extern uint32_t _vector_end;   /* End+1 of vector block */
 #ifndef CONFIG_ARCH_ROMPGTABLE
 static const struct section_mapping_s section_mapping[] =
 {
-  { A1X_INTMEM_PSECTION,  A1X_INTMEM_VSECTION,
+  { A1X_INTMEM_PSECTION,  A1X_INTMEM_VSECTION,  /* Includes vectors and page table */
     A1X_INTMEM_MMUFLAGS,  A1X_INTMEM_NSECTIONS
   },
   { A1X_PERIPH_PSECTION,  A1X_PERIPH_VSECTION,
@@ -110,7 +110,7 @@ static const struct section_mapping_s section_mapping[] =
   { A1X_DE_PSECTION,      A1X_DE_VSECTION,
     A1X_DE_MMUFLAGS,      A1X_DE_NSECTIONS
   },
-  { A1X_DDR_PSECTION,     A1X_DDR_VSECTION,
+  { A1X_DDR_MAPPADDR,     A1X_DDR_MAPVADDR,
     A1X_DDR_MMUFLAGS,     A1X_DDR_NSECTIONS
   },
   { A1X_BROM_PSECTION,    A1X_BROM_VSECTION,
@@ -139,6 +139,8 @@ static inline void a1x_setupmappings(void)
 {
   int i;
 
+  /* Set up each group of section mappings */
+
   for (i = 0; i < NMAPPINGS; i++)
     {
       mmu_l1_map_region(&section_mapping[i]);
@@ -162,7 +164,7 @@ static void a1x_vectorpermissions(uint32_t mmuflags)
 
   uint32_t pte = mmu_l2_getentry(PG_L2_VECT_VADDR, 0);
 
-  /* String the MMU flags from the page table entry.
+  /* Mask out the old MMU flags from the page table entry.
    *
    * The pte might be zero the first time this function is called.
    */

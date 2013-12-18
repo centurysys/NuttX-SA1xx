@@ -101,6 +101,7 @@ Contents
   - Serial Console
   - LEDs
   - Buttons
+  - Booting NuttX from an SD card
 
 pcDuino v1 Connectors
 =====================
@@ -154,7 +155,7 @@ pcDuino v1 Connectors
   - J5 Debug Port
      1. Rx                         UART0-RX
      2. Gnd                        GND
-     2. Tx                         UART0-TX
+     3. Tx                         UART0-TX
 
   - J6 SPI2
      1. SPI2_MISO
@@ -190,7 +191,7 @@ Serial Console
   1. UART0 is available on J5 Debug Port.
 
      J15 Pin 1 Rx                UART0-RX  UART0_RX/IR1_RX/PB23
-     J15 Pin 2 Tx                UART0-TX  UART0_TX/IR1_TX/PB22
+     J15 Pin 3 Tx                UART0-TX  UART0_TX/IR1_TX/PB22
 
   2. UART2 is available on J11
 
@@ -249,3 +250,39 @@ Buttons
     SW4 Key_Home  LCD1_D18/ATAD14/KP_OUT0/SMC_SLK/EINT18/CSI1_D18/PH18
     SW5 Key_Menu  LCD1_D19/ATAD15/KP_OUT1/SMC_SDA/EINT19/CSI1_D19/PH19
 
+Booting NuttX from an SD card
+=============================
+
+  These are the steps to get U-Boot booting from SD Card:
+
+    1. Get the U-Boot sources for the pcDuino
+
+       $ git clone https://github.com/yuq/u-boot-sunxi.git
+
+    2. Build U-Boot.  We really only want the SPL program; this builds
+       the whole thing:
+
+       $ cd u-boot-sunxi
+       $ make pcduino CROSS_COMPILE=arm-none-eabi-
+
+       At the conclusion of a success bin, you will find the u-boot binary
+       at ./u-boot.bin and the SPL binary at ./spl/sunxi-spl.bin
+
+       NOTES:
+       a. You may need to use a different tool prefix for the CROSS_COMPILE=
+          value, depending upon what toolchain you have installed and upon
+          which platform your are working.
+       b. When I try this on Cygwin, I get a make failure that is, apparently,
+          due to some script incompatibility.
+
+    3. Insert a FLASH stick.  Use dmesg to get the name of the new USB
+       device.  Make sure that it is not mounted, then (assuming that the
+       USB device is /dev/sdb):
+
+       $ sudo dd if=./spl/sunxi-spl.bin of=/dev/sdb bs=1024 seek=8
+       $ sudo dd if=nuttx.bin of=/dev/sdb bs=1024 seek=32
+
+    4. Remove the FLASH stick from the host pc.  Insert into the pcDuino
+       microSD slot.  Reset the pcDuino and NuttX should be running.
+
+  Reference: https://www.olimex.com/wiki/Bare_Metal_programming_A13#Stand_alone_program_running_with_uboot
