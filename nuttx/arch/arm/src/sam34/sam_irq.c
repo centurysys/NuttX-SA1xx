@@ -74,6 +74,8 @@
 
 volatile uint32_t *current_regs;
 
+extern uint32_t _vectors[];
+
 /****************************************************************************
  * Private Data
  ****************************************************************************/
@@ -345,7 +347,7 @@ void up_irqinitialize(void)
 #if defined(CONFIG_ARCH_RAMVECTORS)
   up_ramvec_initialize();
 #elif defined(CONFIG_SAM_BOOTLOADER)
-  putreg32((uint32_t)sam_vectors, NVIC_VECTAB);
+  putreg32((uint32_t)_vectors, NVIC_VECTAB);
 #endif
 
   /* Set all interrupts (and exceptions) to the default priority */
@@ -535,14 +537,8 @@ int up_prioritize_irq(int irq, int priority)
   uint32_t regval;
   int shift;
 
-#ifdef CONFIG_ARMV7M_USEBASEPRI
-  DEBUGASSERT(irq >= SAM_IRQ_MEMFAULT && irq < SAM_IRQ_NIRQS &&
-              priority >= NVIC_SYSH_DISABLE_PRIORITY &&
-              priority <= NVIC_SYSH_PRIORITY_MIN);
-#else
   DEBUGASSERT(irq >= SAM_IRQ_MEMFAULT && irq < SAM_IRQ_NIRQS &&
               (unsigned)priority <= NVIC_SYSH_PRIORITY_MIN);
-#endif
 
   if (irq < SAM_IRQ_EXTINT)
     {
