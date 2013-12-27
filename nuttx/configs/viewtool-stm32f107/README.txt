@@ -25,6 +25,9 @@ Contents
     - J5 - USART1
     - PL-2013 USB-to-Serial Interface
     - RS-232 Module
+  o USB Interface
+  o microSD Card Interface
+  o ViewTool DP83848 Ethernet Module
   o Toolchains
     - NOTE about Windows native toolchains
   o Configurations
@@ -117,6 +120,281 @@ Serial Console
 
     J35 - CON2.  Jumper Setting:
       1 <-> 2 : Proves 3.3V to the RS-232 module.
+
+USB Interface
+=============
+
+  USB Connector
+  -------------
+
+  The Viewtool base board has a USB Mini-B connector.  Only USB device can
+  be supported with this connector.
+
+  ------------------------- ------------------------------------
+         USB Connector
+         J10 mini-USB       GPIO CONFIGURATION(s)
+  --- --------- ----------- ------------------------------------
+  Pin Signal
+  --- --------- ----------- ------------------------------------
+   1  USB_VBUS  VDD_USB     (No sensing available)
+   2  OTG_DM    PA11        GPIO_OTGFS_DM (F107) GPIO_USB_DM (F103)
+   3  OTG_DP    PA12        GPIO_OTGFS_DP (F107) GPIO_USB_DP (F103)
+   4  OTG_ID    PA10        GPIO_OTGFS_ID (F107)
+   5  Shield    N/A         N/A
+   6  Shield    N/A         N/A
+   7  Shield    N/A         N/A
+   8  Shield    N/A         N/A
+   9  Shield    N/A         N/A
+                PE11 USB_EN   GPIO controlled soft pull-up (if J51 closed)
+
+   NOTES:
+   1. GPIO_OTGFS_VBUS (F107) should not be configured.  No VBUS sensing
+   2. GPIO_OTGFS_SOF (F107) is not used
+   3. The OTG FS module has is own, internal soft pull-up logic.  J51 should
+      be open so that PE11 activity does effect USB.
+
+
+  STM32F103 Configuration
+  -----------------------
+
+    System Type -> STM32 Peripheral Support
+      CONFIG_STM32_USB=y                 : Enable USB FS device
+
+    Device Drivers
+      CONFIG_USBDEV                      : USB device support
+
+    STATUS:  All of the code is in place, but no testing has been performed.
+
+  STM32F107 Configuration
+  -----------------------
+
+    System Type -> STM32 Peripheral Support
+      CONFIG_STM32_OTGFS=y               : Enable OTG FS
+
+    Device Drivers
+      CONFIG_USBDEV                      : USB device support
+
+    STATUS:  All of the code is in place, but USB is not yet functional.
+
+  CDC/ACM Configuration
+  ---------------------
+
+  This will select the CDC/ACM serial device.  Defaults for the other
+  options should be okay.
+
+    Device Drivers -> USB Device Driver Support
+      CONFIG_CDCACM=y                     : Enable the CDC/ACM device
+
+  The following setting enables an example that can can be used to control
+  the CDC/ACM device.  It will add two new NSH commands:
+
+    a. sercon will connect the USB serial device (creating /dev/ttyACM0), and
+    b. serdis which will disconnect the USB serial device (destroying
+        /dev/ttyACM0).
+
+    Application Configuration -> Examples:
+      CONFIG_SYSTEM_CDCACM=y              : Enable an CDC/ACM example
+
+  USB MSC Configuration
+  ---------------------
+  [WARNING: This configuration has not yet been verified]
+
+  The Mass Storage Class (MSC) class driver can be selected in order to
+  export the microSD card to the host computer.  MSC support is selected:
+
+    Device Drivers -> USB Device Driver Support
+      CONFIG_USBMSC=y                       : Enable the USB MSC class driver
+      CONFIG_USBMSC_EPBULKOUT=1             : Use EP1 for the BULK OUT endpoint
+      CONFIG_USBMSC_EPBULKIN=2              : Use EP2 for the BULK IN endpoint
+
+  The following setting enables an add-on that can can be used to control
+  the USB MSC device.  It will add two new NSH commands:
+
+    a. msconn will connect the USB serial device and export the microSD
+       card to the host, and
+    b. msdis which will disconnect the USB serial device.
+
+    Application Configuration -> System Add-Ons:
+      CONFIG_SYSTEM_USBMSC=y                : Enable the USBMSC add-on
+      CONFIG_SYSTEM_USBMSC_NLUNS=1          : One LUN
+      CONFIG_SYSTEM_USBMSC_DEVMINOR1=0      : Minor device zero
+      CONFIG_SYSTEM_USBMSC_DEVPATH1="/dev/mmcsd0"
+                                            : Use a single, LUN:  The microSD
+                                            : block driver.
+
+    NOTES:
+
+    a. To prevent file system corruption, make sure that the microSD is un-
+       mounted *before* exporting the mass storage device to the host:
+
+         nsh> umount /mnt/sdcard
+         nsh> mscon
+
+       The microSD can be re-mounted after the mass storage class is disconnected:
+
+        nsh> msdis
+        nsh> mount -t vfat /dev/mtdblock0 /mnt/at25
+
+microSD Card Interface
+======================
+
+  microSD Connector
+  -----------------
+
+    ----------------------------- ------------------------- --------------------------------
+           Connector J17            GPIO CONFIGURATION(s)
+    PIN SIGNAL        LEGEND          (no remapping)                 DP83848C Board
+    --- ------------- ----------- ------------------------- --------------------------------
+    1   VDD 3.3       N/A         N/A                       3.3
+    2   GND           N/A         N/A                       GND
+    3   PC8           SDIO_D0     GPIO_SDIO_D0              D0
+    4   PD2           SDIO_CMD    GPIO_SDIO_CMD             CMD
+    5   PC12          SDIO_CLK    GPIO_SDIO_CK              CLK
+    6   PC11          SDIO_D3     GPIO_SDIO_D3              D3
+    7   PC10          SDIO_D2     GPIO_SDIO_D2              D2
+    8   PC9           SDIO_D1     GPIO_SDIO_D1              D1
+    9   PA8           CD          Board-specific GPIO input CD
+    --- ------------- ----------- ------------------------- --------------------------------
+
+    NOTES:
+    1. The STM32F107 does not support the SDIO/memory card interface.  So the SD card
+       cannot be used with the STM32F107 (unless the pin-out just happens to match up
+       with an SPI-based card interface???)
+
+  Configuration (STM32F103 only)
+  ------------------------------
+  [WARNING: This configuration has not yet been verified]
+
+  Enabling SDIO-based MMC/SD support:
+
+    System Type->STM32 Peripheral Support
+      CONFIG_STM32_SDIO=y                   : Enable SDIO support
+      CONFIG_STM32_DMA2=y                   : DMA2 is needed by the driver
+
+    Device Drivers -> MMC/SD Driver Support
+      CONFIG_MMCSD=y                        : Enable MMC/SD support
+      CONFIG_MMSCD_NSLOTS=1                 : One slot per driver instance
+      CONFIG_MMCSD_HAVECARDDETECT=y         : Supports card-detect PIOs
+      CONFIG_MMCSD_MMCSUPPORT=n             : Interferes with some SD cards
+      CONFIG_MMCSD_SPI=n                    : No SPI-based MMC/SD support
+      CONFIG_MMCSD_SDIO=y                   : SDIO-based MMC/SD support
+      CONFIG_SDIO_DMA=y                     : Use SDIO DMA
+      CONFIG_SDIO_BLOCKSETUP=y              : Needs to know block sizes
+
+    Library Routines
+      CONFIG_SCHED_WORKQUEUE=y              : Driver needs work queue support
+
+    Application Configuration -> NSH Library
+      CONFIG_NSH_ARCHINIT=y                 : NSH board-initialization
+
+    Using the SD card
+    -----------------
+
+    1) After booting, an SDIO device will appear as /dev/mmcsd0
+
+    2) If you try mounting an SD card with nothing in the slot, the
+       mount will fail:
+
+         nsh> mount -t vfat /dev/mmcsd1 /mnt/sd1
+         nsh: mount: mount failed: 19
+
+    STATUS:  All of the code is in place, but no testing has been performed.
+
+ViewTool DP83848 Ethernet Module
+================================
+
+  Ethernet Connector
+  ------------------
+
+    ----------------------------- ------------------------ --------------------------------
+           Connector J2            GPIO CONFIGURATION(s)
+    PIN SIGNAL        LEGEND         (no remapping)                 DP83848C Board
+    --- ------------- ----------- ------------------------ --------------------------------
+    1   PA0           MII_CRS     N/A                      N/C
+    2   PB11/SDA2     COM_TX_EN   GPIO_ETH_RMII_TX_EN      TX_EN
+    3   PA3/LED_G2    MII_COL     N/A                      N/C
+    4   PB12/NSS2     COM_TXD0    GPIO_ETH_RMII_TXD0       TXD0
+    5   PA1           MII_RX_CLK  GPIO_ETH_RMII_REF_CLK    OSCIN
+    6   PB13/SCK2     COM_TXD1    GPIO_ETH_RMII_TXD1       TXD1
+    7   PB1/CD_RESET  MII_RXD3    N/A                      N/C
+    8   PC4/LCDTP     COM_RXD0    GPIO_ETH_RMII_RXD0       RXD0
+    9   PB0/BL_PWM    MII_RXD2    N/A                      N/C
+    10  PC5           COM_RXD1    GPIO_ETH_RMII_RXD1       RXD1
+    11  PB8/CAN1_RX   MII_TXD3    N/A                      N/C
+    12  PC1/LED_R1    COM_MDC     GPIO_ETH_MDC             MDC
+    13  PC2/LED_R2    MII_TXD2    N/A                      N/C
+    14  PA2/LED_G1    COM_MDIO    GPIO_ETH_MDIO            MDIO
+    15  PC3/ONEW      MII_TX_CLK  N/A                      N/C
+    16  PB10/SCL2     RX_ER       N/A                      N/C
+    17  PD2           GPIO1       N/A                      N/C
+    18  PA7/MOSI1     COM_RX_DV   GPIO_ETH_RMII_CRS_DV     CRS_DIV
+    19  PD3           GPIO2       N/A                      N/C
+    20  PB5           COM_PPS_OUT N/A                      N/C
+    21  VDD 3.3       VDD_3.3     N/A                      3.3V
+    22  VDD 3.3       VDD_3.3     N/A                      3.3V
+    23  GND           GND         N/A                      GND
+    24  GND           GND         N/A                      GND
+    --- ------------- ----------- ------------------------ --------------------------------
+
+    NOTES:
+    1. RMII interface is used
+    2. There is a 50MHz clock on board the DP83848.  No MCO clock need be provided.
+
+  Configuration
+  -------------
+
+    System Type -> STM32 Peripheral Support
+      CONFIG_STM32_ETHMAC=y                  : Enable Ethernet driver
+
+    System Type -> Ethernet MAC Configuration
+      CONFIG_STM32_RMII=y                    : Configuration RM-II DP83848C PHY
+      CONFIG_STM32_AUTONEG=y
+      CONFIG_STM32_PHYADDR=1
+      CONFIG_STM32_PHYSR=16
+      CONFIG_STM32_PHYSR_SPEED=0x0002
+      CONFIG_STM32_PHYSR_100MBPS=0x0000
+      CONFIG_STM32_PHYSR_MODE=0x0004
+      CONFIG_STM32_PHYSR_FULLDUPLEX=0x0004
+      CONFIG_STM32_RMII_EXTCLK=y
+
+    Device Drivers -> Networking Devices
+      CONFIG_NETDEVICES=y                    : More PHY stuff
+      CONFIG_ETH0_PHY_DP83848C=y
+
+    Networking (required)
+      CONFIG_NET=y                           : Enabled networking support
+      CONFIG_NET_MULTIBUFFER=y               : Required by driver
+      CONFIG_NSH_NOMAC=y
+
+    Networking (recommended/typical)
+      CONFIG_NSOCKET_DESCRIPTORS=10          : Socket-related
+      CONFIG_NET_SOCKOPTS=y
+
+      CONFIG_NET_BUFSIZE=650                 : Maximum packet size
+      CONFIG_NET_RECEIVE_WINDOW=650
+      CONFIG_NET_TCP_READAHEAD_BUFSIZE=650
+
+      CONFIG_NET_TCP=y                       : TCP support
+      CONFIG_NET_NTCP_READAHEAD_BUFFERS=8
+
+      CONFIG_NET_UDP=y                       : UDP support
+      CONFIG_NET_UDP_CONNS=8
+
+      CONFIG_NET_ICMP=y                      : ICMP support
+      CONFIG_NET_ICMP_PING=y
+
+      CONFIG_NSH_DRIPADDR=0x0a000001         : Network identity
+      CONFIG_NSH_IPADDR=0x0a000002
+      CONFIG_NSH_NETMASK=0xffffff00
+
+    Network Utilities (basic)
+      CONFIG_NETUTILS_TFTPC=y                : Needed by NSH unless to disable TFTP commands
+      CONFIG_NETUTILS_DHCPC=y                : Fun stuff
+      CONFIG_NETUTILS_TELNETD=y              : Support for a Telnet NSH console
+      CONFIG_NSH_TELNET=y
+
+      (also FTP, TFTP, WGET, NFS, etc. if you also have a mass storage
+      device).
 
 Toolchains
 ==========
@@ -224,17 +502,32 @@ Configurations
   Configuration Sub-directories
   -----------------------------
 
-  nsh:
+  netnsh:
 
-    This configuration directory provide the basuic NuttShell (NSH).
+    This configuration directory provide the NuttShell (NSH) with
+    networking support.
 
     NOTES:
-    1. This configuration uses the default USART1 serial console.  That
+    1. This configuration will work only on the version the viewtool
+       board with the the STM32F107VCT6 installed.  If you have a board
+       with the STM32F103VCT6 installed, please use the nsh configuration
+       described below.
+
+    2. There is no PHY on the base viewtool stm32f107 board.  You must
+       also have the "ViewTool DP83848 Ethernet Module" installed on J2
+       in order to support networking.
+
+    3. Since networking is enabled, you will see some boot-up delays when
+       the network connection is established.  These delays can be quite
+       large is no network is attached (A production design to bring up the
+       network asynchronously to avoid these start up delays).
+
+    4. This configuration uses the default USART1 serial console.  That
        is easily changed by reconfiguring to (1) enable a different
        serial peripheral, and (2) selecting that serial peripheral as
        the console device.
 
-    2. By default, this configuration is set up to build on Windows
+    5. By default, this configuration is set up to build on Windows
        under either a Cygwin or MSYS environment using a recent, Windows-
        native, generic ARM EABI GCC toolchain (such as the CodeSourcery
        toolchain).  Both the build environment and the toolchain
@@ -243,6 +536,47 @@ Configurations
        CONFIG_HOST_WINDOWS=y                   : Windows operating system
        CONFIG_WINDOWS_CYGWIN=y                 : POSIX environment under windows
        CONFIG_ARMV7M_TOOLCHAIN_CODESOURCERYW=y : CodeSourcery for Windows
+
+    6. USB support is disabled by default.  See the section above entitled,
+       "USB Interface"
+
+    STATUS.  The first time I build the configuration, I get some undefined
+    external references.  No idea why.  Simply cleaning the apps/ directory
+    and rebuilding fixes the problem:
+
+      make apps_clean all
+
+  nsh:
+
+    This configuration directory provide the basic NuttShell (NSH).
+
+    NOTES:
+    1. This configuration will work with either the version of the board
+       with STM32F107VCT6 or STM32F103VCT6 installed.  The default
+       configuration is for the STM32F107VCT6.  To use this configuration
+       with a STM32F103VCT6, it would have to be modified as follows:
+
+      System Type -> STM32 Configuration Options
+         CONFIG_ARCH_CHIP_STM32F103VCT6=y
+         CONFIG_ARCH_CHIP_STM32F107VC=n
+
+    2. This configuration uses the default USART1 serial console.  That
+       is easily changed by reconfiguring to (1) enable a different
+       serial peripheral, and (2) selecting that serial peripheral as
+       the console device.
+
+    3. By default, this configuration is set up to build on Windows
+       under either a Cygwin or MSYS environment using a recent, Windows-
+       native, generic ARM EABI GCC toolchain (such as the CodeSourcery
+       toolchain).  Both the build environment and the toolchain
+       selection can easily be changed by reconfiguring:
+
+       CONFIG_HOST_WINDOWS=y                   : Windows operating system
+       CONFIG_WINDOWS_CYGWIN=y                 : POSIX environment under windows
+       CONFIG_ARMV7M_TOOLCHAIN_CODESOURCERYW=y : CodeSourcery for Windows
+
+    4. USB support is disabled by default.  See the section above entitled,
+       "USB Interface"
 
   highpri:
 

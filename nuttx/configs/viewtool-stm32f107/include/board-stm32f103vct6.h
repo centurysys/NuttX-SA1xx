@@ -102,12 +102,15 @@
 #define STM32_APB1_TIM6_CLKIN   (STM32_PCLK1_FREQUENCY)
 #define STM32_APB1_TIM7_CLKIN   (STM32_PCLK1_FREQUENCY)
 
-/* USB divider -- Divide PLL clock by 1.5 */
+/* USB divider -- Divide PLL clock by 1.5
+ *
+ * USB clock = PLLOUT / 1.5 = 72MHz / 1.5 = 48MHz
+ */
 
 #define STM32_CFGR_USBPRE       0
 
 /* Timer Frequencies, if APBx is set to 1, frequency is same to APBx
- * otherwise frequency is 2xAPBx. 
+ * otherwise frequency is 2xAPBx.
  * Note: TIM1,8 are on APB2, others on APB1 */
 
 #define STM32_TIM18_FREQUENCY   STM32_HCLK_FREQUENCY

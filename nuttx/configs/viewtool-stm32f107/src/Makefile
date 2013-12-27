@@ -50,6 +50,26 @@ ifeq ($(CONFIG_CAN),y)
 CSRCS += stm32_can.c
 endif
 
+ifeq ($(CONFIG_MMCSD),y)
+CSRCS += stm32_mmcsd.c
+endif
+
+ifeq ($(CONFIG_STM32_OTGFS),y) # F107
+CSRCS += stm32_usbdev.c
+else
+ifeq ($(CONFIG_STM32_USB),y) # F103
+CSRCS += stm32_usbdev.c
+endif
+endif
+
+ifeq ($(CONFIG_NSH_ARCHINIT),y)
+CSRCS += stm32_nsh.c
+endif
+
+ifeq ($(CONFIG_USBMSC),y)
+CSRCS += stm32_usbmsc.c
+endif
+
 ifeq ($(CONFIG_ARCH_BUTTONS),y)
 CSRCS += stm32_buttons.c
 endif
