@@ -169,6 +169,11 @@ http://nuttx.org/Documentation/NuttXConfigVariables.html.
 Supported Boards
 ^^^^^^^^^^^^^^^^
 
+configs/16z
+  This is the port of NuttX port to the 16z board. The 16z board is based on
+  the ZiLOG ZNEO Z16F2811AL20EG part.  See https://github.com/toyaga/16z for
+  further information.
+
 configs/amber
   This is placeholder for the SoC Robotics Amber Web Server that is based
   on the Atmel AVR ATMega128 MCU.  There is not much there yet and what is
@@ -439,6 +444,12 @@ configs/pjrc-8051
   8051 Microcontroller.  This port uses the PJRC 87C52 development system
   and the SDCC toolchain.   This port is not quite ready for prime time.
 
+config/px4fmu-v2_upstream
+  This is a minimal configuration that supports low-level test of the
+  PX4FMU v2 in the NuttX source tree.  If you are using PX4, you probably
+  don't want this configuration.  You probably want the latest supported
+  configuration available from the PX4 GIT repositories.
+
 configs/qemu-i486
   Port of NuttX to QEMU in i486 mode.  This port will also run on real i486
   hardwared (Google the Bifferboard).
@@ -521,6 +532,12 @@ configs/stm32f4discovery
 
 configs/stm32f429i-disco
   STMicro STM32F429I-Discovery board based on the STMicro STM32F429ZIT6 MCU.
+
+configs/stm32ldiscovery
+  STMicro STM32L-Discovery board based on the STMicro STM32L152RB MCU.
+
+configs/stm32vldiscovery
+  STMicro STM32VL-Discovery board based on the STMicro STM32F100RB MCU.
 
 configs/sure-pic32mx
   The "Advanced USB Storage Demo Board," Model DB-DP11215, from Sure

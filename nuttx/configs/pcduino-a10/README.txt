@@ -101,7 +101,9 @@ Contents
   - Serial Console
   - LEDs
   - Buttons
+  - JTAG
   - Booting NuttX from an SD card
+  - Configurations
 
 pcDuino v1 Connectors
 =====================
@@ -250,6 +252,35 @@ Buttons
     SW4 Key_Home  LCD1_D18/ATAD14/KP_OUT0/SMC_SLK/EINT18/CSI1_D18/PH18
     SW5 Key_Menu  LCD1_D19/ATAD15/KP_OUT1/SMC_SDA/EINT19/CSI1_D19/PH19
 
+JTAG
+====
+
+  A. I didn't get success testing J-Link with pcDuino, it is reading TDI
+     always as 1.
+
+     I think the main problem is because pcDuino JTAG doesn't have RESET
+     (no trst or srst). I tried to connect the JTAG reset to Power_Reset
+     of pcDuino, but it didn't work.
+
+  B. Notice that the OlinuxIno JTAG does have a reset line called RESET_N.
+     But it is nothing special.  It just connects to the RESET# pin C14 on
+     the A10.  The pcDuino also brings out the RESET# on several connectors.
+
+     So it seems like you could get the reset line if you need it, just not
+     from the set of JTAG pads.
+
+  A. I discovered the issue in the JTAG, it was not working because
+     JTAG_SEL was not tied to GND.
+
+    I compared the Olimex schematic with pcDuino and noticed there is a
+    R64 resister that is not placed in the board.
+
+    It was a little bit difficult to find this resistor, because it is
+    "hidden" among the capacitors in the bottom of the board.
+
+    After short circuiting the resistor PADs the JTAG started to work,
+    well, JLinkExe now recognize it, but OpenOCD is not working yet.
+
 Booting NuttX from an SD card
 =============================
 
@@ -286,3 +317,90 @@ Booting NuttX from an SD card
        microSD slot.  Reset the pcDuino and NuttX should be running.
 
   Reference: https://www.olimex.com/wiki/Bare_Metal_programming_A13#Stand_alone_program_running_with_uboot
+
+Configurations
+==============
+
+  Information Common to All Configurations
+  ----------------------------------------
+  Each pcDuino configuration is maintained in a sub-directory and
+  can be selected as follow:
+
+    cd tools
+    ./configure.sh pcduino-a10/<subdir>
+    cd -
+    . ./setenv.sh
+
+  Before sourcing the setenv.sh file above, you should examine it and perform
+  edits as necessary so that TOOLCHAIN_BIN is the correct path to the directory
+  than holds your toolchain binaries.
+
+  And then build NuttX by simply typing the following.  At the conclusion of
+  the make, the nuttx binary will reside in an ELF file called, simply, nuttx.
+
+    make
+
+  The <subdir> that is provided above as an argument to the tools/configure.sh
+  must be is one of the following.
+
+  NOTES:
+
+  1. These configurations use the mconf-based configuration tool.  To
+    change any of these configurations using that tool, you should:
+
+    a. Build and install the kconfig-mconf tool.  See nuttx/README.txt
+       and misc/tools/
+
+    b. Execute 'make menuconfig' in nuttx/ in order to start the
+       reconfiguration process.
+
+  2. Unless stated otherwise, all configurations generate console
+     output on UART0.
+
+  3. All of these configurations use the Code Sourcery for Windows toolchain
+     (unless stated otherwise in the description of the configuration).  That
+     toolchain selection can easily be reconfigured using 'make menuconfig'.
+     Here are the relevant current settings:
+
+     Build Setup:
+       CONFIG_HOST_WINDOS=y                    : Microsoft Windows
+       CONFIG_WINDOWS_CYGWIN=y                 : Using Cygwin or other POSIX environment
+
+     System Type -> Toolchain:
+       CONFIG_ARMV7A_TOOLCHAIN_CODESOURCERYW=y : CodeSourcery for Windows
+
+     The setenv.sh file is available for you to use to set the PATH
+     variable.  The path in the that file may not, however, be correct
+     for your installation.  Try 'which arm-none-eabi-gcc' to make sure that
+     you are selecting the right tool.
+
+  Configuration Sub-directories
+  -----------------------------
+
+  nsh:
+
+    This configuration directory provide the NuttShell (NSH).  There are
+
+    STATUS:
+      This configuration builds and runs, but only if the patch at
+      nuttx/configs/pcduino-a10/nsh/pcduino-140107.patch is applied.  This patchfile
+      contains some fixes that are as-of-yet not well understood and so cannot be checked
+      in.  Below is a summary of the kludges currently in this patch file:
+
+      a) nuttx/arch/arm/src/armv7-a/arm_head.S: Initializes the MMU so that A10
+         peripherals can be accessed very early.  This is not normally necessary, but
+         is required because of certain debug statements that seem to be necessary
+         in a1x_boot.c (see the next item).
+
+      b) nuttx/arch/arm/src/a1x/a1x_boot.c:  This file contains several arbitrary
+         statements that just output debug information.  Some of these can be removed,
+         but if you remove all of the debug output, the pcDuino will not boot.  No
+         idea yet why.
+
+      c) nuttx/arch/arm/src/armv7-a/arm_mmu.c:  After setting a page table entry
+         for the MMU, the MMU's TLBs are flushed for that memory region.  That
+         flushing must currently be commented out.  Why?  I am not sure, but I
+         think that this is because TLBs are being flushed why they are in use.  For
+         the pcDuino, we are executing out of SDRAM so when the TLBs for the SDRAM
+         region are invalidated that cause a crash.  That has not been proven,
+         however.

@@ -2,7 +2,7 @@
 # Config.mk
 # Global build rules and macros.
 #
-#   Copyright (C) 2011, 2013 Gregory Nutt. All rights reserved.
+#   Copyright (C) 2011, 2013-2014 Gregory Nutt. All rights reserved.
 #   Author: Richard Cochran
 #           Gregory Nutt <gnutt@nuttx.org>
 #
@@ -241,4 +241,3 @@ define CLEAN
 	$(Q) rm -f *$(OBJEXT) *$(LIBEXT) *~ .*.swp
 endef
 endif
- 

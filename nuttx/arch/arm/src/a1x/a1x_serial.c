@@ -1,7 +1,7 @@
 /****************************************************************************
  * arch/arm/src/a1x/a1x_serial.c
  *
- *   Copyright (C) 2013 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2013-2014 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -77,10 +77,13 @@
 
 #if defined(USE_SERIALDRIVER) && defined(HAVE_UART_DEVICE)
 
-/* SCLK is the UART input clock */
+/* SCLK is the UART input clock.
+ *
+ * Through experimentation, it has been found that the serial clock is
+ * OSC24M
+ */
 
-#define A1X_SCLK 0
-#warning What is the correct value of SCLK
+#define A1X_SCLK 24000000
 
 /****************************************************************************
  * Private Types
@@ -91,6 +94,7 @@ struct up_dev_s
   uint32_t uartbase;  /* Base address of UART registers */
   uint32_t baud;      /* Configured baud */
   uint32_t ier;       /* Saved IER value */
+  xcpt_t   handler;   /* UART interrupt handler */
   uint8_t  irq;       /* IRQ associated with this UART */
   uint8_t  parity;    /* 0=none, 1=odd, 2=even */
   uint8_t  bits;      /* Number of bits (7 or 8) */
@@ -105,7 +109,31 @@ static int  up_setup(struct uart_dev_s *dev);
 static void up_shutdown(struct uart_dev_s *dev);
 static int  up_attach(struct uart_dev_s *dev);
 static void up_detach(struct uart_dev_s *dev);
-static int  up_interrupt(int irq, void *context);
+static int  uart_interrupt(struct uart_dev_s *dev);
+#ifdef CONFIG_A1X_UART0
+static int  uart0_interrupt(int irq, void *context);
+#endif
+#ifdef CONFIG_A1X_UART1
+static int  uart1_interrupt(int irq, void *context);
+#endif
+#ifdef CONFIG_A1X_UART2
+static int  uart2_interrupt(int irq, void *context);
+#endif
+#ifdef CONFIG_A1X_UART3
+static int  uart3_interrupt(int irq, void *context);
+#endif
+#ifdef CONFIG_A1X_UART4
+static int  uart4_interrupt(int irq, void *context);
+#endif
+#ifdef CONFIG_A1X_UART5
+static int  uart5_interrupt(int irq, void *context);
+#endif
+#ifdef CONFIG_A1X_UART6
+static int  uart6_interrupt(int irq, void *context);
+#endif
+#ifdef CONFIG_A1X_UART7
+static int  uart7_interrupt(int irq, void *context);
+#endif
 static int  up_ioctl(struct file *filep, int cmd, unsigned long arg);
 static int  up_receive(struct uart_dev_s *dev, uint32_t *status);
 static void up_rxint(struct uart_dev_s *dev, bool enable);
@@ -184,6 +212,7 @@ static struct up_dev_s g_uart0priv =
 {
   .uartbase       = A1X_UART0_VADDR,
   .baud           = CONFIG_UART0_BAUD,
+  .handler        = uart0_interrupt,
   .irq            = A1X_IRQ_UART0,
   .parity         = CONFIG_UART0_PARITY,
   .bits           = CONFIG_UART0_BITS,
@@ -212,8 +241,9 @@ static uart_dev_t g_uart0port =
 #ifdef CONFIG_A1X_UART1
 static struct up_dev_s g_uart1priv =
 {
-  .uartbase       = A1X_UART1_BASE,
+  .uartbase       = A1X_UART1_VADDR,
   .baud           = CONFIG_UART1_BAUD,
+  .handler        = uart1_interrupt,
   .irq            = A1X_IRQ_UART1,
   .parity         = CONFIG_UART1_PARITY,
   .bits           = CONFIG_UART1_BITS,
@@ -242,8 +272,9 @@ static uart_dev_t g_uart1port =
 #ifdef CONFIG_A1X_UART2
 static struct up_dev_s g_uart2priv =
 {
-  .uartbase       = A1X_UART2_BASE,
+  .uartbase       = A1X_UART2_VADDR,
   .baud           = CONFIG_UART2_BAUD,
+  .handler        = uart2_interrupt,
   .irq            = A1X_IRQ_UART2,
   .parity         = CONFIG_UART2_PARITY,
   .bits           = CONFIG_UART2_BITS,
@@ -272,8 +303,9 @@ static uart_dev_t g_uart2port =
 #ifdef CONFIG_A1X_UART3
 static struct up_dev_s g_uart3priv =
 {
-  .uartbase       = A1X_UART3_BASE,
+  .uartbase       = A1X_UART3_VADDR,
   .baud           = CONFIG_UART3_BAUD,
+  .handler        = uart3_interrupt,
   .irq            = A1X_IRQ_UART3,
   .parity         = CONFIG_UART3_PARITY,
   .bits           = CONFIG_UART3_BITS,
@@ -302,8 +334,9 @@ static uart_dev_t g_uart3port =
 #ifdef CONFIG_A1X_UART4
 static struct up_dev_s g_uart4priv =
 {
-  .uartbase       = A1X_UART4_BASE,
+  .uartbase       = A1X_UART4_VADDR,
   .baud           = CONFIG_UART4_BAUD,
+  .handler        = uart4_interrupt,
   .irq            = A1X_IRQ_UART4,
   .parity         = CONFIG_UART4_PARITY,
   .bits           = CONFIG_UART4_BITS,
@@ -332,8 +365,9 @@ static uart_dev_t g_uart4port =
 #ifdef CONFIG_A1X_UART5
 static struct up_dev_s g_uart5priv =
 {
-  .uartbase       = A1X_UART5_BASE,
+  .uartbase       = A1X_UART5_VADDR,
   .baud           = CONFIG_UART5_BAUD,
+  .handler        = uart5_interrupt,
   .irq            = A1X_IRQ_UART5,
   .parity         = CONFIG_UART5_PARITY,
   .bits           = CONFIG_UART5_BITS,
@@ -362,8 +396,9 @@ static uart_dev_t g_uart5port =
 #ifdef CONFIG_A1X_UART6
 static struct up_dev_s g_uart6priv =
 {
-  .uartbase       = A1X_UART6_BASE,
+  .uartbase       = A1X_UART6_VADDR,
   .baud           = CONFIG_UART6_BAUD,
+  .handler        = uart6_interrupt,
   .irq            = A1X_IRQ_UART6,
   .parity         = CONFIG_UART6_PARITY,
   .bits           = CONFIG_UART6_BITS,
@@ -392,8 +427,9 @@ static uart_dev_t g_uart6port =
 #ifdef CONFIG_A1X_UART7
 static struct up_dev_s g_uart7priv =
 {
-  .uartbase       = A1X_UART7_BASE,
+  .uartbase       = A1X_UART7_VADDR,
   .baud           = CONFIG_UART7_BAUD,
+  .handler        = uart7_interrupt,
   .irq            = A1X_IRQ_UART7,
   .parity         = CONFIG_UART7_PARITY,
   .bits           = CONFIG_UART7_BITS,
@@ -457,28 +493,28 @@ static uart_dev_t g_uart7port =
 #    define UART7_ASSIGNED      1
 #else
 #  undef CONSOLE_DEV                        /* No console */
-#  if defined(CONFIG_KINETIS_UART0)
+#  if defined(CONFIG_A1X_UART0)
 #    define TTYS0_DEV           g_uart0port /* UART0 is ttyS0 */
 #    define UART0_ASSIGNED      1
-#  elif defined(CONFIG_KINETIS_UART1)
+#  elif defined(CONFIG_A1X_UART1)
 #    define TTYS0_DEV           g_uart1port /* UART1 is ttyS0 */
 #    define UART1_ASSIGNED      1
-#  elif defined(CONFIG_KINETIS_UART2)
+#  elif defined(CONFIG_A1X_UART2)
 #    define TTYS0_DEV           g_uart2port /* UART2 is ttyS0 */
 #    define UART2_ASSIGNED      1
-#  elif defined(CONFIG_KINETIS_UART3)
+#  elif defined(CONFIG_A1X_UART3)
 #    define TTYS0_DEV           g_uart3port /* UART3 is ttyS0 */
 #    define UART3_ASSIGNED      1
-#  elif defined(CONFIG_KINETIS_UART4)
+#  elif defined(CONFIG_A1X_UART4)
 #    define TTYS0_DEV           g_uart4port /* UART4 is ttyS0 */
 #    define UART4_ASSIGNED      1
-#  elif defined(CONFIG_KINETIS_UART5)
+#  elif defined(CONFIG_A1X_UART5)
 #    define TTYS0_DEV           g_uart5port /* UART5 is ttyS0 */
 #    define UART5_ASSIGNED      1
-#  elif defined(CONFIG_KINETIS_UART6)
+#  elif defined(CONFIG_A1X_UART6)
 #    define TTYS0_DEV           g_uart6port /* UART6 is ttyS0 */
 #    define UART6_ASSIGNED      1
-#  elif defined(CONFIG_KINETIS_UART7)
+#  elif defined(CONFIG_A1X_UART7)
 #    define TTYS0_DEV           g_uart7port /* UART7 is ttyS0 */
 #    define UART7_ASSIGNED      1
 #  endif
@@ -486,28 +522,28 @@ static uart_dev_t g_uart7port =
 
 /* Pick ttys1.  This could be any of UART0-7 excluding the console UART. */
 
-#if defined(CONFIG_KINETIS_UART0) && !defined(UART0_ASSIGNED)
+#if defined(CONFIG_A1X_UART0) && !defined(UART0_ASSIGNED)
 #  define TTYS1_DEV           g_uart0port /* UART0 is ttyS1 */
 #  define UART0_ASSIGNED      1
-#elif defined(CONFIG_KINETIS_UART1) && !defined(UART1_ASSIGNED)
+#elif defined(CONFIG_A1X_UART1) && !defined(UART1_ASSIGNED)
 #  define TTYS1_DEV           g_uart1port /* UART1 is ttyS1 */
 #  define UART1_ASSIGNED      1
-#elif defined(CONFIG_KINETIS_UART2) && !defined(UART2_ASSIGNED)
+#elif defined(CONFIG_A1X_UART2) && !defined(UART2_ASSIGNED)
 #  define TTYS1_DEV           g_uart2port /* UART2 is ttyS1 */
 #  define UART2_ASSIGNED      1
-#elif defined(CONFIG_KINETIS_UART3) && !defined(UART3_ASSIGNED)
+#elif defined(CONFIG_A1X_UART3) && !defined(UART3_ASSIGNED)
 #  define TTYS1_DEV           g_uart3port /* UART3 is ttyS1 */
 #  define UART3_ASSIGNED      1
-#elif defined(CONFIG_KINETIS_UART4) && !defined(UART4_ASSIGNED)
+#elif defined(CONFIG_A1X_UART4) && !defined(UART4_ASSIGNED)
 #  define TTYS1_DEV           g_uart4port /* UART4 is ttyS1 */
 #  define UART4_ASSIGNED      1
-#elif defined(CONFIG_KINETIS_UART5) && !defined(UART5_ASSIGNED)
+#elif defined(CONFIG_A1X_UART5) && !defined(UART5_ASSIGNED)
 #  define TTYS1_DEV           g_uart5port /* UART5 is ttyS1 */
 #  define UART5_ASSIGNED      1
-#elif defined(CONFIG_KINETIS_UART6) && !defined(UART6_ASSIGNED)
+#elif defined(CONFIG_A1X_UART6) && !defined(UART6_ASSIGNED)
 #  define TTYS1_DEV           g_uart6port /* UART6 is ttyS1 */
 #  define UART6_ASSIGNED      1
-#elif defined(CONFIG_KINETIS_UART7) && !defined(UART7_ASSIGNED)
+#elif defined(CONFIG_A1X_UART7) && !defined(UART7_ASSIGNED)
 #  define TTYS1_DEV           g_uart7port /* UART7 is ttyS1 */
 #  define UART7_ASSIGNED      1
 #endif
@@ -517,25 +553,25 @@ static uart_dev_t g_uart7port =
  * console.
  */
 
-#if defined(CONFIG_KINETIS_UART1) && !defined(UART1_ASSIGNED)
+#if defined(CONFIG_A1X_UART1) && !defined(UART1_ASSIGNED)
 #  define TTYS2_DEV           g_uart1port /* UART1 is ttyS2 */
 #  define UART1_ASSIGNED      1
-#elif defined(CONFIG_KINETIS_UART2) && !defined(UART2_ASSIGNED)
+#elif defined(CONFIG_A1X_UART2) && !defined(UART2_ASSIGNED)
 #  define TTYS2_DEV           g_uart2port /* UART2 is ttyS2 */
 #  define UART2_ASSIGNED      1
-#elif defined(CONFIG_KINETIS_UART3) && !defined(UART3_ASSIGNED)
+#elif defined(CONFIG_A1X_UART3) && !defined(UART3_ASSIGNED)
 #  define TTYS2_DEV           g_uart3port /* UART3 is ttyS2 */
 #  define UART3_ASSIGNED      1
-#elif defined(CONFIG_KINETIS_UART4) && !defined(UART4_ASSIGNED)
+#elif defined(CONFIG_A1X_UART4) && !defined(UART4_ASSIGNED)
 #  define TTYS2_DEV           g_uart4port /* UART4 is ttyS2 */
 #  define UART4_ASSIGNED      1
-#elif defined(CONFIG_KINETIS_UART5) && !defined(UART5_ASSIGNED)
+#elif defined(CONFIG_A1X_UART5) && !defined(UART5_ASSIGNED)
 #  define TTYS2_DEV           g_uart5port /* UART5 is ttyS2 */
 #  define UART5_ASSIGNED      1
-#elif defined(CONFIG_KINETIS_UART6) && !defined(UART6_ASSIGNED)
+#elif defined(CONFIG_A1X_UART6) && !defined(UART6_ASSIGNED)
 #  define TTYS2_DEV           g_uart6port /* UART6 is ttyS2 */
 #  define UART6_ASSIGNED      1
-#elif defined(CONFIG_KINETIS_UART7) && !defined(UART7_ASSIGNED)
+#elif defined(CONFIG_A1X_UART7) && !defined(UART7_ASSIGNED)
 #  define TTYS2_DEV           g_uart7port /* UART7 is ttyS2 */
 #  define UART7_ASSIGNED      1
 #endif
@@ -545,22 +581,22 @@ static uart_dev_t g_uart7port =
  * UART 2-7 could also be the console.
  */
 
-#if defined(CONFIG_KINETIS_UART2) && !defined(UART2_ASSIGNED)
+#if defined(CONFIG_A1X_UART2) && !defined(UART2_ASSIGNED)
 #  define TTYS3_DEV           g_uart2port /* UART2 is ttyS3 */
 #  define UART2_ASSIGNED      1
-#elif defined(CONFIG_KINETIS_UART3) && !defined(UART3_ASSIGNED)
+#elif defined(CONFIG_A1X_UART3) && !defined(UART3_ASSIGNED)
 #  define TTYS3_DEV           g_uart3port /* UART3 is ttyS3 */
 #  define UART3_ASSIGNED      1
-#elif defined(CONFIG_KINETIS_UART4) && !defined(UART4_ASSIGNED)
+#elif defined(CONFIG_A1X_UART4) && !defined(UART4_ASSIGNED)
 #  define TTYS3_DEV           g_uart4port /* UART4 is ttyS3 */
 #  define UART4_ASSIGNED      1
-#elif defined(CONFIG_KINETIS_UART5) && !defined(UART5_ASSIGNED)
+#elif defined(CONFIG_A1X_UART5) && !defined(UART5_ASSIGNED)
 #  define TTYS3_DEV           g_uart5port /* UART5 is ttyS3 */
 #  define UART5_ASSIGNED      1
-#elif defined(CONFIG_KINETIS_UART6) && !defined(UART6_ASSIGNED)
+#elif defined(CONFIG_A1X_UART6) && !defined(UART6_ASSIGNED)
 #  define TTYS3_DEV           g_uart6port /* UART6 is ttyS3 */
 #  define UART6_ASSIGNED      1
-#elif defined(CONFIG_KINETIS_UART7) && !defined(UART7_ASSIGNED)
+#elif defined(CONFIG_A1X_UART7) && !defined(UART7_ASSIGNED)
 #  define TTYS3_DEV           g_uart7port /* UART7 is ttyS3 */
 #  define UART7_ASSIGNED      1
 #endif
@@ -570,19 +606,19 @@ static uart_dev_t g_uart7port =
  * UART 3-7 could also be the console.
  */
 
-#if defined(CONFIG_KINETIS_UART3) && !defined(UART3_ASSIGNED)
+#if defined(CONFIG_A1X_UART3) && !defined(UART3_ASSIGNED)
 #  define TTYS4_DEV           g_uart3port /* UART3 is ttyS4 */
 #  define UART3_ASSIGNED      1
-#elif defined(CONFIG_KINETIS_UART4) && !defined(UART4_ASSIGNED)
+#elif defined(CONFIG_A1X_UART4) && !defined(UART4_ASSIGNED)
 #  define TTYS4_DEV           g_uart4port /* UART4 is ttyS4 */
 #  define UART4_ASSIGNED      1
-#elif defined(CONFIG_KINETIS_UART5) && !defined(UART5_ASSIGNED)
+#elif defined(CONFIG_A1X_UART5) && !defined(UART5_ASSIGNED)
 #  define TTYS4_DEV           g_uart5port /* UART5 is ttyS4 */
 #  define UART5_ASSIGNED      1
-#elif defined(CONFIG_KINETIS_UART6) && !defined(UART6_ASSIGNED)
+#elif defined(CONFIG_A1X_UART6) && !defined(UART6_ASSIGNED)
 #  define TTYS4_DEV           g_uart6port /* UART6 is ttyS4 */
 #  define UART6_ASSIGNED      1
-#elif defined(CONFIG_KINETIS_UART7) && !defined(UART7_ASSIGNED)
+#elif defined(CONFIG_A1X_UART7) && !defined(UART7_ASSIGNED)
 #  define TTYS4_DEV           g_uart7port /* UART7 is ttyS4 */
 #  define UART7_ASSIGNED      1
 #endif
@@ -592,16 +628,16 @@ static uart_dev_t g_uart7port =
  * UART 4-7 could also be the console.
  */
 
-#if defined(CONFIG_KINETIS_UART4) && !defined(UART4_ASSIGNED)
+#if defined(CONFIG_A1X_UART4) && !defined(UART4_ASSIGNED)
 #  define TTYS5_DEV           g_uart4port /* UART4 is ttyS5 */
 #  define UART4_ASSIGNED      1
-#elif defined(CONFIG_KINETIS_UART5) && !defined(UART5_ASSIGNED)
+#elif defined(CONFIG_A1X_UART5) && !defined(UART5_ASSIGNED)
 #  define TTYS5_DEV           g_uart5port /* UART5 is ttyS5 */
 #  define UART5_ASSIGNED      1
-#elif defined(CONFIG_KINETIS_UART6) && !defined(UART6_ASSIGNED)
+#elif defined(CONFIG_A1X_UART6) && !defined(UART6_ASSIGNED)
 #  define TTYS5_DEV           g_uart6port /* UART6 is ttyS5 */
 #  define UART6_ASSIGNED      1
-#elif defined(CONFIG_KINETIS_UART7) && !defined(UART7_ASSIGNED)
+#elif defined(CONFIG_A1X_UART7) && !defined(UART7_ASSIGNED)
 #  define TTYS5_DEV           g_uart7port /* UART7 is ttyS5 */
 #  define UART7_ASSIGNED      1
 #endif
@@ -611,13 +647,13 @@ static uart_dev_t g_uart7port =
  * UART 5-7 could also be the console.
  */
 
-#if defined(CONFIG_KINETIS_UART5) && !defined(UART5_ASSIGNED)
+#if defined(CONFIG_A1X_UART5) && !defined(UART5_ASSIGNED)
 #  define TTYS6_DEV           g_uart5port /* UART5 is ttyS6 */
 #  define UART5_ASSIGNED      1
-#elif defined(CONFIG_KINETIS_UART6) && !defined(UART6_ASSIGNED)
+#elif defined(CONFIG_A1X_UART6) && !defined(UART6_ASSIGNED)
 #  define TTYS6_DEV           g_uart6port /* UART6 is ttyS6 */
 #  define UART6_ASSIGNED      1
-#elif defined(CONFIG_KINETIS_UART7) && !defined(UART7_ASSIGNED)
+#elif defined(CONFIG_A1X_UART7) && !defined(UART7_ASSIGNED)
 #  define TTYS6_DEV           g_uart7port /* UART7 is ttyS6 */
 #  define UART7_ASSIGNED      1
 #endif
@@ -627,10 +663,10 @@ static uart_dev_t g_uart7port =
  * UART 6-7 could also be the console.
  */
 
-#if defined(CONFIG_KINETIS_UART6) && !defined(UART6_ASSIGNED)
+#if defined(CONFIG_A1X_UART6) && !defined(UART6_ASSIGNED)
 #  define TTYS7_DEV           g_uart6port /* UART6 is ttyS7 */
 #  define UART6_ASSIGNED      1
-#elif defined(CONFIG_KINETIS_UART7) && !defined(UART7_ASSIGNED)
+#elif defined(CONFIG_A1X_UART7) && !defined(UART7_ASSIGNED)
 #  define TTYS7_DEV           g_uart7port /* UART7 is ttyS7 */
 #  define UART7_ASSIGNED      1
 #endif
@@ -917,7 +953,7 @@ static inline uint32_t a1x_uartdl(uint32_t baud)
 
 static int up_setup(struct uart_dev_s *dev)
 {
-#ifndef CONFIG_SUPPRESS_A1X_UART_CONFIG
+#ifndef CONFIG_SUPPRESS_UART_CONFIG
   struct up_dev_s *priv = (struct up_dev_s*)dev->priv;
   uint16_t dl;
   uint32_t lcr;
@@ -969,7 +1005,7 @@ static int up_setup(struct uart_dev_s *dev)
     }
   else if (priv->parity == 2)
     {
-      lcr |= (UART_LCR_PEN|UART_LCR_EPS);
+      lcr |= (UART_LCR_PEN | UART_LCR_EPS);
     }
 
   /* Enter DLAB=1 */
@@ -991,19 +1027,10 @@ static int up_setup(struct uart_dev_s *dev)
   up_serialout(priv, A1X_UART_FCR_OFFSET,
                (UART_FCR_RT_HALF|UART_FCR_XFIFOR|UART_FCR_RFIFOR|UART_FCR_FIFOE));
 
-  /* Enable Auto-RTS and Auto-CS Flow Control in the Modem Control Register */
-  
-#if defined(CONFIG_UART1_IFLOWCONTROL) || defined(CONFIG_UART1_OFLOWCONTROL)
-  if (priv->uartbase == A1X_UART1_BASE)
-    {
-#if defined(CONFIG_UART1_IFLOWCONTROL) && defined(CONFIG_UART1_OFLOWCONTROL)
-      up_serialout(priv, A1X_UART_MCR_OFFSET, (UART_MCR_RTSEN|UART_MCR_CTSEN));
-#elif defined(CONFIG_UART1_IFLOWCONTROL)
-      up_serialout(priv, A1X_UART_MCR_OFFSET, UART_MCR_RTSEN);
-#else
-      up_serialout(priv, A1X_UART_MCR_OFFSET, UART_MCR_CTSEN);
-#endif
-    }
+  /* Enable Auto-Flow Control in the Modem Control Register */
+
+#if defined(CONFIG_SERIAL_IFLOWCONTROL) || defined(CONFIG_SERIAL_OFLOWCONTROL)
+#  warning Missing logic
 #endif
 
 #endif
@@ -1046,7 +1073,7 @@ static int up_attach(struct uart_dev_s *dev)
 
   /* Attach and enable the IRQ */
 
-  ret = irq_attach(priv->irq, up_interrupt);
+  ret = irq_attach(priv->irq, priv->handler);
   if (ret == OK)
     {
        /* Enable the interrupt (RX and TX interrupts are still disabled
@@ -1077,7 +1104,7 @@ static void up_detach(struct uart_dev_s *dev)
 }
 
 /****************************************************************************
- * Name: up_interrupt
+ * Name: uartN_interrupt and uart_interrupt
  *
  * Description:
  *   This is the UART interrupt handler.  It will be invoked when an
@@ -1088,44 +1115,12 @@ static void up_detach(struct uart_dev_s *dev)
  *
  ****************************************************************************/
 
-static int up_interrupt(int irq, void *context)
+static int uart_interrupt(struct uart_dev_s *dev)
 {
-  struct uart_dev_s *dev = NULL;
-  struct up_dev_s   *priv;
-  uint32_t           status;
-  int                passes;
+  struct up_dev_s *priv;
+  uint32_t         status;
+  int              passes;
 
-#ifdef CONFIG_A1X_UART0
-  if (g_uart0priv.irq == irq)
-    {
-      dev = &g_uart0port;
-    }
-  else
-#endif
-#ifdef CONFIG_A1X_UART1
-  if (g_uart1priv.irq == irq)
-    {
-      dev = &g_uart1port;
-    }
-  else
-#endif
-#ifdef CONFIG_A1X_UART2
-  if (g_uart2priv.irq == irq)
-    {
-      dev = &g_uart2port;
-    }
-  else
-#endif
-#ifdef CONFIG_A1X_UART3
-  if (g_uart3priv.irq == irq)
-    {
-      dev = &g_uart3port;
-    }
-  else
-#endif
-    {
-      PANIC();
-    }
   priv = (struct up_dev_s*)dev->priv;
 
   /* Loop until there are no characters to be transferred or,
@@ -1181,12 +1176,28 @@ static int up_interrupt(int irq, void *context)
               break;
             }
 
-          /* Otherwise, there is no (handled) interrupt pending */
+          /* Busy detect.  Just ignore.  Cleared by reading the status register */
+
+          case UART_IIR_IID_BUSY:
+            {
+              /* Read from the UART status register to clear the BUSY condition */
+
+              status = up_serialin(priv, A1X_UART_USR_OFFSET);
+              break;
+            }
+
+          /* No further interrupts pending... return now */
 
           case UART_IIR_IID_NONE:
+            {
+              return OK;
+            }
+
+            /* Otherwise we have received an interrupt that we cannot handle */
+
           default:
             {
-              dbg("Unexpected IIR: %02x\n", status);
+              lldbg("Unexpected IIR: %02x\n", status);
               break;
             }
         }
@@ -1194,6 +1205,62 @@ static int up_interrupt(int irq, void *context)
 
   return OK;
 }
+
+#ifdef CONFIG_A1X_UART0
+static int uart0_interrupt(int irq, void *context)
+{
+  return uart_interrupt(&g_uart0port);
+}
+#endif
+
+#ifdef CONFIG_A1X_UART1
+static int uart1_interrupt(int irq, void *context)
+{
+  return uart_interrupt(&g_uart1port);
+}
+#endif
+
+#ifdef CONFIG_A1X_UART2
+static int uart2_interrupt(int irq, void *context)
+{
+  return uart_interrupt(&g_uart2port);
+}
+#endif
+
+#ifdef CONFIG_A1X_UART3
+static int uart3_interrupt(int irq, void *context)
+{
+  return uart_interrupt(&g_uart3port);
+}
+#endif
+
+#ifdef CONFIG_A1X_UART4
+static int uart4_interrupt(int irq, void *context)
+{
+  return uart_interrupt(&g_uart4port);
+}
+#endif
+
+#ifdef CONFIG_A1X_UART5
+static int uart5_interrupt(int irq, void *context)
+{
+  return uart_interrupt(&g_uart5port);
+}
+#endif
+
+#ifdef CONFIG_A1X_UART6
+static int uart6_interrupt(int irq, void *context)
+{
+  return uart_interrupt(&g_uart6port);
+}
+#endif
+
+#ifdef CONFIG_A1X_UART7
+static int uart7_interrupt(int irq, void *context)
+{
+  return uart_interrupt(&g_uart7port);
+}
+#endif
 
 /****************************************************************************
  * Name: up_ioctl
@@ -1408,7 +1475,7 @@ static void up_txint(struct uart_dev_s *dev, bool enable)
   if (enable)
     {
 #ifndef CONFIG_SUPPRESS_SERIAL_INTS
-      priv->ier |= UART_IER_PTIME;
+      priv->ier |= UART_IER_ETBEI;
       up_serialout(priv, A1X_UART_IER_OFFSET, priv->ier);
 
       /* Fake a TX interrupt here by just calling uart_xmitchars() with
@@ -1420,7 +1487,7 @@ static void up_txint(struct uart_dev_s *dev, bool enable)
     }
   else
     {
-      priv->ier &= ~UART_IER_PTIME;
+      priv->ier &= ~UART_IER_ETBEI;
       up_serialout(priv, A1X_UART_IER_OFFSET, priv->ier);
     }
 

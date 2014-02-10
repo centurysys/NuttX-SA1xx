@@ -43,7 +43,7 @@ Installing Cygwin
   for you.
 
      NOTE: NuttX can also be installed and built on a native Windows
-     system, but with some loss of tool functionality (see the
+     system, but with some potential tool-related issues (see the
      discussion "Native Windows Build" below).
 
   Some Cygwin installation tips:
@@ -291,8 +291,8 @@ NuttX Configuration Tool
   This automated tool is based on the kconfig-frontends application
   available at http://ymorin.is-a-geek.org/projects/kconfig-frontends
   (A snapshot of this tool is also available at ../misc/tools).  This
-  application provides a tool called 'mconf' that is used by the NuttX
-  top-level Makefile.  The following make target is provided:
+  application provides a tool called 'kconfig-mconf' that is used by
+  the NuttX top-level Makefile.  The following make target is provided:
 
     make menuconfig
 
@@ -314,20 +314,26 @@ NuttX Configuration Tool
      NOTE: For a description of the syntax of this configuration file,
      see ../misc/tools/kconfig-language.txt.
 
-  2. The 'mconf' tool.  'mconf' is part of the kconfig-frontends
-     package.  You can download that package from the website
-     http://ymorin.is-a-geek.org/projects/kconfig-frontends or you
-     can use the snapshot in ../misc/tools.
+  2. The 'kconfig-mconf' tool.  'kconfig-mconf' is part of the
+     kconfig-frontends package.  You can download that package from
+     the website http://ymorin.is-a-geek.org/projects/kconfig-frontends
+     or you can use the snapshot in ../misc/tools.
 
-     Building may be as simple as 'configure; make; make install'
-     but there may be some build complexities, especially if you
-     are building under Cygwin.  See the more detailed build
-     instructions at ../misc/tools/README.txt
+     Building kconfig-frontends under Linux may be as simple as
+     'configure; make; make install' but there may be some build
+     complexities, especially if you are building under Cygwin.  See
+     the more detailed build instructions at ../misc/tools/README.txt
 
-     The 'make install' step will, by default, install the 'mconf'
+     The 'make install' step will, by default, install the 'kconfig-mconf'
      tool at /usr/local/bin/mconf.  Where ever you choose to
-     install 'mconf', make certain that your PATH variable includes
+     install 'kconfig-mconf', make certain that your PATH variable includes
      a path to that installation directory.
+
+     The kconfig-frontends tools will not build in a native Windows
+     environment directly "out-of-the-box".  For the Windows native
+     case, you should should the modified version of kconfig-frontends
+     that can be found at
+     http://uvc.de/posts/linux-kernel-configuration-tool-mconf-under-windows.html
 
   The basic configuration order is "bottom-up":
 
@@ -340,6 +346,17 @@ NuttX Configuration Tool
 
   This is pretty straight forward for creating new configurations
   but may be less intuitive for modifying existing configurations.
+
+  If you have an environment that suppots the Qt or GTK graphical systems
+  (probably KDE or gnome, respectively), then you can also build the
+  graphical kconfig-frontends, kconfig-qconf and kconfig-gconf.  In
+  these case, you can start the graphical configurator with either:
+
+    make qconfig
+
+  or
+
+    make gconfig
 
 Refreshing Configurations with 'make oldconfig'
 -----------------------------------------------
@@ -460,11 +477,14 @@ NuttX Configuration Tool under DOS
 
   Recent versions of NuttX support building NuttX from a native Windows
   console window (see "Native Windows Build" below).  But kconfig-frontends
-  is a Linux tool.  There have been some successes building a Windows
-  native version of the kconfig-frontends tool, but that is not ready
-  for prime time.
+  is a Linux tool.  At one time this was a problem for Windows users, but
+  now there is a specially modified version of the kconfig-frontends tools
+  that can be used:
+  http://uvc.de/posts/linux-kernel-configuration-tool-mconf-under-windows.html
 
-  At this point, there are only a few options for the Windows user:
+  It is also possible to use the version of kconfig-frontends built
+  under Cygwin outside of the Cygwin "sandbox" in a native Windows
+  environment:
 
   1. You can run the configuration tool using Cygwin.  However, the
      Cygwin Makefile.win will complain so to do this will, you have
@@ -486,7 +506,7 @@ NuttX Configuration Tool under DOS
 
           kconfig-mconf Kconfig
 
-         There is a Windows bacht file at tools/kconfig.bat that automates
+         There is a Windows batch file at tools/kconfig.bat that automates
          these steps:
 
          tools/kconfig menuconfig
@@ -745,9 +765,7 @@ Native Windows Build
   This capability should still be considered a work in progress because:
 
   (1) It has not been verfied on all targets and tools, and
-  (2) it still lacks some of the creature-comforts of the more mature environments
-      (like 'make menuconfig' support.  See the section "NuttX Configuration Tool
-      under DOS" above).
+  (2) it still lacks some of the creature-comforts of the more mature environments.
 
    There is an alternative to the setenv.sh script available for the Windows
    native environment: tools/configure.bat.  See tools/README.txt for additional
@@ -977,6 +995,8 @@ nuttx
  |- audio/
  |   `-README.txt
  |- configs/
+ |   |- 16z/
+ |   |   `- README.txt
  |   |- amber/
  |   |   `- README.txt
  |   |- arduino-due/
@@ -1118,9 +1138,11 @@ nuttx
  |   |   `- README.txt
  |   |- stm32f4discovery/
  |   |   `- README.txt
+ |   |- stm32f429i-disco/
+ |   |   `- README.txt
  |   |- stm32ldiscovery/
  |   |   `- README.txt
- |   |- stm32f429i-disco/
+ |   |- stm32vldiscovery/
  |   |   `- README.txt
  |   |- sure-pic32mx/
  |   |   `- README.txt
@@ -1183,6 +1205,8 @@ nuttx
  |   `- README.txt
  |- libc/
  |   `- README.txt
+ |- libnx/
+ |   `- README.txt
  |- libxx/
  |   `- README.txt
  |- mm/
@@ -1223,6 +1247,8 @@ apps
  |   |- cdcacm
  |   |  `- README.txt
  |   |- i2c
+ |   |  `- README.txt
+ |   |- inifile
  |   |  `- README.txt
  |   |- install
  |   |  `- README.txt

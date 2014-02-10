@@ -28,6 +28,7 @@ Contents
   o USB Interface
   o microSD Card Interface
   o ViewTool DP83848 Ethernet Module
+  o LCD/Touchscreen Interface
   o Toolchains
     - NOTE about Windows native toolchains
   o Configurations
@@ -372,6 +373,7 @@ ViewTool DP83848 Ethernet Module
 
       CONFIG_NET_BUFSIZE=650                 : Maximum packet size
       CONFIG_NET_RECEIVE_WINDOW=650
+      CONFIG_NET_TCP_READAHEAD=y             : Enable read-ahead buffering
       CONFIG_NET_TCP_READAHEAD_BUFSIZE=650
 
       CONFIG_NET_TCP=y                       : TCP support
@@ -395,6 +397,77 @@ ViewTool DP83848 Ethernet Module
 
       (also FTP, TFTP, WGET, NFS, etc. if you also have a mass storage
       device).
+
+LCD/Touchscreen Interface
+=========================
+
+  An LCD may be connected via J11.  Only the the STM32F103 supports the FSMC signals
+  needed to drive the LCD.
+
+  The LCD features an (1) HY32D module with built-in SSD1289 LCD controller, and (a)
+  a XPT2046 touch screen controller.
+
+  LCD Connector
+  -------------
+
+    ----------------------------- ------------------------ --------------------------------
+           Connector J11           GPIO CONFIGURATION(s)
+    PIN SIGNAL        LEGEND          (F103 only)                   LCD Module
+    --- ------------- ----------- ------------------------ --------------------------------
+    1   VDD_5         NC          N/A                      5V      ---
+    2   GND           GND         N/A                      GND     ---
+    3   PD14          DATA0       GPIO_NPS_D0              D0      HY32D
+    4   PD15          DATA1       GPIO_NPS_D1              D1      HY32D
+    5   PD0           DATA2       GPIO_NPS_D2              D2      HY32D
+    6   PD1           DATA3       GPIO_NPS_D3              D3      HY32D
+    7   PE7           DATA4       GPIO_NPS_D4              D4      HY32D
+    8   PE8           DATA5       GPIO_NPS_D5              D5      HY32D
+    9   PE9           DATA6       GPIO_NPS_D6              D6      HY32D
+    10  PE10          DATA7       GPIO_NPS_D7              D7      HY32D
+    11  PE11          DATA8       GPIO_NPS_D8              D8      HY32D
+    12  PE12          DATA9       GPIO_NPS_D9              D9      HY32D
+    13  PE13          DATA10      GPIO_NPS_D10             D10     HY32D
+    14  PE14          DATA11      GPIO_NPS_D11             D11     HY32D
+    15  PE15          DATA12      GPIO_NPS_D12             D12     HY32D
+    16  PD8           DATA13      GPIO_NPS_D13             D13     HY32D
+    17  PD9           DATA14      GPIO_NPS_D14             D14     HY32D
+    18  PD10          DATA15      GPIO_NPS_D15             D15     HY32D
+    19  (3)           LCD_CS      GPIO_NPS_NE1             CS      HY32D
+    20  PD11          LCD_RS      GPIO_NPS_A16             RS      HY32D
+    21  PD5           LCD_R/W     GPIO_NPS_NWE             WR      HY32D
+    22  PD4           LCD_RD      GPIO_NPS_NOE             RD      HY32D
+    23  PB1           LCD_RESET   (GPIO)                   RESET   HY32D
+    24  N/C           NC          N/A                      TE      (unused?)
+    25  VDD_3.3       BL_VCC      N/A                      BLVDD   CA6219 (Drives LCD backlight)
+    26  GND           BL_GND      N/A                      BLGND   CA6219
+    27  PB0           BL_PWM      GPIO_TIM3_CH3OUT(2)      BL_CNT  CA6219
+    28  PC5           LCDTP_IRQ   (GPIO)                   TP_IRQ  XPT2046
+    29  PC4           LCDTP_CS    (GPIO)                   TP_CS   XPT2046
+    30  PB13          LCDTP_CLK   GPIO_SPI2_SCK            TP_SCK  XPT2046
+    31  PB15          LCDTP_DIN   GPIO_SPI2_MOSI           TP_SI   XPT2046
+    32  PB14          LCDTP_DOUT  GPIO_SPI2_MISO           TP_SO   XPT2046
+    33  VDD_3.3       VDD_3.3     N/A                      3.3V    ---
+    34  GND           GND         N/A                      GND     ---
+    --- ------------- ----------- ------------------------ --------------------------------
+
+    NOTES:
+    1) Only the F103 version of the board supports the FSMC
+    2) No remap
+    3) LCD_CS is controlled by J13 JUMPER4 (under the LCD unfortunately):
+
+       1->2 : PD7 (GPIO_NPS_NE1) enables the multiplexor  : 1E\ enable input (active LOW)
+       3->4 : PD13 provides 1A0 input (1A1 is grounded).  : 1A0 address input
+              So will chip enable to either LCD_CS or
+              Flash_CS.
+       5->6 : 1Y0 output to LCD_CS                        : 1Y0 address output
+       7->8 : 1Y1 output to Flash_CE                      : 1Y1 address output
+
+       Truth Table:
+       1E\ 1A0 1A1 1Y0 1Y1
+       --- --- --- --- ---
+       HI  N/A N/A HI  HI
+       LO  LO  LO  LO  HI
+       LO  HI  LO  HI  LO
 
 Toolchains
 ==========
@@ -577,6 +650,104 @@ Configurations
 
     4. USB support is disabled by default.  See the section above entitled,
        "USB Interface"
+
+    3. This configured can be re-configured to use either the Viewtool LCD
+       module. NOTE:  The LCD module can only be used on the STM32F103 version
+       of the board.  The LCD requires FSMC support.
+
+          System Type -> STM32 Chip Selection:
+            CONFIG_ARCH_CHIP_STM32F103VCT6=y      : Select STM32F103VCT6
+
+          System Type -> Peripherals:
+            CONFIG_STM32_FSMC=y                   : Enable FSMC LCD interface
+
+          Device Drivers -> LCD Driver Support
+            CONFIG_LCD=y                          : Enable LCD support
+            CONFIG_NX_LCDDRIVER=y                 : LCD graphics device
+            CONFIG_LCD_MAXCONTRAST=1
+            CONFIG_LCD_MAXPOWER=255
+            CONFIG_LCD_LANDSCAPE=y                : Landscape orientation
+            CONFIG_LCD_SSD1289=y                  : Select the SSD1289
+            CONFIG_SSD1289_PROFILE1=y
+
+          Graphics Support
+            CONFIG_NX=y
+
+          Graphics Support -> Supported Pixel Depths
+            CONFIG_NX_DISABLE_1BPP=y              : Only 16BPP supported
+            CONFIG_NX_DISABLE_2BPP=y
+            CONFIG_NX_DISABLE_4BPP=y
+            CONFIG_NX_DISABLE_8BPP=y
+            CONFIG_NX_DISABLE_24BPP=y
+            CONFIG_NX_DISABLE_32BPP=y
+
+          Graphics Support -> Font Selections
+            CONFIG_NXFONTS_CHARBITS=7
+            CONFIG_NXFONT_SANS22X29B=y
+            CONFIG_NXFONT_SANS23X27=y
+
+          Application Configuration -> Examples
+            CONFIG_EXAMPLES_NXLINES=y
+            CONFIG_EXAMPLES_NXLINES_BGCOLOR=0x0320
+            CONFIG_EXAMPLES_NXLINES_LINEWIDTH=16
+            CONFIG_EXAMPLES_NXLINES_LINECOLOR=0xffe0
+            CONFIG_EXAMPLES_NXLINES_BORDERWIDTH=4
+            CONFIG_EXAMPLES_NXLINES_BORDERCOLOR=0xffe0
+            CONFIG_EXAMPLES_NXLINES_CIRCLECOLOR=0xf7bb
+            CONFIG_EXAMPLES_NXLINES_BPP=16
+
+       STATUS: Now working; reads 0x8999 as device ID.  This may perhaps
+               be due to incorrect jumper settings
+
+    6. This configuration has been used for verifying the touchscreen on
+       on the Viewtool LCD module.  NOTE:  The LCD module can really only
+       be used on the STM32F103 version of the board.  The LCD requires
+       FSMC support (the touchscreen, however, does not but the touchscreen
+       is not very meaningful with no LCD).
+
+          System Type -> STM32 Chip Selection:
+           CONFIG_ARCH_CHIP_STM32F103VCT6=y    : Select STM32F103VCT6
+
+       With the following modifications, you can include the touchscreen
+       test program at apps/examples/touchscreen as an NSH built-in
+       application.  You can enable the touchscreen and test by modifying
+       the default configuration in the following ways:
+
+          Device Drivers
+            CONFIG_SPI=y                       : Enable SPI support
+            CONFIG_SPI_EXCHANGE=y              : The exchange() method is supported
+            CONFIG_SPI_OWNBUS=y                : Smaller code if this is the only SPI device
+
+            CONFIG_INPUT=y                     : Enable support for input devices
+            CONFIG_INPUT_ADS7843E=y            : Enable support for the XPT2046
+            CONFIG_ADS7843E_SPIDEV=2           : Use SPI2 for communication
+            CONFIG_ADS7843E_SPIMODE=0          : Use SPI mode 0
+            CONFIG_ADS7843E_FREQUENCY=1000000  : SPI BAUD 1MHz
+            CONFIG_ADS7843E_SWAPXY=y           : If landscape orientation
+            CONFIG_ADS7843E_THRESHX=51         : These will probably need to be tuned
+            CONFIG_ADS7843E_THRESHY=39
+
+          System Type -> Peripherals:
+            CONFIG_STM32_SPI2=y                : Enable support for SPI2
+
+          RTOS Features:
+            CONFIG_DISABLE_SIGNALS=n           : Signals are required
+
+          Library Support:
+            CONFIG_SCHED_WORKQUEUE=y           : Work queue support required
+
+          Applicaton Configuration:
+            CONFIG_EXAMPLES_TOUCHSCREEN=y      : Enable the touchscreen built-int test
+
+          Defaults should be okay for related touchscreen settings.  Touchscreen
+          debug output on USART1 can be enabled with:
+
+          Build Setup:
+            CONFIG_DEBUG=y                     : Enable debug features
+            CONFIG_DEBUG_VERBOSE=y             : Enable verbose debug output
+            CONFIG_DEBUG_INPUT=y               : Enable debug output from input devices
+
+       STATUS: Working
 
   highpri:
 

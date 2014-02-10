@@ -18,6 +18,7 @@ config ARCH_ARM
 	select ARCH_HAVE_INTERRUPTSTACK
 	select ARCH_HAVE_VFORK
 	select ARCH_HAVE_STACKCHECK
+	select ARCH_HAVE_CUSTOMOPT
 	---help---
 		The ARM architectures
 
@@ -25,6 +26,7 @@ config ARCH_AVR
 	bool "AVR"
 	select ARCH_NOINTC
 	select ARCH_HAVE_INTERRUPTSTACK
+	select ARCH_HAVE_CUSTOMOPT
 	---help---
 		Atmel 8-bit bit AVR and 32-bit AVR32 architectures
 
@@ -38,6 +40,7 @@ config ARCH_HC
 config ARCH_MIPS
 	bool "MIPS"
 	select ARCH_HAVE_INTERRUPTSTACK
+	select ARCH_HAVE_CUSTOMOPT
 	---help---
 		MIPS architectures (PIC32)
 
@@ -136,6 +139,11 @@ config ARCH_HAVE_VFORK
 
 config ARCH_HAVE_MMU
 	bool
+	default n
+
+config ARCH_NAND_HWECC
+	bool
+	default n
 
 config ARCH_IRQPRIO
 	bool "Prioritized interrupt support"
@@ -146,7 +154,7 @@ config ARCH_IRQPRIO
 
 		NOTE: The use of interrupt priorities implies that you also have
 		support for nested interrupts.  Most architectures do not support
-		nesting of interupts or, if they do, they only supported nested
+		nesting of interrupts or, if they do, they only supported nested
 		interrupts with certain configuration options.  So this selection
 		should be used with caution.
 
@@ -204,7 +212,7 @@ config ARCH_CALIBRATION
 	---help---
 		Enables some built in instrumentation that causes a 100 second delay
 		during boot-up.  This 100 second delay serves no purpose other than it
-		allows you to calibratre BOARD_LOOPSPERMSEC.  You simply use a stop
+		allows you to calibrate BOARD_LOOPSPERMSEC.  You simply use a stop
 		watch to measure the actual delay then adjust BOARD_LOOPSPERMSEC until
 		the actual delay is 100 seconds.
 
@@ -379,7 +387,7 @@ config RAM_START
 	help
 		The physical start address of primary installed RAM.  "Primary" RAM
 		refers to the RAM that you link program code into.  If program code
-		does not excecute out of RAM but from FLASH, then you may designate
+		does not execute out of RAM but from FLASH, then you may designate
 		any block of RAM as "primary."
 
 config RAM_VSTART
@@ -389,7 +397,7 @@ config RAM_VSTART
 	help
 		The virtual start address of installed primary RAM. "Primary" RAM
 		refers to the RAM that you link program code into.  If program code
-		does not excecute out of RAM but from FLASH, then you may designate
+		does not execute out of RAM but from FLASH, then you may designate
 		any block of RAM as "primary."
 
 config RAM_SIZE
@@ -398,7 +406,7 @@ config RAM_SIZE
 	help
 		The size in bytes of the installed primary RAM. "Primary" RAM
 		refers to the RAM that you link program code into.  If program code
-		does not excecute out of RAM but from FLASH, then you may designate
+		does not execute out of RAM but from FLASH, then you may designate
 		any block of RAM as "primary."
 
 if BOOT_RUNFROMFLASH && ARCH_HAVE_MMU
@@ -425,4 +433,25 @@ config FLASH_SIZE
 		refers to the FLASH that you link program code into.
 
 endif # BOOT_RUNFROMFLASH && ARCH_HAVE_MMU
+
+config ARCH_HAVE_SDRAM
+	bool
+	default n
+
+config BOOT_SDRAM_DATA
+	bool "Data in SDRAM"
+	default n
+	depends on ARCH_HAVE_SDRAM && !BOOT_RUNFROMSDRAM
+	---help---
+		This selection should be set if data lies in SDRAM (vs. SRAM) and if
+		SDRAM was not previously initialized by a loader.  Obviously, this
+		does not apply if we booting from SDRAM because SDRAM must have been
+		initialized priority to loading NuttX into SDRAM.
+
+		In the case where SDRAM must be initialized by NuttX, the
+		initialization sequence is a little different: Normally, .data and
+		.bss must be initialized before starting the system.  But in this
+		case SDRAM must be configured by board-specific logic before the
+		.data and .bss sections can be initialized.
+
 endmenu # Boot Memory Configuration

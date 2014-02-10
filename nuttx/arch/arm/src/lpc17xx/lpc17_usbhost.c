@@ -1304,7 +1304,7 @@ static int lpc17_ctrltd(struct lpc17_usbhost_s *priv, uint32_t dirpid,
       else 
         {
           uvdbg("Bad TD completion status: %d\n", EDCTRL->tdstatus);
-          ret = ed->tdstatus == TD_CC_STALL ? -EPERM : -EIO;
+          ret = EDCTRL->tdstatus == TD_CC_STALL ? -EPERM : -EIO;
         }
     }
 
@@ -1603,7 +1603,7 @@ static int lpc17_wait(FAR struct usbhost_connection_s *conn,
 static int lpc17_enumerate(FAR struct usbhost_connection_s *conn, int rphndx)
 {
   struct lpc17_usbhost_s *priv = (struct lpc17_usbhost_s *)&g_usbhost;
-  DEBUGASSERT(priv && rhpndx == 0);
+  DEBUGASSERT(priv && rphndx == 0);
 
   /* Are we connected to a device?  The caller should have called the wait()
    * method first to be assured that a device is connected.
@@ -1739,7 +1739,7 @@ static int lpc17_getdevinfo(FAR struct usbhost_driver_s *drvr,
  *      the class create() method.
  *   epdesc - Describes the endpoint to be allocated.
  *   ep - A memory location provided by the caller in which to receive the
- *      allocated endpoint desciptor.
+ *      allocated endpoint descriptor.
  *
  * Returned Values:
  *   On success, zero (OK) is returned. On a failure, a negated errno value is
