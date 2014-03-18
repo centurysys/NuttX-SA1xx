@@ -253,14 +253,10 @@
  * in the NuttX configuration file.
  */
 
-#define DM9X_MODE_AUTO    0
-#define DM9X_MODE_10MHD   1
-#define DM9X_MODE_100MHD  2
-#define DM9X_MODE_10MFD   3
-#define DM9X_MODE_100MFD  4
-
-#ifndef CONFIG_DM9X_MODE
-# define CONFIG_DM9X_MODE DM9X_MODE_AUTO
+#if !defined(CONFIG_DM9X_MODE_AUTO)   && !defined(CONFIG_DM9X_MODE_10MHD) && \
+    !defined(CONFIG_DM9X_MODE_100MHD) && !defined(CONFIG_DM9X_MODE_10MFD) && \
+    !defined(CONFIG_DM9X_MODE_100MFD)
+#   define CONFIG_DM9X_MODE_AUTO 1
 #endif
 
 /* TX poll deley = 1 seconds. CLK_TCK is the number of clock ticks per second */
@@ -908,7 +904,7 @@ static void dm9x_receive(struct dm9x_driver_s *dm9x)
       mdrah = getreg(DM9X_MDRAH);
       mdral = getreg(DM9X_MDRAL);
 
-      getreg(DM9X_MRCMDX);       /* Dummy read */
+      getreg(DM9X_MRCMDX);         /* Dummy read */
       rxbyte = (uint8_t)DM9X_DATA; /* Get the most up-to-date data */
 
       /* Packet ready for receive check */
@@ -1324,19 +1320,19 @@ static inline void dm9x_phymode(struct dm9x_driver_s *dm9x)
   uint16_t phyreg0;
   uint16_t phyreg4;
 
-#if CONFIG_DM9X_MODE == DM9X_MODE_AUTO
+#if CONFIG_DM9X_MODE_AUTO
   phyreg0 = 0x1200;  /* Auto-negotiation & Restart Auto-negotiation */
   phyreg4 = 0x01e1;  /* Default flow control disable*/
-#elif CONFIG_DM9X_MODE == DM9X_MODE_10MHD
+#elif CONFIG_DM9X_MODE_10MHD
   phyreg4 = 0x21; 
   phyreg0 = 0x1000;
-#elif CONFIG_DM9X_MODE == DM9X_MODE_10MFD
+#elif CONFIG_DM9X_MODE_10MFD
   phyreg4 = 0x41; 
   phyreg0 = 0x1100;
-#elif CONFIG_DM9X_MODE == DM9X_MODE_100MHD
+#elif CONFIG_DM9X_MODE_100MHD
   phyreg4 = 0x81; 
   phyreg0 = 0x3000;
-#elif CONFIG_DM9X_MODE == DM9X_MODE_100MFD
+#elif CONFIG_DM9X_MODE_100MFD
   phyreg4 = 0x101; 
   phyreg0 = 0x3100;
 #else

@@ -74,11 +74,11 @@ ifeq ($(CONFIG_NSH_ARCHINIT),y)
 CSRCS += up_nsh.c
 endif
 
-ifeq ($(CONFIG_PM_CUSTOMINIT),y)
+ifeq ($(CONFIG_ARCH_CUSTOM_PMINIT),y)
 CSRCS += up_pm.c
 endif
 
-ifeq ($(CONFIG_IDLE_CUSTOM),y)
+ifeq ($(CONFIG_ARCH_IDLE_CUSTOM),y)
 CSRCS += up_idle.c
 endif
 
@@ -92,6 +92,10 @@ endif
 
 ifeq ($(CONFIG_LCD_MIO283QT2),y)
 CSRCS += up_mio283qt2.c
+endif
+
+ifeq ($(CONFIG_LCD_MIO283QT9A),y)
+CSRCS += up_mio283qt9a.c
 endif
 
 ifeq ($(CONFIG_VS1053),y)

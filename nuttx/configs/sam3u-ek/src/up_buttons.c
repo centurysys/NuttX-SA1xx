@@ -143,8 +143,8 @@ uint8_t board_buttons(void)
 {
   uint8_t retval;
 
-  retval  = sam_gpioread(GPIO_BUTTON1) ? 0 : GPIO_BUTTON1;
-  retval |= sam_gpioread(GPIO_BUTTON2) ? 0 : GPIO_BUTTON2;
+  retval  = sam_gpioread(GPIO_BUTTON1) ? 0 : BUTTON1;
+  retval |= sam_gpioread(GPIO_BUTTON2) ? 0 : BUTTON2;
 
   return retval;
 }

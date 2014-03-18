@@ -548,10 +548,6 @@
     This is a work in progress.
   </li>
 
-  <li><code>arch/m68322</code>
-    A work in progress.
-  </li>
-
   <li><code>arch/8051</code>:
     8051 Microcontroller.  This port is not quite ready for prime time.
   </li>
@@ -649,20 +645,14 @@
 |-- <i>&lt;config1-dir&gt;</i>
 |   |-- Make.defs
 |   |-- defconfig
-|   |-- appconfig<sup>1</sup>
 |   `-- setenv.sh
 |-- <i>&lt;config2-dir&gt;</i>
 |   |-- Make.defs
 |   |-- defconfig
-|   |-- appconfig<sup>1</sup>
 |   `-- setenv.sh
 |   ...
 `-- <i>(other board-specific configuration sub-directories)</i>/
-</pre>
-<p><small>
-  <sup>1</sup>Optional
-</small></p>
-</ul>
+</pre></ul>
 
 <h3><a name="summaryofconfigfiles">2.4.2 Summary of Files</a></h3>
 <h4><a name="boardlogic">2.4.2.1 Board Specific Logic</a></h4>
@@ -750,13 +740,6 @@
   </li>
   <li>
     <p>
-      <code>appconfig</code>: This is another configuration file that is specific to the
-      application.  This file is copied into the application build directory
-      when NuttX is configured.  See <code>../apps/README.txt</code> for further details.
-    </p>
-  </li>
-  <li>
-    <p>
       <code>setenv.sh</code>: This is a script that you can include that will be installed at
       the top level of the directory structure and can be sourced to set any
       necessary environment variables.
@@ -833,12 +816,6 @@
   <li><code>configs/lpcxpresso-lpc1768</code>:
     Embedded Artists base board with NXP LPCExpresso LPC1768.  This board
     is based on the NXP LPC1768.  The Code Red toolchain is used by default.
-  </li>
-
-  <li><code>configs/m68322evb</code>:
-    This is a partial port for the venerable m68322evb board from Motorola.
-    This port was never completed and there are no plans to complete.
-    It will probably just be removed from the source tree at some point.
   </li>
 
   <li><code>configs/mbed</code>:
@@ -1472,15 +1449,6 @@ netutils/
 </ul>
 
 <p>
-  And if <code>configs/</code><i>&lt;board-name&gt;</i><code>/[</code><i>&lt;config-dir&gt;</i><code>/appconfig</code> exists in the board configuration directory:
-</p>
-<ul>
-  <li>Copy <code>configs/</code><i>&lt;board-name&gt;</i><code>/[</code><i>&lt;config-dir&gt;</i><code>/appconfig</code> to &lt;app-dir&gt;<code>/.config</code></li>
-  <li><code>echo &quot;APPS_LOC=\"&lt;app-dir&gt;\"" &gt;&gt; "${TOPDIR}/.config&quot;</code></li>
-</ul>
-
-</p>
-<p>
   Where <i>&lt;board-name&gt;</i> is the name of one of the sub-directories of the
   NuttX <a href="#DirStructConfigs"><code>configs/</code></a> directory.
   This sub-directory name corresponds to one of the supported boards
@@ -1510,8 +1478,7 @@ netutils/
 </p>
 
 <p>
-  If <code>configs/</code><i>&lt;board-name&gt;</i><code>/[</code><i>&lt;config-dir&gt;</i>]<code>/appconfig</code>
-  exists and your application directory is not in the standard loction (<config>../apps</config>),
+  If your application directory is not in the standard loction (<code>../apps</code> or <code>../apps-&lt;version&gt</code>),
   then you should also specify the location of the application directory on the command line like:
 </p>
 <ul><pre>

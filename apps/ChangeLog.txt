@@ -798,7 +798,7 @@
 	  (2014-1-17).
 	* apps/nshlib/Kconfig, README.txt, nsh.h, nsh_command.c, and
 	  nsh_script.c:  Add an option to conditionally compile out support for
-	  loop and for if-then-else-fi sequence (2014-1-17).  
+	  loop and for if-then-else-fi sequence (2014-1-17).
 	* apps/nshlib/nsh.h, nsh_command.c, and nsh_parse.c:  Add a break
 	  command that can be executed with a loop to terminate the loop
 	  immediately (2014-1-17).
@@ -810,12 +810,54 @@
 	  to work.  There are still some display artifacts and probably several
 	  untested conditions (2014-1-21).
 
-6.34 2014-xx-xx Gregory Nutt <gnutt@nuttx.org>
+7.1 2014-03-15 Gregory Nutt <gnutt@nuttx.org>
 
 	* apps/system/cle:  Add a EMACS-like command line editor.  This CLE,
 	  is really more like readline than the NuttX readline is!  (2014-02-02).
-	* apps/nshlib: Use of the standard tiney readline (about .25KB) is now
+	* apps/nshlib: Use of the standard tiny readline (about .25KB) is now
 	  an option and can be replaces with the EMACX-like CLE (about 2KB)
 	  (2014-02-02).
 	* Several changes to restore Windows native build (2014-2-7)
+	* apps/examples/touchscreen:  Can now be configured to work with a mouse
+	  interface as well (2014-2-10).
+	* Several files changes based on complaints from the tool CppCheck.  Some
+	  latent bugs were fixed (and most likely some new typos were introduced)
+	  (2014-2-10).
+	* apps/examples/nximage/Kconfig and apps/examples/uip/Kconfig: Incomplete
+	  Kconfig files fleshed out by Alan Carvalho de Assis (2014-2-18).
+	* apps/nshlib: 'rmdir' can now be used in the pseudo-filesystem.  Hence,
+	  the command needs to be available even if there are no write-able
+	  filesystem enabled (2014-2-19).
+	* apps/nshlib: 'mkdir' can now be used in the pseudo-filesystem.  Hence,
+	  the command needs to be available even if there are no write-able
+	  filesystem enabled (2014-2-19).
+	* apps/nshlib: 'mv' can now be used in the pseudo-filesystem.  Hence,
+	  the 'mv' command needs to be available even if there are no write-able
+	  filesystem enabled (2014-2-19).
+	* apps/nshlib: 'rm' can now be used to remove nodes from the pseudo-
+	  filesystem.  Hence, the 'rm' command needs to be available even if there
+	  are no write-able filesystem enabled (2014-2-20).
+	* CONFIG_DISABLE_PSEUDOFS_OPERATIONS: This new configuration setting
+	  basically backs out the recent changes to mv, rm, mkdir, and rmdir
+	  (2014-2-20).
+	* nshlib/Kconfig:  Use CONFIG_DEFAULT_SMALL in selecting default
+	  settings (2014-2-20).
+	* nshlib/nsh_telnetd.c:  Use strncpy vs strcpy to avoid overruning the
+	  username and password buffers.  From Bertold Van den Bergh (2014-2-22).
+	* nshlib/Kconfig, nsh_proccmds.c:  If the CPU load feature and the procfs
+	  features are enabled, then show CPU load used by each thread in the
+	  'ps' command (2014-2-27).
+	* nshlib/nsh_fscmds.c:  Add a newline after printing the file in the
+	  'cat' command.  This prevents the NSH prompt from be in the same line
+	  as the final line of the file in the case where there is no newline
+	  at the end of the file (2014-2-27).
+	* netutils/dhcpd/dhcpd.c: allocipaddr() should not call ntohl(), the
+	  returned IP address is already in host order.
+	* apps/netutils/dhcpd/Kconfig: Add missing DHCPD configuration
+	  settings(2014-3-3).
+	* Support for the legacy configuration mechanism (using appconfig files)
+	  is removed.  Only the newer configuration using the kconfig-frontends
+	  tools is now supported (2014-3-6).
+
+7.2 2014-xx-xx Gregory Nutt <gnutt@nuttx.org>
 

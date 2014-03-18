@@ -250,14 +250,6 @@ config ARCH_BOARD_LPC4330_XPLORER
 		NXG Technologoies LPC4330 Xplorer board.  This board is based on the
 		LPC4330FET100.  The Code Red toolchain is used by default.
 
-config ARCH_BOARD_M68332EVB
-	bool "Motoroloa M68332EVB"
-	depends on ARCH_M68332
-	---help---
-		This is a work in progress for the venerable m68322evb board from
-		Motorola. This OS is also built with the arm-nuttx-elf toolchain.  STATUS:
-		This port was never completed.
-
 config ARCH_BOARD_MBED
 	bool "mbed LCP1768"
 	depends on ARCH_CHIP_LPC1768
@@ -267,9 +259,9 @@ config ARCH_BOARD_MBED
 		that features the NXP LPC1768 microcontroller. This OS is also built
 		with the arm-nuttx-elf toolchain*.  STATUS:  Contributed.
 
-config ARCH_BOARD_MCU123
+config ARCH_BOARD_MCU123_LPC214X
 	bool "mcu123.com LPC2148 Development Board"
-	depends on ARCH_CHIP_LPC2148
+	depends on ARCH_CHIP_LPC214X
 	select ARCH_HAVE_LEDS
 	---help---
 		This port is for the NXP LPC2148 as provided on the mcu123.com
@@ -490,7 +482,7 @@ config ARCH_BOARD_PIC32_STARTERKIT
 		(DM320004) with the Multimedia Expansion Board (MEB, DM320005).
 		See www.microchip.com for further information.
 
-config ARCH_BOARD_PIC32_PIC32MX7MMB
+config ARCH_BOARD_PIC32MX7MMB
 	bool "Mikroelektronika PIC32MX7 MMB"
 	depends on ARCH_CHIP_PIC32MX795F512L
 	select ARCH_HAVE_LEDS
@@ -552,6 +544,17 @@ config ARCH_BOARD_SAMA5D3X_EK
 	---help---
 		The port of NuttX to the Atmel SAMA5D3x-EK development board (where x=1,3,4, or 5).
 
+config ARCH_BOARD_SAMD20_XPLAINED
+	bool "Atmel SAMD20-Xplained Pro development board"
+	depends on ARCH_CHIP_SAMD20J18
+	select ARCH_HAVE_LEDS
+	select ARCH_HAVE_BUTTONS
+	select ARCH_HAVE_IRQBUTTONS
+	---help---
+		The port of NuttX to the Atmel SAMD20-Xplained Pro development board.
+		This board features the ATSAMD20J18A MCU (Cortex-M0+ with 256KB of FLASH
+		and 32KB of SRAM).
+
 config ARCH_BOARD_SAM3UEK
 	bool "Atmel SAM3U-EK development board"
 	depends on ARCH_CHIP_ATSAM3U4E
@@ -560,6 +563,16 @@ config ARCH_BOARD_SAM3UEK
 	select ARCH_HAVE_IRQBUTTONS
 	---help---
 		The port of NuttX to the Atmel SAM3U-EK development board.
+
+config ARCH_BOARD_SAM4EEK
+	bool "Atmel SAM4E-EK development board"
+	depends on ARCH_CHIP_ATSAM4E16E
+	select ARCH_HAVE_LEDS
+	select ARCH_HAVE_BUTTONS
+	select ARCH_HAVE_IRQBUTTONS
+	---help---
+		The port of NuttX to the Atmel SAM4E-EK development board.  This
+		board features the SAM4E16 MCU running at up to 120MHz.
 
 config ARCH_BOARD_SAM4L_XPLAINED
 	bool "Atmel SAM4L-Xplained Pro development board"
@@ -734,6 +747,15 @@ config ARCH_BOARD_TEENSY
 		developed by http://pjrc.com/teensy/.  The Teensy++ 2.0 is based
 		on an Atmel AT90USB1286 MCU.
 
+config ARCH_BOARD_TM4C123G_LAUNCHPAD
+	bool "Tiva TM4C124G LaunchPad"
+	depends on ARCH_CHIP_TM4C123GH6ZRB
+	select ARCH_HAVE_LEDS
+	select ARCH_HAVE_BUTTONS
+	select ARCH_HAVE_IRQBUTTONS
+	---help---
+		Tiva TM4C123G LaunchPad.
+
 config ARCH_BOARD_TWR_K60N512
 	bool "FreeScale TWR-K60N512d evelopment board"
 	depends on ARCH_CHIP_MK60N512VMD100
@@ -761,6 +783,7 @@ config ARCH_BOARD_US7032EVB1
 	bool "Hitachi SH-1/US7032EVB1 board"
 	depends on ARCH_CHIP_SH7032
 	select ARCH_HAVE_LEDS
+	select ARCH_HAVE_BUTTONS
 	---help---
 		This is a port of the Hitachi SH-1 on the Hitachi SH-1/US7032EVB1 board.
 		STATUS:  Work has just began on this port.
@@ -834,7 +857,7 @@ config ARCH_BOARD_Z8F64200100KIT
 
 config ARCH_BOARD_ZP214XPA
 	bool "The0.net LPC2148 Development Board"
-	depends on ARCH_CHIP_LPC2148
+	depends on ARCH_CHIP_LPC214X
 	---help---
 		This port is for the NXP LPC2148 as provided on the The0.net
 		ZPA213X/4XPA development board. Includes support for the
@@ -906,10 +929,9 @@ config ARCH_BOARD
 	default "lm4f120-launchpad"   if ARCH_BOARD_LM4F120_LAUNCHPAD
 	default "lpc4330-xplorer"     if ARCH_BOARD_LPC4330_XPLORER
 	default "lpcxpresso-lpc1768"  if ARCH_BOARD_LPCXPRESSO
-	default "m68322evb"           if ARCH_BOARD_M68332EVB
 	default "maple"               if ARCH_BOARD_MAPLE
 	default "mbed"                if ARCH_BOARD_MBED
-	default "mcu123-lpc214x"      if ARCH_BOARD_MCU123
+	default "mcu123-lpc214x"      if ARCH_BOARD_MCU123_LPC214X
 	default "micropendous3"       if ARCH_BOARD_MICROPENDOUS3
 	default "mirtoo"              if ARCH_BOARD_MIRTOO
 	default "mx1ads"              if ARCH_BOARD_MX1ADS
@@ -928,14 +950,16 @@ config ARCH_BOARD
 	default "pcblogic-pic32mx"    if ARCH_BOARD_PCBLOGICPIC32MX
 	default "pcduino-a10"         if ARCH_BOARD_PCDUINO_A10
 	default "pic32-starterkit"    if ARCH_BOARD_PIC32_STARTERKIT
-	default "pic32mx7mmb"         if ARCH_BOARD_PIC32_PIC32MX7MMB
+	default "pic32mx7mmb"         if ARCH_BOARD_PIC32MX7MMB
 	default "pirelli_dpl10"       if ARCH_BOARD_PIRELLI_DPL10
 	default "pjrc-8051"           if ARCH_BOARD_PJRC_87C52
 	default "px4fmu-v2_upstream"  if ARCH_BOARD_PX4FMU_V2
 	default "qemu-i486"           if ARCH_BOARD_QEMU_I486
 	default "rgmp"                if ARCH_BOARD_RGMP
 	default "sama5d3x-ek"         if ARCH_BOARD_SAMA5D3X_EK
+	default "samd20-xplained"     if ARCH_BOARD_SAMD20_XPLAINED
 	default "sam3u-ek"            if ARCH_BOARD_SAM3UEK
+	default "sam4e-ek"            if ARCH_BOARD_SAM4EEK
 	default "sam4l-xplained"      if ARCH_BOARD_SAM4L_XPLAINED
 	default "sam4s-xplained"      if ARCH_BOARD_SAM4S_XPLAINED
 	default "shenzhou"            if ARCH_BOARD_SHENZHOU
@@ -954,6 +978,7 @@ config ARCH_BOARD
 	default "mikroe-stm32f4"      if ARCH_BOARD_MIKROE_STM32F4
 	default "sure-pic32mx"        if ARCH_BOARD_SUREPIC32MX
 	default "teensy"              if ARCH_BOARD_TEENSY
+	default "tm4c123g-launchpad"  if ARCH_BOARD_TM4C123G_LAUNCHPAD
 	default "twr-k60n512"         if ARCH_BOARD_TWR_K60N512
 	default "ubw32"               if ARCH_BOARD_UBW32
 	default "us7032evb1"          if ARCH_BOARD_US7032EVB1
@@ -1098,16 +1123,13 @@ endif
 if ARCH_BOARD_LPCXPRESSO
 source "configs/lpcxpresso-lpc1768/Kconfig"
 endif
-if ARCH_BOARD_M68332EVB
-source "configs/m68332evb/Kconfig"
-endif
 if ARCH_BOARD_MAPLE
 source "configs/maple/Kconfig"
 endif
 if ARCH_BOARD_MBED
 source "configs/mbed/Kconfig"
 endif
-if ARCH_BOARD_MCU123
+if ARCH_BOARD_MCU123_LPC214X
 source "configs/mcu123-lpc214x/Kconfig"
 endif
 if ARCH_BOARD_MICROPENDOUS3
@@ -1164,7 +1186,7 @@ endif
 if ARCH_BOARD_PIC32_STARTERKIT
 source "configs/pic32-starterkit/Kconfig"
 endif
-if ARCH_BOARD_PIC32_PIC32MX7MMB
+if ARCH_BOARD_PIC32MX7MMB
 source "configs/pic32mx7mmb/Kconfig"
 endif
 if ARCH_BOARD_PIRELLI_DPL10
@@ -1185,8 +1207,14 @@ endif
 if ARCH_BOARD_SAMA5D3X_EK
 source "configs/sama5d3x-ek/Kconfig"
 endif
+if ARCH_BOARD_SAMD20_XPLAINED
+source "configs/samd20-xplained/Kconfig"
+endif
 if ARCH_BOARD_SAM3UEK
 source "configs/sam3u-ek/Kconfig"
+endif
+if ARCH_BOARD_SAM4EEK
+source "configs/sam4e-ek/Kconfig"
 endif
 if ARCH_BOARD_SAM4L_XPLAINED
 source "configs/sam4l-xplained/Kconfig"
@@ -1235,6 +1263,9 @@ source "configs/sure-pic32mx/Kconfig"
 endif
 if ARCH_BOARD_TEENSY
 source "configs/teensy/Kconfig"
+endif
+if ARCH_BOARD_TM4C123G_LAUNCHPAD
+source "configs/tm4c123g-launchpad/Kconfig"
 endif
 if ARCH_BOARD_TWR_K60N512
 source "configs/twr-k60n512/Kconfig"

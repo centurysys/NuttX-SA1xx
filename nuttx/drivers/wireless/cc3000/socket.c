@@ -61,6 +61,8 @@
 #  define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 #endif
 
+#define waitlldbg(x,...) // lldbg
+
 /****************************************************************************
  * Private Types
  ****************************************************************************/
@@ -186,11 +188,15 @@ int cc3000_socket(int domain, int type, int protocol)
 int cc3000_closesocket(int sockfd)
 {
   int ret;
-  cc3000_lib_lock();
-  ret = cc3000_closesocket_impl(sockfd);
+
 #ifdef CONFIG_CC3000_MT
+  waitlldbg("remove\n");
   cc3000_remove_socket(sockfd);
 #endif
+  cc3000_lib_lock();
+  waitlldbg("Call closesocketl\n");
+  ret = cc3000_closesocket_impl(sockfd);
+  waitlldbg("return closesocket\n");
   cc3000_lib_unlock();
   return ret;
 }
@@ -243,6 +249,7 @@ int cc3000_closesocket(int sockfd)
 int cc3000_do_accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
 {
   int ret;
+
   cc3000_lib_lock();
   ret = cc3000_accept_impl(sockfd, addr, addrlen);
   cc3000_lib_unlock();
@@ -265,8 +272,6 @@ int cc3000_accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
 }
 #else
 {
-  int ret = OK;
-
   cc3000_accept_socket(sockfd,0);
   short nonBlocking=CC3000_SOCK_OFF;
 
@@ -306,7 +311,7 @@ int cc3000_accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
 
 int cc3000_bind(int sockfd, FAR const struct sockaddr *addr, socklen_t addrlen)
 {
-  int ret = OK;
+  int ret;
 
   cc3000_lib_lock();
   ret = cc3000_bind_impl(sockfd, addr, addrlen);
@@ -340,7 +345,7 @@ int cc3000_bind(int sockfd, FAR const struct sockaddr *addr, socklen_t addrlen)
 
 int cc3000_listen(int sockfd, int backlog)
 {
-  int ret = OK;
+  int ret;
 
   cc3000_lib_lock();
   ret = cc3000_listen_impl(sockfd,backlog);
@@ -380,7 +385,7 @@ int cc3000_listen(int sockfd, int backlog)
 
 int cc3000_connect(int sockfd, FAR const struct sockaddr *addr, socklen_t addrlen)
 {
-  int ret = OK;
+  int ret;
 
   cc3000_lib_lock();
   ret = cc3000_connect_impl(sockfd, addr, addrlen);
@@ -430,7 +435,7 @@ int cc3000_connect(int sockfd, FAR const struct sockaddr *addr, socklen_t addrle
 int cc3000_select(int nfds, fd_set *readfds, fd_set *writefds,fd_set *exceptfds,
            struct timeval *timeout)
 {
-  int ret = OK;
+  int ret;
 
   cc3000_lib_lock();
   ret = cc3000_select_impl(nfds, (TICC3000fd_set *)readfds,
@@ -492,7 +497,7 @@ int cc3000_select(int nfds, fd_set *readfds, fd_set *writefds,fd_set *exceptfds,
 int cc3000_setsockopt(int sockfd, int level, int option,
                       FAR const void *value, socklen_t value_len)
 {
-  int ret = OK;
+  int ret;
 
   cc3000_lib_lock();
   ret = cc3000_setsockopt_impl(sockfd, level, option, value, value_len);
@@ -552,7 +557,7 @@ int cc3000_setsockopt(int sockfd, int level, int option,
 int cc3000_getsockopt(int sockfd, int level, int option, FAR void *value,
                       FAR socklen_t *value_len)
 {
-  int ret = OK;
+  int ret;
 
   cc3000_lib_lock();
   ret = cc3000_getsockopt_impl(sockfd, level, option, value, value_len);
@@ -584,10 +589,12 @@ int cc3000_getsockopt(int sockfd, int level, int option, FAR void *value,
 
 ssize_t cc3000_recv(int sockfd, FAR void *buf, size_t len, int flags)
 {
-  ssize_t ret = OK;
+  ssize_t ret;
 
 #ifdef CONFIG_CC3000_MT
+  waitlldbg("wait\n");
   ret = cc3000_wait_data(sockfd);
+  waitlldbg("wait %d\n", ret);
   if (ret != OK )
     {
       return -1;
@@ -595,7 +602,9 @@ ssize_t cc3000_recv(int sockfd, FAR void *buf, size_t len, int flags)
 #endif
 
   cc3000_lib_lock();
+  waitlldbg("recv\n");
   ret = cc3000_recv_impl(sockfd, buf, len, flags);
+  waitlldbg("recv %d\n", ret);
   cc3000_lib_unlock();
   return ret;
 }
@@ -632,7 +641,7 @@ ssize_t cc3000_recv(int sockfd, FAR void *buf, size_t len, int flags)
 ssize_t cc3000_recvfrom(int sockfd, FAR void *buf, size_t len, int flags,
                         FAR struct sockaddr *from, FAR socklen_t *fromlen)
 {
-  ssize_t ret = OK;
+  ssize_t ret;
 
 #ifdef CONFIG_CC3000_MT
   ret = cc3000_wait_data(sockfd);
@@ -672,7 +681,7 @@ ssize_t cc3000_recvfrom(int sockfd, FAR void *buf, size_t len, int flags,
 
 ssize_t cc3000_send(int sockfd, FAR const void *buf, size_t len, int flags)
 {
-  ssize_t ret = OK;
+  ssize_t ret;
 
   cc3000_lib_lock();
   ret = cc3000_send_impl(sockfd, buf, len, flags);
@@ -709,7 +718,7 @@ ssize_t cc3000_send(int sockfd, FAR const void *buf, size_t len, int flags)
 ssize_t cc3000_sendto(int sockfd, FAR const void *buf, size_t len, int flags,
                       FAR const struct sockaddr *to, socklen_t tolen)
 {
-  ssize_t ret = OK;
+  ssize_t ret;
 
   cc3000_lib_lock();
   ret = cc3000_sendto_impl(sockfd, buf, len, flags, to, tolen);
@@ -744,7 +753,7 @@ ssize_t cc3000_sendto(int sockfd, FAR const void *buf, size_t len, int flags,
 // TODO: Standard is struct hostent *gethostbyname(const char *name);
 int cc3000_gethostbyname(char * hostname, uint16_t usNameLen, unsigned long* out_ip_addr)
 {
-  int ret = OK;
+  int ret;
 
   cc3000_lib_lock();
   ret = cc3000_gethostbyname_impl(hostname, usNameLen, out_ip_addr);
@@ -775,7 +784,7 @@ int cc3000_mdnsadvertiser(uint16_t mdnsEnabled, char *deviceServiceName,
                           uint16_t deviceServiceNameLength)
 
 {
-  int ret = OK;
+  int ret;
 
   cc3000_lib_lock();
   ret = cc3000_mdnsadvertiser_impl(mdnsEnabled, deviceServiceName, deviceServiceNameLength);

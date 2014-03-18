@@ -736,6 +736,7 @@ static void spi_dma_sampledone(struct sam_spics_s *spics)
  *
  ****************************************************************************/
 
+#ifdef CONFIG_SAMA5_SPI_DMA
 static void spi_dmatimeout(int argc, uint32_t arg)
 {
   struct sam_spics_s *spics = (struct sam_spics_s *)arg;
@@ -755,6 +756,7 @@ static void spi_dmatimeout(int argc, uint32_t arg)
 
   sem_post(&spics->dmawait);
 }
+#endif
 
 /****************************************************************************
  * Name: spi_rxcallback
@@ -845,7 +847,7 @@ static void spi_txcallback(DMA_HANDLE handle, void *arg, int result)
  * Name: spi_physregaddr
  *
  * Description:
- *   Return the physical address of an HSMCI register
+ *   Return the physical address of an SPI register
  *
  ****************************************************************************/
 

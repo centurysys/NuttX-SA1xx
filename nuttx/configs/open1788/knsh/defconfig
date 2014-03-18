@@ -2,7 +2,6 @@
 # Automatically generated file; DO NOT EDIT.
 # Nuttx/ Configuration
 #
-CONFIG_NUTTX_NEWCONFIG=y
 
 #
 # Build Setup
@@ -611,6 +610,8 @@ CONFIG_EXAMPLES_NSH=y
 # NSH Library
 #
 CONFIG_NSH_LIBRARY=y
+CONFIG_NSH_READLINE=y
+# CONFIG_NSH_CLE is not set
 
 #
 # Disable Individual commands

@@ -85,19 +85,31 @@ CHIP_CSRCS += sam_serial.c sam_start.c sam_timerisr.c
 ifeq ($(CONFIG_ARCH_CHIP_SAM4L),y)
 CHIP_CSRCS += sam4l_clockconfig.c sam4l_periphclks.c sam4l_gpio.c
 else
-CHIP_CSRCS += sam3u_clockconfig.c sam3u_gpio.c
+CHIP_CSRCS += sam_clockconfig.c sam_gpio.c
 endif
 
 ifeq ($(CONFIG_NUTTX_KERNEL),y)
 CHIP_CSRCS += sam_userspace.c sam_mpuinit.c
 endif
 
-ifeq ($(CONFIG_SAM34_DMA),y)
-CHIP_CSRCS += sam3u_dmac.c
+ifeq ($(CONFIG_SAM34_CMCC),y)
+CHIP_CSRCS += sam_cmcc.c
+endif
+
+ifeq ($(CONFIG_SAM34_DMAC0),y)
+CHIP_CSRCS += sam_dmac.c
 endif
 
 ifeq ($(CONFIG_SAM34_PDCA),y)
 CHIP_CSRCS += sam4l_pdca.c
+endif
+
+ifeq ($(CONFIG_SAM34_EMAC),y)
+CHIP_CSRCS += sam_emac.c
+endif
+
+ifeq ($(CONFIG_SAM34_UDP),y)
+CHIP_CSRCS += sam_udp.c
 endif
 
 ifeq ($(CONFIG_SAM34_HSMCI),y)
@@ -106,4 +118,8 @@ endif
 
 ifeq ($(CONFIG_SAM34_SPI0),y)
 CHIP_CSRCS += sam_spi.c
+else
+ifeq ($(CONFIG_SAM34_SPI1),y)
+CHIP_CSRCS += sam_spi.c
+endif
 endif

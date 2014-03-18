@@ -2,7 +2,6 @@
 # Automatically generated file; DO NOT EDIT.
 # Nuttx/ Configuration
 #
-CONFIG_NUTTX_NEWCONFIG=y
 
 #
 # Build Setup
@@ -165,7 +164,7 @@ CONFIG_SAM34_UART0=y
 # CONFIG_SAM34_CAN1 is not set
 # CONFIG_SAM34_SMC is not set
 # CONFIG_SAM34_SDRAMC is not set
-# CONFIG_SAM34_DMA is not set
+# CONFIG_SAM34_DMAC0 is not set
 # CONFIG_SAM34_UOTGHS is not set
 # CONFIG_SAM34_RTC is not set
 # CONFIG_SAM34_RTT is not set
@@ -575,6 +574,8 @@ CONFIG_EXAMPLES_NSH_CXXINITIALIZE=y
 # NSH Library
 #
 CONFIG_NSH_LIBRARY=y
+CONFIG_NSH_READLINE=y
+# CONFIG_NSH_CLE is not set
 CONFIG_NSH_BUILTIN_APPS=y
 
 #

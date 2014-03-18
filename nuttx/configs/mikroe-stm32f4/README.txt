@@ -62,13 +62,12 @@ GNU Toolchain Options
   add one of the following configuration options to your .config (or defconfig)
   file:
 
-    CONFIG_STM32_CODESOURCERYW=y  : CodeSourcery under Windows
-    CONFIG_STM32_CODESOURCERYL=y  : CodeSourcery under Linux
-    CONFIG_STM32_ATOLLIC_LITE=y   : The free, "Lite" version of Atollic toolchain under Windows
-    CONFIG_STM32_ATOLLIC_PRO=y    : The paid, "Pro" version of Atollic toolchain under Windows
-    CONFIG_STM32_DEVKITARM=y      : devkitARM under Windows
-    CONFIG_STM32_RAISONANCE=y     : Raisonance RIDE7 under Windows
-    CONFIG_STM32_BUILDROOT=y      : NuttX buildroot under Linux or Cygwin (default)
+    CONFIG_ARMV7M_TOOLCHAIN_CODESOURCERYW=y  : CodeSourcery under Windows
+    CONFIG_ARMV7M_TOOLCHAIN_CODESOURCERYL=y  : CodeSourcery under Linux
+    CONFIG_ARMV7M_TOOLCHAIN_ATOLLIC=y        : The Atollic toolchain under Windows
+    CONFIG_ARMV7M_TOOLCHAIN_DEVKITARM=y      : devkitARM under Windows
+    CONFIG_ARMV7M_TOOLCHAIN_RAISONANCE=y     : Raisonance RIDE7 under Windows
+    CONFIG_ARMV7M_TOOLCHAIN_BUILDROOT=y      : NuttX buildroot under Linux or Cygwin (default)
 
   If you change the default toolchain, then you may also have to modify the PATH in
   the setenv.h file if your make cannot find the tools.
@@ -404,42 +403,33 @@ There are two version of the FPU support built into the STM32 port.
    +ENTRY(__start)         /* Treat __start as the anchor for dead code stripping */
    +EXTERN(_vectors)       /* Force the vectors to be included in the output */
 
-MIO283QT-2
-==========
+MIO283QT-2/MIO283QT-9A
+======================
 
-The Mikroe-SMT32F4 board as an on-board MIO283QT-2 TFT LCD that can be
-configured and used.  This is a 320x240 resolution display with color
+The original Mikroe-SMT32F4 board as an on-board MIO283QT-2 TFT LCD that can
+be configured and used.  This is a 320x240 resolution display with color
 capability to 262K colors, though the mio283qt-2 driver in NuttX only
 supports 16-bit color depth, or 65K colors.  Changes to both the
 mio283qt-2 driver and the driver interface layer would need to be made
 to support 24 BPP mode.
 
+UPDATE:  New boards now support a MIO283QT-9A TFT LCD that is not compatible
+with the MIO283QT-2.  It uses a different LCD controller.  The default in
+all of these configurations is the MIO283QT-2.  But MIO283QT-9A is also
+supported and you can switch from the MIO283QT-2 to the MIO283QT-9A by simply
+modifying the NuttX configuration
+
 CFLAGS
 ------
 
-Only the Atollic toolchain has built-in support for the Cortex-M4 FPU.  You will see
+Only recent GCC toolchains have built-in support for the Cortex-M4 FPU.  You will see
 the following lines in each Make.defs file:
 
-  ifeq ($(CONFIG_STM32_ATOLLIC_LITE),y)
-    # Atollic toolchain under Windows
-    ...
   ifeq ($(CONFIG_ARCH_FPU),y)
     ARCHCPUFLAGS = -mcpu=cortex-m4 -mthumb -march=armv7e-m -mfpu=fpv4-sp-d16 -mfloat-abi=hard
   else
     ARCHCPUFLAGS = -mcpu=cortex-m3 -mthumb -mfloat-abi=soft
   endif
-  endif
-
-If you are using a toolchain other than the Atollic toolchain, then to use the FPU
-you will also have to modify the CFLAGS to enable compiler support for the ARMv7-M
-FPU.  As of this writing, there are not many GCC toolchains that will support the
-ARMv7-M FPU.
-
-As a minimum you will need to add CFLAG options to (1) enable hardware floating point
-code generation, and to (2) select the FPU implementation.  You might try the same
-options as used with the Atollic toolchain in the Make.defs file:
-
-  ARCHCPUFLAGS = -mcpu=cortex-m4 -mthumb -march=armv7e-m -mfpu=fpv4-sp-d16 -mfloat-abi=hard
 
 Configuration Changes
 ---------------------
@@ -447,22 +437,20 @@ Configuration Changes
 Below are all of the configuration changes that I had to make to configs/stm3240g-eval/nsh2
 in order to successfully build NuttX using the Atollic toolchain WITH FPU support:
 
-  -CONFIG_ARCH_FPU=n              : Enable FPU support
+  -CONFIG_ARCH_FPU=n                       : Enable FPU support
   +CONFIG_ARCH_FPU=y
 
-  -CONFIG_STM32_CODESOURCERYW=y   : Disable the CodeSourcery toolchain
-  +CONFIG_STM32_CODESOURCERYW=n
+  -CONFIG_ARMV7M_TOOLCHAIN_CODESOURCERYW=y : Disable the CodeSourcery toolchain
+  +CONFIG_ARMV7M_TOOLCHAIN_CODESOURCERYW=n
 
-  -CONFIG_STM32_ATOLLIC_LITE=n   : Enable *one* the Atollic toolchains
-   CONFIG_STM32_ATOLLIC_PRO=n
-  -CONFIG_STM32_ATOLLIC_LITE=y   : The "Lite" version
-   CONFIG_STM32_ATOLLIC_PRO=n    : The "Pro" version
+  -CONFIG_ARMV7M_TOOLCHAIN_ATOLLIC=n       : Enable the Atollic toolchain
+  +CONFIG_ARMV7M_TOOLCHAIN_ATOLLIC=y       :
 
-  -CONFIG_INTELHEX_BINARY=y       : Suppress generation FLASH download formats
-  +CONFIG_INTELHEX_BINARY=n       : (Only necessary with the "Lite" version)
+  -CONFIG_INTELHEX_BINARY=y                : Suppress generation FLASH download formats
+  +CONFIG_INTELHEX_BINARY=n                : (Only necessary with the "Lite" version)
 
-  -CONFIG_HAVE_CXX=y              : Suppress generation of C++ code
-  +CONFIG_HAVE_CXX=n              : (Only necessary with the "Lite" version)
+  -CONFIG_HAVE_CXX=y                       : Suppress generation of C++ code
+  +CONFIG_HAVE_CXX=n                       : (Only necessary with the "Lite" version)
 
 See the section above on Toolchains, NOTE 2, for explanations for some of
 the configuration settings.  Some of the usual settings are just not supported
@@ -872,7 +860,12 @@ Where <subdir> is one of the following:
     input.
 
       CONFIG_LCD_LANDSCAPE=y        : 320x240 landscape orientation
-      CONFIG_LCD_MIO283QT2
+      CONFIG_LCD_MIO283QT2=y        : MIO283QT-2 is the default
+
+    You can the newer  MIO283QT-9A by enabling it in the configuration.
+
+      CONFIG_LCD_MIO283QT2=n         : Disable the MIO283QT-2
+      CONFIG_LCD_MIO283QT9A=y        : Enable the MIO283QT-9A
 
   nxlines:
   ------
@@ -881,7 +874,12 @@ Where <subdir> is one of the following:
     on-board TFT LCD.
 
       CONFIG_LCD_LANDSCAPE=y        : 320x240 landscape orientation
-      CONFIG_LCD_MIO283QT2
+      CONFIG_LCD_MIO283QT2=y        : MIO283QT-2 is the default
+
+    You can the newer  MIO283QT-9A by enabling it in the configuration.
+
+      CONFIG_LCD_MIO283QT2=n         : Disable the MIO283QT-2
+      CONFIG_LCD_MIO283QT9A=y        : Enable the MIO283QT-9A
 
   nxtext:
   ------

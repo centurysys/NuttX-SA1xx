@@ -64,8 +64,8 @@
 #include "sam_dmac.h"
 #include "sam_hsmci.h"
 #include "sam_periphclks.h"
-#include "chip/sam3u_dmac.h"
-#include "chip/sam3u_pmc.h"
+#include "chip/sam_dmac.h"
+#include "chip/sam_pmc.h"
 #include "chip/sam_hsmci.h"
 #include "chip/sam_pinmap.h"
 
@@ -77,8 +77,8 @@
 
 /* Configuration ************************************************************/
 
-#ifndef CONFIG_SAM34_DMA
-#  warning "HSMCI driver requires CONFIG_SAM34_DMA"
+#ifndef CONFIG_SAM34_DMAC0
+#  warning "HSMCI driver requires CONFIG_SAM34_DMAC0"
 #endif
 
 #ifndef CONFIG_SCHED_WORKQUEUE
@@ -125,7 +125,7 @@
 
 #define DMA_FLAGS \
   (DMACH_FLAG_FIFO_8BYTES | DMACH_FLAG_FIFOCFG_LARGEST | \
-  (DMACHAN_PID_MCI0 << DMACH_FLAG_PERIPHPID_SHIFT) | \
+  (DMACHAN_INTF_HSMCI0 << DMACH_FLAG_PERIPHPID_SHIFT) | \
    DMACH_FLAG_PERIPHH2SEL | DMACH_FLAG_PERIPHISPERIPH |  \
    DMACH_FLAG_PERIPHWIDTH_32BITS | DMACH_FLAG_PERIPHCHUNKSIZE_1 | \
    DMACH_FLAG_MEMWIDTH_32BITS | DMACH_FLAG_MEMINCREMENT | DMACH_FLAG_MEMCHUNKSIZE_4)

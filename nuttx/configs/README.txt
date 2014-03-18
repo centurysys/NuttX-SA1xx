@@ -60,16 +60,12 @@ following characteristics:
   |-- <config1-dir>
   |   |-- Make.defs
   |   |-- defconfig
-  |   |-- appconfig*
   |   `-- setenv.sh
   |-- <config2-dir>
   |   |-- Make.defs
   |   |-- defconfig
-  |   |-- appconfig*
   |   `-- setenv.sh
   ...
-
-  *optional
 
 Summary of Files
 ^^^^^^^^^^^^^^^^
@@ -131,10 +127,6 @@ defconfig -- This is a configuration file similar to the Linux
     (1) as a makefile fragment included in other makefiles, and
     (2) to generate include/nuttx/config.h which is included by
         most C files in the system.
-
-appconfig -- This is another configuration file that is specific to the
-  application.  This file is copied into the application build directory
-  when NuttX is configured.  See ../apps/README.txt for further details.
 
 setenv.sh -- This is a script that you can include that will be installed at
   the toplevel of the directory structure and can be sourced to set any
@@ -276,7 +268,7 @@ configs/lm3s8962-ek
 configs/lm4f120-launchpad
   This is the port of NuttX to the Stellaris LM4F120 LaunchPad.  The
   Stellaris® LM4F120 LaunchPad Evaluation Board is a low-cost evaluation
-  platform for ARM® Cortex™-M4F-based microcontrollers from Texas\
+  platform for ARM® Cortex™-M4F-based microcontrollers from Texas
   Instruments.
 
 configs/lpcxpresso-lpc1768
@@ -287,11 +279,6 @@ configs/lpcxpresso-lpc1768
 configs/lpc4330-xplorer
   NuttX port to the LPC4330-Xplorer board from NGX Technologies featuring
   the NXP LPC4330FET100 MCU
-
-configs/m68322evb
-  This is a work in progress for the venerable m68322evb board from
-  Motorola. This OS is also built with the arm-nuttx-elf toolchain*.  STATUS:
-  This port was never completed.
 
 configs/maple
   NuttX support for the LeafLab's Maple and Maple Mini boards. These boards
@@ -482,8 +469,17 @@ configs/sama5d3x-ek
   There is also the SAMA5D3FAE-EK bundle includes everything:  The base
   board, all four CPU modules, and the LCD.
 
+configs/samd20-xplained
+  The port of NuttX to the Atmel SAMD20-Xplained Pro development board.  This
+  board features the ATSAMD20J18A MCU (Cortex-M0+ with 256KB of FLASH and
+  32KB of SRAM).
+
 configs/sam3u-ek
   The port of NuttX to the Atmel SAM3U-EK development board.
+
+configs/sam4e-ek
+  The port of NuttX to the Atmel SAM4E-EK development board.  This board
+  features the SAM4E16 MCU running at up to 120MHz.
 
 configs/sam4l-xplained
   The port of NuttX to the Atmel SAM4L-Xplained development board.
@@ -550,6 +546,12 @@ configs/teensy
   This is the port of NuttX to the PJRC Teensy++ 2.0 board.  This board is
   developed by http://pjrc.com/teensy/.  The Teensy++ 2.0 is based
   on an Atmel AT90USB1286 MCU.
+
+configs/tm4c123g-launchpad
+  This is the port of NuttX to the Tiva TM4C123G LaunchPad.  The
+  Tiva® TM4C123G LaunchPad Evaluation Board is a low-cost evaluation
+  platform for ARM® Cortex™-M4F-based microcontrollers from Texas
+  Instruments.
 
 configs/twr-k60n512
   Kinetis K60 Cortex-M4 MCU.  This port uses the FreeScale TWR-K60N512
@@ -622,12 +624,6 @@ Configuring NuttX requires only copying
   configs/<board-name>/<config-dir>/setenv.sh to ${TOPDIR}/setenv.sh
   configs/<board-name>/<config-dir>/defconfig to ${TOPDIR}/.config
 
-And if configs/<board-name>/<config-dir>/appconfig exists in the board
-configuration directory:
-
-  Copy configs/<board-name>/<config-dir>/appconfig to <app-dir>/.config
-  echo "APPS_LOC=\"<app-dir>\"" >> "${TOPDIR}/.config"
-
 tools/configure.sh
   There is a script that automates these steps.  The following steps will
   accomplish the same configuration:
@@ -643,10 +639,9 @@ tools/configure.sh
 
   See tools/README.txt for more information about these scripts.
 
-  And if configs/<board-name>/<config-dir>/appconfig exists and your
-  application directory is not in the standard loction (../apps), then
-  you should also specify the location of the application directory on the
-  command line like:
+  And if your application directory is not in the standard loction (../apps
+  or ../apps-<version>), then you should also specify the location of the
+  application directory on the command line like:
 
     cd tools
     ./configure.sh -a <app-dir> <board-name>/<config-dir>
