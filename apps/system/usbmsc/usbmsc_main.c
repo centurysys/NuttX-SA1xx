@@ -51,7 +51,7 @@
 #include "usbmsc.h"
 
 /****************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 
 #ifdef CONFIG_SYSTEM_USBMSC_TRACEINIT
@@ -375,6 +375,10 @@ static int usbmsc_enumerate(struct usbtrace_s *trace, void *arg)
 #endif
 
 /****************************************************************************
+ * Public Functions
+ ****************************************************************************/
+
+/****************************************************************************
  * msconn_main
  *
  * Description:
@@ -385,13 +389,14 @@ static int usbmsc_enumerate(struct usbtrace_s *trace, void *arg)
  *
  ****************************************************************************/
 
-static int msconn_daemon(int argc, char *argv[])
+int msconn_main(int argc, char *argv[])
 {
   FAR void *handle;
   int ret;
 
-  /* If this program is implemented as the NSH 'msconn' command, then we need to
-   * do a little error checking to assure that we are not being called re-entrantly.
+  /* If this program is implemented as the NSH 'msconn' command, then we
+   * need to do a little error checking to assure that we are not being
+   * called re-entrantly.
    */
 
 #ifdef CONFIG_NSH_BUILTIN_APPS
@@ -401,7 +406,7 @@ static int msconn_daemon(int argc, char *argv[])
 
   if (g_usbmsc.mshandle)
     {
-      message("msconn_main: ERROR: Already connected\n");
+      message("mcsonn_main: ERROR: Already connected\n");
       return EXIT_FAILURE;
     }
 #endif
@@ -425,63 +430,68 @@ static int msconn_daemon(int argc, char *argv[])
 
   /* Register block drivers (architecture-specific) */
 
-  message("msconn_main: Creating block drivers\n");
+  message("mcsonn_main: Creating block drivers\n");
   ret = usbmsc_archinitialize();
   if (ret < 0)
     {
-      message("msconn_main: usbmsc_archinitialize failed: %d\n", -ret);
+      message("mcsonn_main: usbmsc_archinitialize failed: %d\n", -ret);
       return EXIT_FAILURE;
     }
+
   check_test_memory_usage("After usbmsc_archinitialize()");
 
   /* Then exports the LUN(s) */
 
-  message("msconn_main: Configuring with NLUNS=%d\n", CONFIG_SYSTEM_USBMSC_NLUNS);
+  message("mcsonn_main: Configuring with NLUNS=%d\n", CONFIG_SYSTEM_USBMSC_NLUNS);
   ret = usbmsc_configure(CONFIG_SYSTEM_USBMSC_NLUNS, &handle);
   if (ret < 0)
     {
-      message("msconn_main: usbmsc_configure failed: %d\n", -ret);
+      message("mcsonn_main: usbmsc_configure failed: %d\n", -ret);
       usbmsc_uninitialize(handle);
       return EXIT_FAILURE;
     }
-  message("msconn_main: handle=%p\n", handle);
+
+  message("mcsonn_main: handle=%p\n", handle);
   check_test_memory_usage("After usbmsc_configure()");
 
-  message("msconn_main: Bind LUN=0 to %s\n", CONFIG_SYSTEM_USBMSC_DEVPATH1);
+  message("mcsonn_main: Bind LUN=0 to %s\n", CONFIG_SYSTEM_USBMSC_DEVPATH1);
   ret = usbmsc_bindlun(handle, CONFIG_SYSTEM_USBMSC_DEVPATH1, 0, 0, 0, false);
   if (ret < 0)
     {
-      message("msconn_main: usbmsc_bindlun failed for LUN 1 using %s: %d\n",
+      message("mcsonn_main: usbmsc_bindlun failed for LUN 1 using %s: %d\n",
                CONFIG_SYSTEM_USBMSC_DEVPATH1, -ret);
       usbmsc_uninitialize(handle);
       return EXIT_FAILURE;
     }
+
   check_test_memory_usage("After usbmsc_bindlun()");
 
 #if CONFIG_SYSTEM_USBMSC_NLUNS > 1
 
-  message("msconn_main: Bind LUN=1 to %s\n", CONFIG_SYSTEM_USBMSC_DEVPATH2);
+  message("mcsonn_main: Bind LUN=1 to %s\n", CONFIG_SYSTEM_USBMSC_DEVPATH2);
   ret = usbmsc_bindlun(handle, CONFIG_SYSTEM_USBMSC_DEVPATH2, 1, 0, 0, false);
   if (ret < 0)
     {
-      message("msconn_main: usbmsc_bindlun failed for LUN 2 using %s: %d\n",
+      message("mcsonn_main: usbmsc_bindlun failed for LUN 2 using %s: %d\n",
                CONFIG_SYSTEM_USBMSC_DEVPATH2, -ret);
       usbmsc_uninitialize(handle);
       return EXIT_FAILURE;
     }
+
   check_test_memory_usage("After usbmsc_bindlun() #2");
 
 #if CONFIG_SYSTEM_USBMSC_NLUNS > 2
 
-  message("msconn_main: Bind LUN=2 to %s\n", CONFIG_SYSTEM_USBMSC_DEVPATH3);
+  message("mcsonn_main: Bind LUN=2 to %s\n", CONFIG_SYSTEM_USBMSC_DEVPATH3);
   ret = usbmsc_bindlun(handle, CONFIG_SYSTEM_USBMSC_DEVPATH3, 2, 0, 0, false);
   if (ret < 0)
     {
-      message("msconn_main: usbmsc_bindlun failed for LUN 3 using %s: %d\n",
+      message("mcsonn_main: usbmsc_bindlun failed for LUN 3 using %s: %d\n",
                CONFIG_SYSTEM_USBMSC_DEVPATH3, -ret);
       usbmsc_uninitialize(handle);
       return EXIT_FAILURE;
     }
+
   check_test_memory_usage("After usbmsc_bindlun() #3");
 
 #endif
@@ -490,13 +500,14 @@ static int msconn_daemon(int argc, char *argv[])
   ret = usbmsc_exportluns(handle);
   if (ret < 0)
     {
-      message("msconn_main: usbmsc_exportluns failed: %d\n", -ret);
+      message("mcsonn_main: usbmsc_exportluns failed: %d\n", -ret);
       usbmsc_uninitialize(handle);
       return EXIT_FAILURE;
     }
+
   check_test_memory_usage("After usbmsc_exportluns()");
 
-  /* It this program was configued as an NSH command, then just exit now.
+  /* It this program was configured as an NSH command, then just exit now.
    * Also, if signals are not enabled (and, hence, sleep() is not supported.
    * then we have not real option but to exit now.
    */
@@ -511,26 +522,27 @@ static int msconn_daemon(int argc, char *argv[])
       sleep(5);
 
 #  ifdef CONFIG_SYSTEM_USBMSC_TRACE
-      message("\nmsconn_main: USB TRACE DATA:\n");
+      message("\nmcsonn_main: USB TRACE DATA:\n");
       ret = usbtrace_enumerate(usbmsc_enumerate, NULL);
       if (ret < 0)
         {
-          message("msconn_main: usbtrace_enumerate failed: %d\n", -ret);
+          message("mcsonn_main: usbtrace_enumerate failed: %d\n", -ret);
           usbmsc_uninitialize(handle);
           return EXIT_FAILURE;
         }
+
       check_test_memory_usage("After usbtrace_enumerate()");
 #  else
-      message("msconn_main: Still alive\n");
+      message("mcsonn_main: Still alive\n");
 #  endif
     }
 #elif defined(CONFIG_NSH_BUILTIN_APPS)
 
-  /* Return the USB mass storage device handle so it can be used by the 'misconn'
+  /* Return the USB mass storage device handle so it can be used by the 'msconn'
    * command.
    */
 
-  message("msconn_main: Connected\n");
+  message("mcsonn_main: Connected\n");
   g_usbmsc.mshandle = handle;
   check_test_memory_usage("After MS connection");
 
@@ -538,95 +550,21 @@ static int msconn_daemon(int argc, char *argv[])
 
   /* Just exit */
  
-  message("msconn_main: Exiting\n");
+  message("mcsonn_main: Exiting\n");
 
   /* Dump debug memory usage */
  
   final_memory_usage("Final memory usage");
 #endif
-  return EXIT_SUCCESS;
-}
-
-/****************************************************************************
- * Public Functions
- ****************************************************************************/
-
-/****************************************************************************
- * msconn_main
- *
- * Description:
- *   This is the main program that configures the USB mass storage device
- *   and exports the LUN(s).  If CONFIG_NSH_BUILTIN_APPS is defined
- *   in the NuttX configuration, then this program can be executed by
- *   entering the "msconn" command at the NSH console.
- *
- ****************************************************************************/
-
-int msconn_main(int argc, char *argv[])
-{
-  /* If this function is started as a built-in application from the NSH
-   * command line, then daemonize.  Why?  Because NSH is probably waiting
-   * on waitpid() for msconn to complete.  But the USB MSC initialization
-   * logic creates a dedicated worker thread using pthread_create().  As
-   * consequences, there will be two members of the task group and waitpid()
-   * will not wake up when msconn returns.  It will not wake-up until both
-   * msconn and the USB MSC work thread terminate.
-   */
-
-#if defined(CONFIG_NSH_BUILTIN_APPS) && defined(CONFIG_SCHED_WAITPID)
-  char *newargv[1] = { NULL };
-  struct sched_param param;
-  int ret;
-
-  /* Check if there is a non-NULL USB mass storage device handle (meaning
-   * that the USB mass storage device is already configured).  There is
-   * no handshaking so there is a race condition:  We will check again
-   * when the daemon is started.
-   *
-   * REVISIT:  This might a good application for vfork();
-   */
-
-  if (g_usbmsc.mshandle)
-    {
-      message("msconn_main: ERROR: Already connected\n");
-      return 1;
-    }
-
-#ifndef CONFIG_SYSTEM_USBMSC_DAEMON_PRIORITY
-  /* Set the daemon to the same priority as this task */
-
-  ret = sched_getparam(0, &param);
-  if (ret < 0)
-    {
-      message("msconn_main: ERROR: Already connected\n");
-      return EXIT_FAILURE;
-    }
-#else
-  param.sched_priority = CONFIG_SYSTEM_USBMSC_DAEMON_PRIORITY;
-#endif
-
-  ret = TASK_CREATE("msconn daemon", param.sched_priority,
-                   CONFIG_SYSTEM_USBMSC_DAEMON_STACKSIZE,
-                   msconn_daemon, newargv);
-  if (ret < 0)
-    {
-      message("msconn_main: ERROR: TASK_CREATE failed: %d\n", ret);
-      return EXIT_FAILURE;
-    }
 
   return EXIT_SUCCESS;
-#else
-  /* Otherwise, there is no need to daemonize */
-
-  return msconn_daemon(argc, argv);
-#endif
 }
 
 /****************************************************************************
  * msdis_main
  *
  * Description:
- *   This is a program entry point that will disconnet the USB mass storage
+ *   This is a program entry point that will disconnect the USB mass storage
  *   device.  This program is only available if CONFIG_NSH_BUILTIN_APPS
  *   is defined in the NuttX configuration.  In that case, this program can
  *   be executed by entering the "msdis" command at the NSH console.
@@ -643,18 +581,19 @@ int msdis_main(int argc, char *argv[])
       message("msdis: ERROR: Not connected\n");
       return EXIT_FAILURE;
     }
-   check_test_memory_usage("Since MS connection");
+
+  check_test_memory_usage("Since MS connection");
 
   /* Then disconnect the device and uninitialize the USB mass storage driver */
 
-   usbmsc_uninitialize(g_usbmsc.mshandle);
-   g_usbmsc.mshandle = NULL;
-   message("msdis: Disconnected\n");
-   check_test_memory_usage("After usbmsc_uninitialize()");
+  usbmsc_uninitialize(g_usbmsc.mshandle);
+  g_usbmsc.mshandle = NULL;
+  message("msdis: Disconnected\n");
+  check_test_memory_usage("After usbmsc_uninitialize()");
 
-   /* Dump debug memory usage */
+  /* Dump debug memory usage */
 
-   final_memory_usage("Final memory usage");
-   return EXIT_SUCCESS;
+  final_memory_usage("Final memory usage");
+  return EXIT_SUCCESS;
 }
 #endif

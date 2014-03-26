@@ -7007,4 +7007,41 @@
 
 	* arch/arm/src/sam34/sam_udp.c and .h:  Add a USB full speed device
 	  driver (UDP) for the SAM4E (2014-3-17).
+	* Documentation/NuttxPortingGuide.html:  Typo fixes from Vijay Kumar
+	  (2014-3-18).
+	* arch/arm/Kconfig:  Improved documentation of the use of the
+	  BASEPRI register from Vijay Kumar (2014-3-19).
+	* include/nuttx/i2c.h:  More typo fixes from Vijay Kumar (2014-3-19).
+	* arch/Kconfig and *_assert.h:  Add a configuration option to enable
+	  dumping of the USB trace buffer on assertion (2014-3-19).
+	* drivers/usbdev/Kconfig, arch/arm/src/sam34/Kconfig, and
+	  drivers/usbdev/usbmsc_scsi.c:  If DCD can support queuing of stall
+	  requests, then the USB MSC stall work around delays are not necessary
+	  (2014-3-20).
+	* net/netdev_findbyaddr.c:  Skip network devices that are in the
+	  "down" state.  It does not make sense to consider an address match
+	  with a "down" device.  From Brennan Ashton (2014-3-20).
+	* configs/sam4e-ek/usbnsh:  Add a NSH configuration that uses the
+	  NSH console (2014-3-22).
+	* arch/arm/src/stm32/stm32_eth.c:  Add IGMP hashing support.  From
+	  Manuel Stühn (2014-3-24).
+	* net/netdev_ioctl.c and uip/uip_input.c:  IGMP-related bug fixes
+	  from Manuel Stühn (2014-3-24).
+	* arch/arm/src/sam34:  Add missing HSCMI configuration settings to
+	  Kconfig; update naming to include SAM34_ (2014-3-24).
+	* configs/sam4e-ek/include/board.h:  Update HSMCI timing to use the
+	  CLKODD bit (2014-3-24).
+	* drivers/include/mtd/Kconfig, sector512.c, and include/nuttx/mtd/mtd.h:
+	  Add a new MTD driver that can be used to contain another driver and
+	  force its apparent sector size to be 512 bytes (2014-3-24).
+	* arch/arm/src/sam34/sam_lowputc.c sam_serial.c:  Fix a mysterious
+	  multithreading bug that can log up the serial port (2014-3-14).
+	* drivers/usbdev/Kconfig, usbmsc.c, usbmsc.h, and usbmsc_scsi.c:
+	  Redesign threading module used with the USB MSC driver.  It was using
+	  pthreads before and these were changed to a kernel thread.  The reason
+	  for this has to do with task grouping:  A pthread is a memory of the
+	  group of the task that started it.  A kernel thread is independent of
+	  the task that started in (other than knowing it as the parent).  This
+	  allows me to remove so kludge logic to "deparent" the pthread on
+	  startup (2014-3-25).
 

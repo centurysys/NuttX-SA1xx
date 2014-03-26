@@ -21,6 +21,9 @@ Contents
   - Serial Console
   - Networking Support
   - AT25 Serial FLASH
+  - USB Full-Speed Device
+  - HSMCI
+  - Touchscreen
   - SAM4E-EK-specific Configuration Options
   - Configurations
 
@@ -273,10 +276,11 @@ Loading Code into SRAM with J-Link
     J-Link> setpc <address of __start>
     J-Link> ... start debugging ...
 
-  STATUS:  As of this writing, I have no been successful writing to FLASH
-  using the GDB server.  I think that this is because of issues with GPNVM1
-  settings and flash lock bits.  In any event, the GDB server works great for
-  debugging after writing the program to FLASH using SAM-BA.
+  STATUS:  As of this writing, I have not been successful writing to FLASH
+  using the GDB server; the write succeeds with no complaints, but the contents
+  of the FLASH memory remain unchanged.  This may be because of issues with
+  GPNVM1 settings and flash lock bits?  In any event, the GDB server works
+  great for debugging after writing the program to FLASH using SAM-BA.
 
 Writing to FLASH using SAM-BA
 =============================
@@ -586,6 +590,269 @@ AT25 Serial FLASH
     nsh> cat /mnt/at25/atest.txt
     This is a test
 
+USB Full-Speed Device
+=====================
+
+  Basic USB Full-Speed Device Configuration
+  -----------------------------------------
+
+  Support the USB full-speed device (UDP) driver can be enabled with these
+  NuttX configuration settings.
+
+    Device Drivers -> USB Device Driver Support
+      CONFIG_USBDEV=y                       : Enable USB device support
+      CONFIG_USBDEV_DUALSPEED=n             : Device does not support High-Speed
+      CONFIG_USBDEV_DMA=n                   : Device does not use DMA
+
+    System Type -> ATSAM3/4 Peripheral Support
+      CONFIG_SAM34_UDP=y                    : Enable UDP Full Speed USB device
+
+    Application Configuration -> NSH Library
+      CONFIG_NSH_ARCHINIT=y                 : NSH board-initialization
+
+  Mass Storage Class
+  ------------------
+
+  The Mass Storage Class (MSC) class driver can be selected for use with
+  UDP.  Note: The following assumes that the internal AT25 Serial FLASH
+  is configured to support a FAT file system through an FTL layer as
+  described about under "AT25 Serial FLASH".
+
+    Device Drivers -> USB Device Driver Support
+      CONFIG_USBMSC=y                       : Enable the USB MSC class driver
+      CONFIG_USBMSC_EPBULKOUT=1             : Use EP1 for the BULK OUT endpoint
+      CONFIG_USBMSC_EPBULKIN=2              : Use EP2 for the BULK IN endpoint
+      CONFIG_USBMSC_BULKINREQLEN=64         : (Defaults for full speed)
+      CONFIG_USBMSC_BULKOUTREQLEN=64        :
+                                            : Defaults for other settings as well?
+    Board Selection
+      CONFIG_SAM4EEK_AT25_BLOCKDEVICE=y     : Export AT25 serial FLASH device
+      CONFIG_SAM4EEK_HSMCI_BLOCKDEVICE=n    : Don't export HSMCI SD card
+
+  Note: If properly configured, you could export the HSMCI SD card instead
+  of the internal AT25 Serial FLASH.
+
+  The following setting enables an add-on that can can be used to control
+  the USB MSC device.  It will add two new NSH commands:
+
+    a. msconn will connect the USB serial device and export the AT25
+       to the host, and
+    b. msdis which will disconnect the USB serial device.
+
+    Application Configuration -> System Add-Ons:
+      CONFIG_SYSTEM_USBMSC=y                : Enable the USBMSC add-on
+      CONFIG_SYSTEM_USBMSC_NLUNS=1          : One LUN
+      CONFIG_SYSTEM_USBMSC_DEVMINOR1=0      : Minor device zero
+      CONFIG_SYSTEM_USBMSC_DEVPATH1="/dev/mtdblock0"
+                                            : Use a single, LUN:  The AT25
+                                            : block driver.
+    NOTES:
+
+    a. To prevent file system corruption, make sure that the AT25 is un-
+       mounted *before* exporting the mass storage device to the host:
+
+         nsh> umount /mnt/at25
+         nsh> mscon
+
+       The AT25 can be re-mounted after the mass storage class is disconnected:
+
+        nsh> msdis
+        nsh> mount -t vfat /dev/mtdblock0 /mnt/at25
+
+    b. If you change the value CONFIG_SYSTEM_USBMSC_DEVPATH1, then you
+       can export other file systems:
+
+        "/dev/mmcsd0" would export the HSMCI SD slot (not currently available,
+        see the "HSMCI" section).
+
+        "/dev/ram0" could even be used to export a RAM disk.  But you would
+         first have to use mkrd to create the RAM disk and mkfatfs to put
+         a FAT file system on it.
+
+  STATUS:
+
+  2014-3-25:  Marginally functional. Very slow to come up.  USB analyzer
+              shows several resets before the host decides that it is
+              happy with the device.  There are no obvious errors in the
+              USB data capture.
+  2014-3-25:  There also seem to be issues about writing files.  This
+              needs more investigation.
+
+  CDC/ACM Serial Device Class
+  ---------------------------
+
+  This will select the CDC/ACM serial device.  Defaults for the other
+  options should be okay.
+
+    Device Drivers -> USB Device Driver Support
+      CONFIG_CDCACM=y                       : Enable the CDC/ACM device
+      CONFIG_CDCACM_EPINTIN=1               : Select endpoint numbers
+      CONFIG_CDCACM_EPBULKOUT=2
+      CONFIG_CDCACM_EPBULKIN=3
+
+  The following setting enables an example that can can be used to control
+  the CDC/ACM device.  It will add two new NSH commands:
+
+    a. sercon will connect the USB serial device (creating /dev/ttyACM0), and
+    b. serdis which will disconnect the USB serial device (destroying
+        /dev/ttyACM0).
+
+    Application Configuration -> Examples:
+      CONFIG_SYSTEM_CDCACM=y                : Enable an CDC/ACM example
+      CONFIG_SYSTEM_CDCACM_DEVMINOR=0       : Use /dev/ttyUSB0
+
+  NOTES:
+
+  1. You cannot have both the CDC/ACM and the MSC class drivers enabled
+     simultaneously in the way described here.  If you want to use both, then
+     you will need to consider a USB "composite" devices that support supports
+     both interfaces.  There are no instructures here for setting up the USB
+     composite device, but there are other examples in the NuttX board support
+     directories that can be used for reference.
+
+  2. Linux supports the CDC/ACM driver out of the box.  Windows, on the other
+     than requires that you first install a serial driver (a .inf file).  There
+     are example .inf files for NuttX in the nuttx/configs/spark directories.
+
+  STATUS:
+
+  2013-2-23:  Checks out OK.  See discussion of the usbnsh configuration
+              below.
+
+  Debugging USB Device
+  --------------------
+
+  There is normal console debug output available that can be enabled with
+  CONFIG_DEBUG + CONFIG_DEBUG_USB.  However, USB device operation is very
+  time critical and enabling this debug output WILL interfere with the
+  operation of the UDP.  USB device tracing is a less invasive way to get
+  debug information:  If tracing is enabled, the USB device will save
+  encoded trace output in in-memory buffer; if the USB monitor is also
+  enabled, that trace buffer will be periodically emptied and dumped to the
+  system logging device (the serial console in this configuration):
+
+    Device Drivers -> "USB Device Driver Support:
+      CONFIG_USBDEV_TRACE=y                   : Enable USB trace feature
+      CONFIG_USBDEV_TRACE_NRECORDS=256        : Buffer 256 records in memory
+      CONFIG_USBDEV_TRACE_STRINGS=y           : (optional)
+
+    If you get data loss in the trace buffer, then you may want to increase the
+    CONFIG_USBDEV_TRACE_NRECORDS.  I have used buffers up to 4096 records to
+    avoid data loss.
+
+    Application Configuration -> NSH LIbrary:
+      CONFIG_NSH_USBDEV_TRACE=n               : No builtin tracing from NSH
+      CONFIG_NSH_ARCHINIT=y                   : Automatically start the USB monitor
+
+    Application Configuration -> System NSH Add-Ons:
+      CONFIG_SYSTEM_USBMONITOR=y              : Enable the USB monitor daemon
+      CONFIG_SYSTEM_USBMONITOR_STACKSIZE=2048 : USB monitor daemon stack size
+      CONFIG_SYSTEM_USBMONITOR_PRIORITY=50    : USB monitor daemon priority
+      CONFIG_SYSTEM_USBMONITOR_INTERVAL=1     : Dump trace data every second
+      CONFIG_SYSTEM_USBMONITOR_TRACEINIT=y    : Enable TRACE output
+      CONFIG_SYSTEM_USBMONITOR_TRACECLASS=y
+      CONFIG_SYSTEM_USBMONITOR_TRACETRANSFERS=y
+      CONFIG_SYSTEM_USBMONITOR_TRACECONTROLLER=y
+      CONFIG_SYSTEM_USBMONITOR_TRACEINTERRUPTS=y
+
+  NOTE: If USB debug output is also enabled, both outputs will appear on the
+  serial console.  However, the debug output will be asynchronous with the
+  trace output and, hence, difficult to interpret.
+
+HSMCI
+=====
+
+  Enabling HSMCI support. The SAM3U-KE provides a an SD memory card slot.
+  Support for the SD slot can be enabled with the following settings:
+
+    System Type->ATSAM3/4 Peripheral Support
+      CONFIG_SAM34_HSMCI=y                    : Enable HSMCI support
+      CONFIG_SAM34_DMAC0=y                    : DMAC support is needed by HSMCI
+
+    System Type
+      CONFIG_SAM34_GPIO_IRQ=y                 : PIO interrupts needed
+      CONFIG_SAM34_GPIOA_IRQ=y                : Card detect pin is on PIOA
+
+    Device Drivers -> MMC/SD Driver Support
+      CONFIG_MMCSD=y                          : Enable MMC/SD support
+      CONFIG_MMCSD_NSLOTS=1                   : One slot per driver instance
+      CONFIG_MMCSD_HAVECARDDETECT=y           : Supports card-detect PIOs
+      CONFIG_MMCSD_SDIO=y                     : SDIO-based MMC/SD support
+      CONFIG_MMCSD_MULTIBLOCK_DISABLE=y       : Probably works but is untested
+
+      CONFIG_SDIO_DMA=y                       : Use SDIO DMA
+      CONFIG_SDIO_BLOCKSETUP=y                : Needs to know block sizes
+
+    Library Routines
+      CONFIG_SCHED_WORKQUEUE=y                : Driver needs work queue support
+                                              : Defaults for other settings okay
+
+    Application Configuration -> NSH Library
+      CONFIG_NSH_ARCHINIT=y                   : NSH board-initialization
+      CONFIG_NSH_MMCSDSLOTNO=0                : Only one slot, slot 0
+
+  After an SD card is successfully initialized, the block device /dev/mmcsd0
+  will be available.  To mount the SD card, use the following NSH command:
+
+    nsh> mount -t vfat /dev/mmcsd0 /mnt/sdcard
+
+  The SD card contents will then be available under /mnt/sdcard.
+
+  NOTES:
+
+  1. DMA is not currently functional and without DMA, there may not be
+     reliable data transfers at high speeds due to data overrun problems.
+     The current HSMCI driver supports DMA via the DMAC.  However, the data
+     sheet only discusses PDC-based HSMCI DMA (although there is a DMA
+     channel interface definition for HSMCI).
+
+Touchscreen
+===========
+
+    The NSH configuration can be used to verify the ADS7843E touchscreen on
+    the SAM4E-EK LCD.  With these modifications, you can include the touchscreen
+    test program at apps/examples/touchscreen as an NSH built-in application.
+    You can enable the touchscreen and test by modifying the default
+    configuration in the following ways:
+
+      Device Drivers
+        CONFIG_SPI=y                          : Enable SPI support
+        CONFIG_SPI_EXCHANGE=y                 : The exchange() method is supported
+        CONFIG_SPI_OWNBUS=y                   : Smaller code if this is the only SPI device
+
+        CONFIG_INPUT=y                        : Enable support for input devices
+        CONFIG_INPUT_ADS7843E=y               : Enable support for the XPT2046
+        CONFIG_ADS7843E_SPIDEV=2              : Use SPI CS 2 for communication
+        CONFIG_ADS7843E_SPIMODE=0             : Use SPI mode 0
+        CONFIG_ADS7843E_FREQUENCY=1000000     : SPI BAUD 1MHz
+        CONFIG_ADS7843E_SWAPXY=y              : If landscape orientation
+        CONFIG_ADS7843E_THRESHX=51            : These will probably need to be tuned
+        CONFIG_ADS7843E_THRESHY=39
+
+      System Type -> Peripherals:
+        CONFIG_SAM34_SPI0=y                   : Enable support for SPI
+
+      System Type:
+        CONFIG_SAM34_GPIO_IRQ=y               : GPIO interrupt support
+        CONFIG_SAM34_GPIOA_IRQ=y              : Enable GPIO interrupts from port A
+
+      RTOS Features:
+        CONFIG_DISABLE_SIGNALS=n              : Signals are required
+
+      Library Support:
+        CONFIG_SCHED_WORKQUEUE=y              : Work queue support required
+
+      Application Configuration:
+        CONFIG_EXAMPLES_TOUCHSCREEN=y         : Enable the touchscreen built-in test
+
+      Defaults should be okay for related touchscreen settings.  Touchscreen
+      debug output on UART0 can be enabled with:
+
+      Build Setup:
+        CONFIG_DEBUG=y                    : Enable debug features
+        CONFIG_DEBUG_VERBOSE=y            : Enable verbose debug output
+        CONFIG_DEBUG_INPUT=y              : Enable debug output from input devices
+
 SAM4E-EK-specific Configuration Options
 =======================================
 
@@ -706,21 +973,21 @@ SAM4E-EK-specific Configuration Options
   Some subsystems can be configured to operate in different ways. The drivers
   need to know how to configure the subsystem.
 
-    CONFIG_GPIOA_IRQ
-    CONFIG_GPIOB_IRQ
-    CONFIG_GPIOC_IRQ
-    CONFIG_GPIOD_IRQ
-    CONFIG_GPIOE_IRQ
-    CONFIG_GPIOF_IRQ
-    CONFIG_GPIOG_IRQ
-    CONFIG_GPIOH_IRQ
-    CONFIG_GPIOJ_IRQ
-    CONFIG_GPIOK_IRQ
-    CONFIG_GPIOL_IRQ
-    CONFIG_GPIOM_IRQ
-    CONFIG_GPION_IRQ
-    CONFIG_GPIOP_IRQ
-    CONFIG_GPIOQ_IRQ
+    CONFIG_SAM34_GPIOA_IRQ
+    CONFIG_SAM34_GPIOB_IRQ
+    CONFIG_SAM34_GPIOC_IRQ
+    CONFIG_SAM34_GPIOD_IRQ
+    CONFIG_SAM34_GPIOE_IRQ
+    CONFIG_SAM34_GPIOF_IRQ
+    CONFIG_SAM34_GPIOG_IRQ
+    CONFIG_SAM34_GPIOH_IRQ
+    CONFIG_SAM34_GPIOJ_IRQ
+    CONFIG_SAM34_GPIOK_IRQ
+    CONFIG_SAM34_GPIOL_IRQ
+    CONFIG_SAM34_GPIOM_IRQ
+    CONFIG_SAM34_GPION_IRQ
+    CONFIG_SAM34_GPIOP_IRQ
+    CONFIG_SAM34_GPIOQ_IRQ
 
     CONFIG_USART0_ISUART
     CONFIG_USART1_ISUART
@@ -836,8 +1103,16 @@ Configurations
 
     NOTES:
 
-    1. NSH built-in applications are supported.  However, there are
-       no built-in applications built with the default configuration.
+    1. Default stack sizes are large and should really be tuned to reduce
+       the RAM footprint:
+
+         CONFIG_ARCH_INTERRUPTSTACK=2048
+         CONFIG_IDLETHREAD_STACKSIZE=1024
+         CONFIG_USERMAIN_STACKSIZE=2048
+         CONFIG_PTHREAD_STACK_DEFAULT=2048
+         ... and others ...
+
+    2. NSH built-in applications are supported.
 
        Binary Formats:
          CONFIG_BUILTIN=y                    : Enable support for built-in programs
@@ -845,7 +1120,7 @@ Configurations
        Applicaton Configuration:
          CONFIG_NSH_BUILTIN_APPS=y           : Enable starting apps from NSH command line
 
-    2. This configuration has the network enabled by default.  This can be
+    3. This configuration has the network enabled by default.  This can be
        easily disabled or reconfigured (See see the network related
        configuration settings above in the section entitled "Networking").
 
@@ -861,7 +1136,11 @@ Configurations
        a network because additional time will be required to fail with
        timeout errors.
 
-    3. This configuration supports a network with fixed IP address.  You
+       STATUS:
+       2014-3-13: The basic NSH serial console is working.  Network support
+                  has been verified.
+
+    4. This configuration supports a network with fixed IP address.  You
        may have to change these settings for your network:
 
        CONFIG_NSH_IPADDR=0x0a000002        : IP address: 10.0.0.2
@@ -877,85 +1156,125 @@ Configurations
        CONFIG_NSH_DHCPC=y                  : Tells NSH to use DHCPC, not
                                            : the fixed addresses
 
-    4. This configuration has the DMA-based SPI0 and AT25 Serial FLASH
+    5. This configuration has the DMA-based SPI0 and AT25 Serial FLASH
        support enabled by default.  This can be easily disabled or
        reconfigured (See see the configuration settings and usage notes
        above in the section entitled "AT25 Serial FLASH").
 
-    5. This configuration has been used for verifying the touchscreen on
-       on the SAM4E-EK LCD.  With these modifications, you can include the
-       touchscreen test program at apps/examples/touchscreen as an NSH built-in
-       application.  You can enable the touchscreen and test by modifying the
-       default configuration in the following ways:
+       To mount the AT25 Serial FLASH as a FAT file system:
 
-          Device Drivers
-            CONFIG_SPI=y                      : Enable SPI support
-            CONFIG_SPI_EXCHANGE=y             : The exchange() method is supported
-            CONFIG_SPI_OWNBUS=y               : Smaller code if this is the only SPI device
+         nsh>mount -t vfat /dev/mtdblock0 /mnt/at25
 
-            CONFIG_INPUT=y                    : Enable support for input devices
-            CONFIG_INPUT_ADS7843E=y           : Enable support for the XPT2046
-            CONFIG_ADS7843E_SPIDEV=2          : Use SPI CS 2 for communication
-            CONFIG_ADS7843E_SPIMODE=0         : Use SPI mode 0
-            CONFIG_ADS7843E_FREQUENCY=1000000 : SPI BAUD 1MHz
-            CONFIG_ADS7843E_SWAPXY=y          : If landscpe orientation
-            CONFIG_ADS7843E_THRESHX=51        : These will probably need to be tuned
-            CONFIG_ADS7843E_THRESHY=39
+       STATUS:
+       2014-3-14: The DMA-based SPI appears to be functional and can be used
+                  to support a FAT file system on the AT25 Serial FLASH.
 
-          System Type -> Peripherals:
-            CONFIG_SAM34_SPI0=y                : Enable support for SPI
+    6. USB device support is not enabled in this configuration by default.
+       To add USB device support to this configuration, see the instructions
+       above under "USB Full-Speed Device."
 
-          System Type:
-            CONFIG_GPIO_IRQ=y                 : GPIO interrupt support
-            CONFIG_GPIOA_IRQ=y                : Enable GPIO interrupts from port A
+       STATUS:
+       2014-3-21: USB support is under development and USB MSC support is
+                  only partially functional.  Additional test and integration
+                  is required.
+       2014-3-22: USB seems to work properly (there are not obvious errors
+                  in a USB bus capture.  However, the AT25 does not mount
+                  on either the Linux or Windows host.  Since there are no
+                  USB errors, this could only be an issue with the USB MSC
+                  protocol (not likely) or with the FAT format on the AT25
+                  serial FLASH (likely).
 
-          RTOS Features:
-            CONFIG_DISABLE_SIGNALS=n          : Signals are required
+    7. This configuration can be used to verify the touchscreen on on the
+       SAM4E-EK LCD.  See the instructions above in the paragraph entitled
+       "Touchscreen".
 
-          Library Support:
-            CONFIG_SCHED_WORKQUEUE=y          : Work queue support required
+       STATUS:
+         2014-3-21:  The touchscreen has not yet been tested.
 
-          Applicaton Configuration:
-            CONFIG_EXAMPLES_TOUCHSCREEN=y     : Enable the touchscreen built-int test
+    8. Enabling HSMCI support. The SAM3U-KE provides a an SD memory card
+       slot.  Support for the SD slot can be enabled following the
+       instructions provided above in the paragraph entitled "HSMCI."
 
-          Defaults should be okay for related touchscreen settings.  Touchscreen
-          debug output on UART0 can be enabled with:
+       STATUS:
+         2014-3-24:  DMA is not currently functional and without DMA, there
+                     may not be reliable data transfers at high speeds due
+                     to data overrun problems.  The current HSMCI driver
+                     supports DMA via the DMAC.  However, the data sheet
+                     only discusses PDC-based HSMCI DMA (although there is
+                     a DMA channel interface definition for HSMCI).
 
-          Build Setup:
-            CONFIG_DEBUG=y                    : Enable debug features
-            CONFIG_DEBUG_VERBOSE=y            : Enable verbose debug output
-            CONFIG_DEBUG_INPUT=y              : Enable debug output from input devices
+  usbnsh:
 
-    6. Enabling HSMCI support. The SAM3U-KE provides a an SD memory card
-       slot.  Support for the SD slot can be enabled with the following
-       settings:
-
-       System Type->ATSAM3/4 Peripheral Support
-         CONFIG_SAM34_HSMCI=y                 : Enable HSMCI support
-         CONFIG_SAM34_DMAC0=y                 : DMAC support is needed by HSMCI
-
-       System Type
-         CONFIG_SAM34_GPIO_IRQ=y              : PIO interrupts needed
-         CONFIG_SAM34_GPIOA_IRQ=y             : Card detect pin is on PIOA
-
-       Device Drivers -> MMC/SD Driver Support
-         CONFIG_MMCSD=y                       : Enable MMC/SD support
-         CONFIG_MMSCD_NSLOTS=1                : One slot per driver instance
-         CONFIG_MMCSD_HAVECARDDETECT=y        : Supports card-detect PIOs
-         CONFIG_MMCSD_SDIO=y                  : SDIO-based MMC/SD support
-         CONFIG_SDIO_DMA=y                    : Use SDIO DMA
-         CONFIG_SDIO_BLOCKSETUP=y             : Needs to know block sizes
-
-       Library Routines
-         CONFIG_SCHED_WORKQUEUE=y             : Driver needs work queue support
-
-       Application Configuration -> NSH Library
-         CONFIG_NSH_ARCHINIT=y                : NSH board-initialization
+    This is another NSH example.  If differs from the 'nsh' configuration
+    in that this configurations uses a USB serial device for console I/O.
 
     STATUS:
-      2014-3-13: The basic NSH serial console is working.  Network support
-        has been verified.  HSMCI and touchscreen have not been tested (the
-        above notes came from the SAM3U-EK and have not been yet been tested
-        on the SAM4E-EK).
-      2014-3-14: The DMA-based SPI appears to be functional and can be used
-        to support a FAT file system on the AT25 Serial FLASH.
+      2014-3-23: This configuration appears to be fully functional.
+      
+    NOTES:
+
+    1. See the NOTES in the description of the nsh configuration.  Those
+       notes all apply here as well.  Some additional notes unique to
+       the USB console version follow:
+
+    2. The configuration differences between this configuration and the
+       nsh configuration is:
+
+       a. USB device support is enabled as described in the paragraph
+          entitled "USB Full-Speed Device",
+
+       b. The CDC/ACM serial class is enabled as described in the paragraph
+          "CDC/ACM Serial Device Class"
+
+       c. The serial console is disabled:
+
+          RTOS Features:
+            CONFIG_DEV_CONSOLE=n           : No console at boot time
+
+          Driver Support -> USB Device Driver Support
+            CONFIG_UART0_SERIAL_CONSOLE=n  : UART0 is not the console
+            CONFIG_NO_SERIAL_CONSOLE=y     : There is no serial console
+
+          Driver Support -> USB Device Driver Support
+            CONFIG_CDCACM_CONSOLE=y        : USB CDC/ACM console
+
+       d. Support for debug output on UART0 is provided as described in the
+          next note.
+
+    3. This configuration does have UART0 output enabled and set up as
+       the system logging device:
+
+           File Systems -> Advanced SYSLOG Features
+             CONFIG_SYSLOG=y               : Enable output to syslog, not console
+             CONFIG_SYSLOG_CHAR=y          : Use a character device for system logging
+             CONFIG_SYSLOG_DEVPATH="/dev/ttyS0" : UART0 will be /dev/ttyS0
+
+       However, there is nothing to generate SYLOG output in the default
+       configuration so nothing should appear on UART0 unless you enable
+       some debug output or enable the USB monitor.
+
+       NOTE:  Using the SYSLOG to get debug output has limitations.  Among
+       those are that you cannot get debug output from interrupt handlers.
+       So, in particularly, debug output is not a useful way to debug the
+       USB device controller driver.  Instead, use the USB monitor with
+       USB debug off and USB trace on (see below).
+
+    4. Enabling USB monitor SYSLOG output.  See the paragraph entitle
+       "Debugging USB Device" for a summary of the configuration settings
+       needed to enable the USB monitor and get USB debug data out UART0.
+
+    5. By default, this configuration uses the CDC/ACM serial device to
+       provide the USB console.  This works out-of-the-box for Linux.
+       Windows, on the other hand, will require a CDC/ACM device driver
+       (.inf file).  There is a sample .inf file in the nuttx/configs/spark
+       directories.
+
+    5. Using the Prolifics PL2303 Emulation
+
+       You could also use the non-standard PL2303 serial device instead of
+       the standard CDC/ACM serial device by changing:
+
+        CONFIG_CDCACM=n                    : Disable the CDC/ACM serial device class
+        CONFIG_CDCACM_CONSOLE=n            : The CDC/ACM serial device is NOT the console
+        CONFIG_PL2303=y                    : The Prolifics PL2303 emulation is enabled
+        CONFIG_PL2303_CONSOLE=y            : The PL2303 serial device is the console

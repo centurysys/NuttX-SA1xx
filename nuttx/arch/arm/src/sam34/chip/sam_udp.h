@@ -59,7 +59,7 @@
  *    2      2        64     Bulk/Iso/Interrupt
  *    3      1        64     Control/Bulk/Interrupt
  *    4      2       512     Bulk/Iso/Interrupt
- *    5      2       612     Bulk/Iso/Interrupt
+ *    5      2       512     Bulk/Iso/Interrupt
  *    6      2        64     Bulk/Iso/Interrupt
  *    7      2        64     Bulk/Iso/Interrupt
  */
@@ -86,7 +86,7 @@
 #define SAM_UDP_ISR_OFFSET                  0x001c /* UDP Interrupt Status Register */
 #define SAM_UDP_ICR_OFFSET                  0x0020 /* UDP Interrupt Clear Register */
                                                    /* 0x0024: Reserved */
-#define SAM_UDP_RSTEP_OFFSET                0x001c /* UDP Reset Endpoint Register */
+#define SAM_UDP_RSTEP_OFFSET                0x0028 /* UDP Reset Endpoint Register */
                                                    /* 0x002c: Reserved */
 /* Endpoint registers */
 
@@ -234,8 +234,8 @@
 #  define UDPEP_CSR_EPTYPE_INTIN            (7 << UDPEP_CSR_EPTYPE_SHIFT) /* Interrupt IN */
 #define UDPEP_CSR_DTGLE                     (1 << 11) /* Bit 11:  Data Toggle */
 #define UDPEP_CSR_EPEDS                     (1 << 15) /* Bit 15:  Endpoint Enable Disable */
-#define UDPEP_CSR_RXBYTECNT_SHIFT           (24)      /* Bits 24-26: Number of Bytes Available in the FIFO */
-#define UDPEP_CSR_RXBYTECNT_MASK            (7 << UDPEP_CSR_RXBYTECNT_SHIFT)
+#define UDPEP_CSR_RXBYTECNT_SHIFT           (16)      /* Bits 16-26: Number of Bytes Available in the FIFO */
+#define UDPEP_CSR_RXBYTECNT_MASK            (0x7ff << UDPEP_CSR_RXBYTECNT_SHIFT)
 
 /* Endpoint FIFO Data Registers */
 

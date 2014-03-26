@@ -1,7 +1,7 @@
-##############################################################################
-# arch/arm/src/str71x/Make.defs
+#!/bin/bash
+# configs/sam4e-ek/usbnsh/setenv.sh
 #
-#   Copyright (C) 2008, 2013-2014 Gregory Nutt. All rights reserved.
+#   Copyright (C) 2014 Gregory Nutt. All rights reserved.
 #   Author: Gregory Nutt <gnutt@nuttx.org>
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,39 +31,38 @@
 # ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 #
-##############################################################################
 
-HEAD_ASRC	= str71x_head.S
+if [ "$_" = "$0" ] ; then
+  echo "You must source this script, not run it!" 1>&2
+  exit 1
+fi
 
-CMN_ASRCS	= up_saveusercontext.S up_fullcontextrestore.S up_vectors.S \
-			  vfork.S
-CMN_CSRCS	= up_allocateheap.c up_assert.c up_blocktask.c up_copyfullstate.c \
-			  up_createstack.c up_dataabort.c up_mdelay.c up_udelay.c \
-			  up_exit.c up_idle.c up_initialize.c up_initialstate.c \
-			  up_interruptcontext.c up_prefetchabort.c up_releasepending.c \
-			  up_releasestack.c up_reprioritizertr.c up_syscall.c up_unblocktask.c \
-			  up_undefinedinsn.c up_usestack.c up_lowputs.c up_vfork.c
+WD=`pwd`
+if [ ! -x "setenv.sh" ]; then
+  echo "This script must be executed from the top-level NuttX build directory"
+  exit 1
+fi
 
-ifneq ($(CONFIG_DISABLE_SIGNALS),y)
-CMN_CSRCS	+= up_schedulesigaction.c up_sigdeliver.c
-endif
+if [ -z "${PATH_ORIG}" ]; then
+  export PATH_ORIG="${PATH}"
+fi
 
-ifeq ($(CONFIG_ELF),y)
-CMN_CSRCS += up_elf.c
-endif
+# This is the Cygwin path to the location where I installed the Atmel GCC
+# toolchain under Windows.  You will also have to edit this if you install
+# this toolchain in any other location
+#export TOOLCHAIN_BIN="/cygdrive/c/Program Files (x86)/Atmel/Atmel Toolchain/ARM GCC/Native/4.7.3.99/arm-gnu-toolchain/bin"
+#export TOOLCHAIN_BIN="/cygdrive/c/Program Files (x86)/CodeSourcery/Sourcery_CodeBench_Lite_for_ARM_EABI/bin"
 
-ifeq ($(CONFIG_DEBUG_STACK),y)
-CMN_CSRCS += up_checkstack.c
-endif
+# This is the Cygwin path to the location where I installed the CodeSourcery
+# toolchain under windows.  You will also have to edit this if you install
+# the CodeSourcery toolchain in any other location
+#export TOOLCHAIN_BIN="/cygdrive/c/Program Files (x86)/CodeSourcery/Sourcery G++ Lite/bin"
 
-CHIP_ASRCS	= 
-CHIP_CSRCS	= str71x_prccu.c str71x_lowputc.c str71x_decodeirq.c str71x_irq.c \
-		  str71x_timerisr.c str71x_serial.c
+# This is the Cygwin path to the location where I build the buildroot
+# toolchain.
+export TOOLCHAIN_BIN="${WD}/../misc/buildroot/build_arm_nofpu/staging_dir/bin"
 
-ifeq ($(CONFIG_USBDEV),y)
-CHIP_CSRCS	+= str71x_usbdev.c
-endif
-ifeq ($(CONFIG_STR71X_XTI),y)
-CHIP_CSRCS	+= str71x_xti.c
-endif
+# Add the path to the toolchain to the PATH varialble
+export PATH="${TOOLCHAIN_BIN}:/sbin:/usr/sbin:${PATH_ORIG}"
 
+echo "PATH : ${PATH}"

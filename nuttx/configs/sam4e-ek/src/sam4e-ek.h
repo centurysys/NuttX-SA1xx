@@ -57,6 +57,8 @@
 
 #define HAVE_HSMCI      1
 #define HAVE_AT25       1
+#define HAVE_USBDEV     1
+#define HAVE_USBMONITOR 1
 
 /* HSMCI */
 /* Can't support MMC/SD if the card interface is not enabled */
@@ -72,9 +74,9 @@
 #  undef HAVE_HSMCI
 #endif
 
-/* We need PIO interrupts on PIOA to support card detect interrupts */
+/* We need PIO interrupts on GPIOA to support card detect interrupts */
 
-#if defined(HAVE_HSMCI) && !defined(CONFIG_SAM34_PIOA_IRQ)
+#if defined(HAVE_HSMCI) && !defined(CONFIG_SAM34_GPIOA_IRQ)
 #  warning PIOA interrupts not enabled.  No MMC/SD support.
 #  undef HAVE_HSMCI
 #endif
@@ -112,10 +114,24 @@
 #  undef CONFIG_SAM4EEK_AT25_NXFFS
 #endif
 
-/* Touchscreen controller (TSC) */
+/* USB Device */
+/* CONFIG_SAM34_UDP and CONFIG_USBDEV must be defined, or there is no USB
+ * device.
+ */
 
-#define CONFIG_TSC_ADS7843    1   /* ADS7843 present on board */
-#define CONFIG_TSC_SPI        0   /* On SPI0 */
+#if !defined(CONFIG_SAM34_UDP) || !defined(CONFIG_USBDEV)
+#  undef HAVE_USBDEV
+#endif
+
+/* Check if we should enable the USB monitor before starting NSH */
+
+#ifndef HAVE_USBDEV
+#  undef CONFIG_USBDEV_TRACE
+#endif
+
+#if !defined(CONFIG_SYSTEM_USBMONITOR) || !defined(CONFIG_USBDEV_TRACE)
+#  undef HAVE_USBMONITOR
+#endif
 
 /* External Memory Usage ************************************************************/
 /* LCD on CS2 */
@@ -394,16 +410,6 @@
 void weak_function sam_spiinitialize(void);
 
 /************************************************************************************
- * Name: sam_usbinitialize
- *
- * Description:
- *   Called to setup USB-related GPIO pins for the SAM4E-EK board.
- *
- ************************************************************************************/
-
-void weak_function sam_usbinitialize(void);
-
-/************************************************************************************
  * Name: sam_hsmci_initialize
  *
  * Description:
@@ -412,9 +418,9 @@ void weak_function sam_usbinitialize(void);
  ************************************************************************************/
 
 #ifdef HAVE_HSMCI
-int weak_function sam_hsmci_initialize(void);
+int sam_hsmci_initialize(int minor);
 #else
-# define sam_hsmci_initialize()
+# define sam_hsmci_initialize(minor) (-ENOSYS)
 #endif
 
 /************************************************************************************

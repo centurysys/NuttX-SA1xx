@@ -1,7 +1,7 @@
 /****************************************************************************
  * arch/arm/src/armv7-m/up_assert.c
  *
- *   Copyright (C) 2009-2010, 2012-2013 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2009-2010, 2012-2014 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -46,6 +46,8 @@
 
 #include <nuttx/irq.h>
 #include <nuttx/arch.h>
+#include <nuttx/usb/usbdev_trace.h>
+
 #include <arch/board/board.h>
 
 #include "up_arch.h"
@@ -55,9 +57,20 @@
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
+/* USB trace dumping */
 
-/* Output debug info if stack dump is selected -- even if 
- * debug is not selected.
+#ifndef CONFIG_USBDEV_TRACE
+#  undef CONFIG_ARCH_USBDUMP
+#endif
+
+/* Check if we can dump stack usage information */
+
+#ifndef CONFIG_DEBUG
+#  undef CONFIG_DEBUG_STACK
+#endif
+
+/* Output debug info if stack dump is selected -- even if debug is not
+ * selected.
  */
 
 #ifdef CONFIG_ARCH_STACKDUMP
@@ -168,13 +181,25 @@ static inline void up_registerdump(void)
 #endif
 
 /****************************************************************************
+ * Name: assert_tracecallback
+ ****************************************************************************/
+
+#ifdef CONFIG_ARCH_USBDUMP
+static int assert_tracecallback(struct usbtrace_s *trace, void *arg)
+{
+  usbtrace_trprintf((trprintf_t)lowsyslog, trace->event, trace->value);
+  return 0;
+}
+#endif
+
+/****************************************************************************
  * Name: up_dumpstate
  ****************************************************************************/
 
 #ifdef CONFIG_ARCH_STACKDUMP
 static void up_dumpstate(void)
 {
-  struct tcb_s *rtcb = (struct tcb_s*)g_readytorun.head;
+  struct tcb_s *rtcb = (struct tcb_s *)g_readytorun.head;
   uint32_t sp = up_getsp();
   uint32_t ustackbase;
   uint32_t ustacksize;
@@ -200,7 +225,7 @@ static void up_dumpstate(void)
   /* Get the limits on the interrupt stack memory */
 
   istackbase = (uint32_t)&g_intstackbase;
-  istacksize = (CONFIG_ARCH_INTERRUPTSTACK & ~3) - 4;
+  istacksize = (CONFIG_ARCH_INTERRUPTSTACK & ~3);
 
   /* Show interrupt stack info */
 
@@ -208,6 +233,9 @@ static void up_dumpstate(void)
   lldbg("IRQ stack:\n");
   lldbg("  base: %08x\n", istackbase);
   lldbg("  size: %08x\n", istacksize);
+#ifdef CONFIG_DEBUG_STACK
+  lldbg("  used: %08x\n", up_check_intstack());
+#endif
 
   /* Does the current stack pointer lie within the interrupt
    * stack?
@@ -234,6 +262,9 @@ static void up_dumpstate(void)
   lldbg("User stack:\n");
   lldbg("  base: %08x\n", ustackbase);
   lldbg("  size: %08x\n", ustacksize);
+#ifdef CONFIG_DEBUG_STACK
+  lldbg("  used: %08x\n", up_check_tcbstack(rtcb));
+#endif
 
   /* Dump the user stack if the stack pointer lies within the allocated user
    * stack memory.
@@ -251,6 +282,9 @@ static void up_dumpstate(void)
   lldbg("sp:         %08x\n", sp);
   lldbg("stack base: %08x\n", ustackbase);
   lldbg("stack size: %08x\n", ustacksize);
+#ifdef CONFIG_DEBUG_STACK
+  lldbg("stack used: %08x\n", up_check_tcbstack(rtcb));
+#endif
 
   /* Dump the user stack if the stack pointer lies within the allocated user
    * stack memory.
@@ -270,6 +304,12 @@ static void up_dumpstate(void)
   /* Then dump the registers (if available) */
 
   up_registerdump();
+
+#ifdef CONFIG_ARCH_USBDUMP
+  /* Dump USB trace data */
+
+  (void)usbtrace_enumerate(assert_tracecallback, NULL);
+#endif
 }
 #else
 # define up_dumpstate()

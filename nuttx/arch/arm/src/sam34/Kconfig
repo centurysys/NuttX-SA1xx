@@ -381,6 +381,7 @@ config SAM34_HSMCI
 	default n
 	depends on ARCH_CHIP_SAM3U || ARCH_CHIP_SAM3X || ARCH_CHIP_SAM3A || ARCH_CHIP_SAM4S || ARCH_CHIP_SAM4E
 	select ARCH_HAVE_SDIO
+	select MMCSD
 
 config SAM34_IISC
 	bool "Inter-IC Sound (I2S) Controller"
@@ -561,6 +562,7 @@ config SAM34_UDP
 	bool "USB Device Full Speed (UDP)"
 	default n
 	depends on ARCH_CHIP_SAM4S || ARCH_CHIP_SAM4E
+	select ARCH_USBDEV_STALLQUEUE
 
 config SAM34_UDPHS
 	bool "USB Device High Speed (UDPHS)"
@@ -840,41 +842,41 @@ endmenu # External Memory Configuration
 
 menu "AT91SAM3/4 GPIO Interrupt Configuration"
 
-config GPIO_IRQ
+config SAM34_GPIO_IRQ
 	bool "GPIO pin interrupts"
 	---help---
 		Enable support for interrupting GPIO pins
 
-if GPIO_IRQ
+if SAM34_GPIO_IRQ
 
-config GPIOA_IRQ
+config SAM34_GPIOA_IRQ
 	bool "GPIOA interrupts"
 	default n
 
-config GPIOB_IRQ
+config SAM34_GPIOB_IRQ
 	bool "GPIOB interrupts"
 	default n
 
-config GPIOC_IRQ
+config SAM34_GPIOC_IRQ
 	bool "GPIOC interrupts"
 	default n
 
-config GPIOD_IRQ
+config SAM34_GPIOD_IRQ
 	bool "GPIOD interrupts"
 	default n
 	depends on ARCH_CHIP_SAM3X || ARCH_CHIP_SAM3A
 
-config GPIOE_IRQ
+config SAM34_GPIOE_IRQ
 	bool "GPIOE interrupts"
 	default n
 	depends on ARCH_CHIP_SAM3X || ARCH_CHIP_SAM3A
 
-config GPIOF_IRQ
+config SAM34_GPIOF_IRQ
 	bool "GPIOF interrupts"
 	default n
 	depends on ARCH_CHIP_SAM3X || ARCH_CHIP_SAM3A
 
-endif # GPIO_IRQ
+endif # SAM34_GPIO_IRQ
 endmenu # AT91SAM3/4 GPIO Interrupt Configuration
 
 if SAM34_SPI0 || SAM34_SPI1
@@ -1129,11 +1131,57 @@ config SAM34_EMAC_ISETH0
 endmenu # EMAC device driver options
 endif # SAM34_EMAC
 
+if SAM34_HSMCI
+menu "AT91SAM3/4 HSMCI device driver options"
+
+config SAM34_HSMCI_RDPROOF
+	bool "Read Proof Enable"
+	default n
+	---help---
+		Enabling Read Proof allows to stop the HSMCI Clock during read
+		access if the internal FIFO is full. This will guarantee data
+		integrity, not bandwidth.
+
+config SAM34_HSMCI_WRPROOF
+	bool "Write Proof Enable"
+	default n
+	---help---
+		Enabling Write Proof allows to stop the HSMCI Clock during write
+		access if the internal FIFO is full. This will guarantee data
+		integrity, not bandwidth.
+
+config SAM34_HSMCI_XFRDEBUG
+	bool "HSMCI transfer debug"
+	depends on DEBUG_FS && DEBUG_VERBOSE
+	default n
+	---help---
+		Enable special debug instrumentation analyze HSMCI data transfers.
+		This logic is as non-invasive as possible:  It samples HSMCI
+		registers at key points in the data transfer and then dumps all of
+		the registers at the end of the transfer.  If DEBUG_DMA is also
+		enabled, then DMA register will be collected as well.  Requires also
+		DEBUG_FS and DEBUG_VERBOSE.
+
+config SAM34_HSMCI_CMDDEBUG
+	bool "HSMCI command debug"
+	depends on DEBUG_FS && DEBUG_VERBOSE
+	default n
+	---help---
+		Enable special debug instrumentation analyze HSMCI commands. This
+		logic is as non-invasive as possible:  It samples HSMCI registers at
+		key points in the data transfer and then dumps all of the registers
+		at the end of the transfer.  If DEBUG_DMA is also enabled, then DMA
+		register will be collected as well.  Requires also DEBUG_FS and
+		DEBUG_VERBOSE.
+
+endmenu # HSMCI device driver options
+endif # SAM34_HSMCI
+
 if SAM34_UDP
-menu "USB Full Speed Device Controller driver (DCD) options"
+menu "AT91SAM3/4 USB Full Speed Device Controller driver (DCD) options"
 
 config SAM34_UDP_REGDEBUG
-	bool "Enable low-level UPPHS register debug"
+	bool "Enable low-level UDP register debug"
 	default n
 	depends on DEBUG
 

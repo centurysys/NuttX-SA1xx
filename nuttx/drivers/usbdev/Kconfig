@@ -72,6 +72,22 @@ bool "Board DMA Allocation Hooks"
 		memory of the specified size; usbdev_dma_free() is the corresponding
 		function that will be called to free the DMA-capable memory.
 
+config ARCH_USBDEV_STALLQUEUE
+	bool
+	default n
+	---help---
+		This option is set by the USB device controller driver (DCD)
+		selection.  These selection means that the DCD can support
+		queuing of stall requests.  By this, it is meant that, (1) the
+		stall is not sent until all write requests preceding the stall
+		request are sent, (2) the stall is sent, and then after the
+		stall is cleared, (3) all write requests queued after the stall
+		are sent.
+
+		If the driver does not support this feature, that the class drivers
+		will enable some hokey and inefficient delay logic to workaround
+		the lack of queuing.
+
 config USBDEV_TRACE
 	bool "Enable USB tracing for debug"
 	default n
@@ -568,10 +584,25 @@ config USBMSC_VERSIONNO
 	default "0x399"
 
 config USBMSC_REMOVABLE
-	bool "Mass storage remove able"
+	bool "Mass storage removable"
 	default n
 	---help---
 		Select if the media is removable
 		USB Composite Device Configuration
+
+config USBMSC_SCSI_PRIO
+	int "USBMSC SCSI daemon priority"
+	default 128
+	---help---
+		Priority of the SCSI kernel thread.  This must be a relatively high
+		priority so that the SCSI daemon can be response to USB block driver
+		accesses.
+
+config USBMSC_SCSI_STACKSIZE
+	int "USBMSC SCSI daemon stack size"
+	default 2048
+	---help---
+		Stack size used with the SCSI kernel thread.  The default value
+		is not tuned.
 
 endif

@@ -1205,7 +1205,6 @@ static void sam_req_wrsetup(struct sam_usbdev_s *priv,
   uint8_t *fifo;
   uint8_t epno;
   int nbytes;
-  int bytesleft;
 
   /* Get the unadorned endpoint number */
 
@@ -1217,61 +1216,45 @@ static void sam_req_wrsetup(struct sam_usbdev_s *priv,
 
   /* Get the number of bytes remaining to be sent. */
 
-  bytesleft = privreq->req.len - privreq->req.xfrd;
+  DEBUGASSERT(privreq->req.xfrd < privreq->req.len);
+  nbytes = privreq->req.len - privreq->req.xfrd;
 
-  /* Clip the requested transfer size to the number of bytes actually
-   * available
+  /* Either send the maxpacketsize or all of the remaining data in
+   * the request.
    */
 
-  nbytes = bytesleft;
-  if (nbytes > bytesleft)
+  if (nbytes >= privep->ep.maxpacket)
     {
-      nbytes = bytesleft;
+      nbytes =  privep->ep.maxpacket;
     }
 
-  /* If we are not sending a zero length packet, then clip the size to
-   * maxpacket and check if we need to send a following zero length packet.
+  /* This is the new number of bytes "in-flight" */
+
+  privreq->inflight = nbytes;
+  usbtrace(TRACE_WRITE(USB_EPNO(privep->ep.eplog)), nbytes);
+
+  /* The new buffer pointer is the started of the buffer plus the number
+   * of bytes successfully transfered plus the number of bytes previously
+   * "in-flight".
    */
 
-  if (nbytes > 0)
+  buf = privreq->req.buf + privreq->req.xfrd;
+
+  /* Write packet in the FIFO buffer */
+
+  fifo = (uint8_t *)
+    ((uint32_t *)SAM_UDPHSRAM_VSECTION + (EPT_VIRTUAL_SIZE * epno));
+
+  for (; nbytes; nbytes--)
     {
-      /* Either send the maxpacketsize or all of the remaining data in
-       * the request.
-       */
-
-      if (nbytes >= privep->ep.maxpacket)
-        {
-          nbytes =  privep->ep.maxpacket;
-        }
-
-      /* This is the new number of bytes "in-flight" */
-
-      privreq->inflight = nbytes;
-      usbtrace(TRACE_WRITE(USB_EPNO(privep->ep.eplog)), nbytes);
-
-      /* The new buffer pointer is the started of the buffer plus the number
-       * of bytes successfully transfered plus the number of bytes previously
-       * "in-flight".
-       */
-
-      buf = privreq->req.buf + privreq->req.xfrd;
-
-      /* Write packet in the FIFO buffer */
-
-      fifo = (uint8_t *)
-        ((uint32_t *)SAM_UDPHSRAM_VSECTION + (EPT_VIRTUAL_SIZE * epno));
-
-      for (; nbytes; nbytes--)
-        {
-          *fifo++ = *buf++;
-        }
-
-        /* Indicate that there is data in the TX packet memory.  This will
-         * be cleared when the next data out interrupt is received.
-         */
-
-        privep->epstate = UDPHS_EPSTATE_SENDING;
+      *fifo++ = *buf++;
     }
+
+  /* Indicate that there is data in the TX packet memory.  This will
+   * be cleared when the next data out interrupt is received.
+   */
+
+  privep->epstate = UDPHS_EPSTATE_SENDING;
 
   /* Initiate the transfer and configure to receive the transfer complete
    * interrupt.
@@ -1390,7 +1373,8 @@ static int sam_req_write(struct sam_usbdev_s *priv, struct sam_ep_s *privep)
             }
 
           /* The way that we handle the transfer is going to depend on
-           * whether or not this endpoint supports DMA.
+           * whether or not this endpoint supports DMA.  In either case
+           * the endpoint state will transition to SENDING.
            */
 
           if ((SAM_EPSET_DMA & SAM_EP_BIT(epno)) != 0)
@@ -1435,21 +1419,22 @@ static int sam_req_write(struct sam_usbdev_s *priv, struct sam_ep_s *privep)
         }
 
       /* If all of the bytes were sent (including any final zero length
-       * packet) then we are finished with the request buffer), then we can
-       * return the request buffer to the class driver.  The transfer is not
-       * finished yet, however.  There are still bytes in flight.  The
-       * transfer is truly finished when we are called again and the
-       * request buffer is empty.
+       * packet) then we are finished with the request buffer and we can
+       * return the request buffer to the class driver.  The state will
+       * remain IDLE only if nothing else was put in flight.
+       *
+       * Note that we will then loop to check to check the next queued
+       * write request.
        */
 
-      if (privreq->req.len >= privreq->req.xfrd &&
-          privep->epstate == UDPHS_EPSTATE_IDLE)
+      if (privep->epstate == UDPHS_EPSTATE_IDLE)
         {
           /* Return the write request to the class driver */
 
           usbtrace(TRACE_COMPLETE(USB_EPNO(privep->ep.eplog)),
                    privreq->req.xfrd);
 
+          DEBUGASSERT(privreq->req.len == privreq->req.xfrd);
           sam_req_complete(privep, OK);
         }
     }
@@ -2750,7 +2735,7 @@ static void sam_ep_interrupt(struct sam_usbdev_s *priv, int epno)
             }
           else
             {
-              /* This is an SETUP OUT command (or a SETUP IN with no data).
+              /* This is an SETUP IN command (or a SETUP IN with no data).
                * Handle the EP0 SETUP now.
                */
 
@@ -3368,12 +3353,6 @@ static int sam_ep_configure_internal(struct sam_ep_s *privep,
     }
 
   sam_putreg(regval, SAM_UDPHS_EPTCTLENB(epno));
-
-  /* If this was the last endpoint, then the class driver is fully
-   * configured.
-   */
-
-  priv->devstate = UDPHS_DEVSTATE_CONFIGURED;
   sam_dumpep(priv, epno);
   return OK;
 }
@@ -3394,6 +3373,8 @@ static int sam_ep_configure(struct usbdev_ep_s *ep,
                             bool last)
 {
   struct sam_ep_s *privep = (struct sam_ep_s *)ep;
+  struct sam_usbdev_s *priv;
+  int ret;
 
   /* Verify parameters.  Endpoint 0 is not available at this interface */
 
@@ -3407,7 +3388,18 @@ static int sam_ep_configure(struct usbdev_ep_s *ep,
 
   /* This logic is implemented in sam_ep_configure_internal */
 
-  return sam_ep_configure_internal(privep, desc);
+  ret = sam_ep_configure_internal(privep, desc);
+  if (ret == OK && last)
+    {
+      /* If this was the last endpoint, then the class driver is fully
+       * configured.
+       */
+
+      priv           = privep->dev;
+      priv->devstate = UDPHS_DEVSTATE_CONFIGURED;
+    }
+
+  return ret;
 }
 
 /****************************************************************************
@@ -3583,9 +3575,6 @@ static int sam_ep_submit(struct usbdev_ep_s *ep, struct usbdev_req_s *req)
   epno              = USB_EPNO(ep->eplog);
   req->result       = -EINPROGRESS;
   req->xfrd         = 0;
-  privreq->inflight = 0;
-  privep->zlpneeded = false;
-  privep->zlpsent   = false;
   flags             = irqsave();
 
   /* Handle IN (device-to-host) requests.  NOTE:  If the class device is
