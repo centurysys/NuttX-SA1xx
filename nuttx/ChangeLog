@@ -7044,4 +7044,67 @@
 	  the task that started in (other than knowing it as the parent).  This
 	  allows me to remove so kludge logic to "deparent" the pthread on
 	  startup (2014-3-25).
-
+	* tools/astyle.sh:  A code formatting tool from Lorenz Meier.  This
+	  tool should do a better job than the old tools/indent.sh tool
+	  (2014-3-26).
+	* arch/arm/src/sam_hsmci.c and sam_spi.c:  Add support to invalidate
+	  cached memory if the CMCC is enabled (not yet tested, 2014-3-26).
+	* arch/arm/src/sam_spi.c:  Add logic to handle SPI word widths > 8
+	  (also untested on initial checkin, 2014-3-26).
+	* configs/sam4e-ek:  All configurations updated to run with 120MHz
+	  CPU speed and with the CMCC enabled.  Calibrated delay loop
+	  (2014-3-26).
+	* drivers/lcd/Kconfig:  Add missing configuration for the MIO283QT-9A
+	  LCD.  Reported by Toby Duckworth (2014-3-27).
+	* arch/arm/include/sama5/chip.h and arch/arm/src/sama5/Kconfig:  Add
+	  support for the SAMA5D36 (2014-3-28).
+	* libc/strings/lib_strncpy.c:  Change ordering of test and copy.  Logic
+	  would have failed if n=0; one byte was always copying before testing
+	  for the end of the copy.
+	* nuttx/configs/sama5d3-xplained/:  Add a board support configuration
+	  for the Atmel SAMA5D3 Xplaiend board.  The initial check in is not
+	  finished. For example, it still builds to run out of NOR FLASH but
+	  the SAMA5D Xlpained has no NOR FLASH (2013-4-28).
+	* arch/arm/src/sama5/sam_pmc.c and .h:  Add functions to calculate
+	  PLLACK, PCK, and MCK frequencies given the main clock frequency
+	  (2014-3-29).
+	* configs/sama5d*/include/board.h, board_sdram.h, and other files:
+	  When booting from SDRAM, we need to query the PMC registers (using
+	  the functions in sam_pmc.c) to determine the MCK, PCK, etc.  We assume
+	  that the MCK input clock is well known main crystal oscillator
+	  frequency (2014-3-29).
+	* configs/sama5d3x-ek:  Change all configuration names to board-
+	  specific names so that this are no name collisions with other
+	  boards that have similar configuration variables (2013-3-30).
+	* configs/nuttx/compiler.h:  Add macro UNUSED() that can be used
+	  to eliminate warnings about variables that are set to values
+	  that are not used (2014-3-30).
+	* arch/arm/src/sama5/sam_hsmci_clkciv.c:  Remove HSCMI-related
+	  functions that did not belong in sam_pmc.c and give them their
+	  own file (2014-3-30).
+	* arch/arm/src/sama5/sam_boot.c:  Fix some backward conditional
+	  compilation (2014-3-30).
+	* libc/stdio/lib_sccanf.c:  Fix a counting error in the return
+	  value from sscanf().  Noted by kfrolov.  Also, sscanf() should
+	  return EOF if no values were converted (2014-3-30).
+	* include/time.h and sched/clock_settime(): Add support for
+	  CLOCK_REALTIME.  From Macs N (2014-3-31).
+	* libc/stdio/lib_ferror.c, lib_fread.c, lib_libfflush.c,
+	  lib_libfread.c, and lib_libfwrite.c:  Finish incomplete support
+	  for ferror().  From Macs N (2014-3-14).
+	* libc/stdio/lib_ftell.c:  Fix a logic error in ftell().  It was
+	  simply using the file offset and did not take into account data
+	  buffered in memory.  From Macs N (2013-3-31).
+	* Add CONFIG_CLOCK_MONOTONIC that case used to disable CLOCK_MONOTONIC
+	  for a smaller footprint (2013-3-31).
+	* sched/Kconfig:  Menu has gotten too long.  And another layer of
+	  menuing in order to simplify this layer (2014-3-31).
+	* arch/arm/src/sama5_boot.c:  Fix double mapping of SDRAM when executing
+	  out of SDRAM.  In this case, the SDRAM was already mapping in
+	  arm_head.S (2014-3-31).
+	* arch/arm/src/sama5/chip/sam_dbgu.h:  Add SAMA5D3 DBGU definition
+	  header file (2014-3031).
+	* arch/arm/src/sama5/sam_dbgu.c and .h:  Add support for the SAMA5D3
+	  DBGU (2014-4-1).
+	* configs/sama5d3-xplained/nsh:  Configurations now use the DBGU for
+	  the serial console (instead of USART1) (2014-4-1).

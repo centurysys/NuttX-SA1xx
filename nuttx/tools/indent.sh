@@ -41,7 +41,7 @@
 # - I usually align things vertically (like '=' in assignments),
 # - indent puts a bogus blank line at the top of the file,
 # - I don't like the way it handles nested conditional compilation intermixed with code.
-# - I also indent brackets differently on structures than does not script.
+# - I also indent brackets differently on structures than does this script.
 #
 
 # Constants

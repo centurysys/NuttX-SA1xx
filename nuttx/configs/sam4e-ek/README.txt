@@ -24,6 +24,7 @@ Contents
   - USB Full-Speed Device
   - HSMCI
   - Touchscreen
+  - ILI9325-Based LCD
   - SAM4E-EK-specific Configuration Options
   - Configurations
 
@@ -94,8 +95,7 @@ IDEs
 ====
 
   NuttX is built using command-line make.  It can be used with an IDE, but some
-  effort will be required to create the project (There is a simple RIDE project
-  in the RIDE subdirectory).
+  effort will be required to create the project.
 
   Makefile Build
   --------------
@@ -121,7 +121,7 @@ IDEs
   Startup files will probably cause you some headaches.  The NuttX startup file
   is arch/arm/src/sam34/sam_vectors.S.  You may need to build NuttX
   one time from the Cygwin command line in order to obtain the pre-built
-  startup object needed by RIDE.
+  startup object needed by an IDE.
 
 NuttX EABI "buildroot" Toolchain
 ================================
@@ -674,9 +674,10 @@ USB Full-Speed Device
   2014-3-25:  Marginally functional. Very slow to come up.  USB analyzer
               shows several resets before the host decides that it is
               happy with the device.  There are no obvious errors in the
-              USB data capture.
-  2014-3-25:  There also seem to be issues about writing files.  This
-              needs more investigation.
+              USB data capture.  Testing is insufficient.  This needs to
+              be revisited.
+
+              Last tested at 96MHz with the CMCC disabled.
 
   CDC/ACM Serial Device Class
   ---------------------------
@@ -713,6 +714,38 @@ USB Full-Speed Device
   2. Linux supports the CDC/ACM driver out of the box.  Windows, on the other
      than requires that you first install a serial driver (a .inf file).  There
      are example .inf files for NuttX in the nuttx/configs/spark directories.
+
+  3. There is hand-shaking to pace incoming serial data.  As a result, you may
+     experience data loss due to RX overrun errors.  The overrun errors occur
+     when more data is received than can be buffered in memory on the target.
+
+     At present, the only workaround is to increase the amount of buffering
+     in the target.  That allow the target to accept short bursts of larger
+     volumes of data (but would still fail on sustained, high speed incoming
+     data.  The following configuration options can be changed to increase
+     the buffering.
+
+     1. RX buffer size.  All incoming data is buffered by the serial driver
+        until it can be read by the application.  The default size of this
+        RX buffer is only 256 but can be increased as you see fit:
+
+         CONFIG_CDCACM_RXBUFSIZE=256        : Default RX buffer size is only 256 bytes
+
+     2. Upstream from the RX buffers are USB read request buffers.  Each
+        buffer is the maximum size of one USB packet (64 byte) and that cannot
+        really be changed.  But if you want to increase this upstream buffering
+        capability, you can increase the number of available read requests.
+        The default is four, providing an additional buffering capability of
+        of 4*64=256 bytes.
+
+        Each read request receives data from USB, copies the data into the
+        serial RX buffer, and then is available to receive more data.  This
+        recycling of read requests stalls as soon as the serial RX buffer is
+        full.  Data loss occurs when there are no available read requests to
+        accept the next packet from the host.  So increasing the number of
+        read requests can also help to minimize RX overrun:
+
+          CONFIG_CDCACM_NRDREQS=4           : Default is only 4 read requests
 
   STATUS:
 
@@ -806,52 +839,161 @@ HSMCI
      sheet only discusses PDC-based HSMCI DMA (although there is a DMA
      channel interface definition for HSMCI).
 
+     Bottom line:  Untested and probably not usable on the SAM4E-EK in its
+     current form.
+
 Touchscreen
 ===========
 
-    The NSH configuration can be used to verify the ADS7843E touchscreen on
-    the SAM4E-EK LCD.  With these modifications, you can include the touchscreen
-    test program at apps/examples/touchscreen as an NSH built-in application.
-    You can enable the touchscreen and test by modifying the default
-    configuration in the following ways:
+  The NSH configuration can be used to verify the ADS7843E touchscreen on
+  the SAM4E-EK LCD.  With these modifications, you can include the touchscreen
+  test program at apps/examples/touchscreen as an NSH built-in application.
+  You can enable the touchscreen and test by modifying the default
+  configuration in the following ways:
 
-      Device Drivers
-        CONFIG_SPI=y                          : Enable SPI support
-        CONFIG_SPI_EXCHANGE=y                 : The exchange() method is supported
-        CONFIG_SPI_OWNBUS=y                   : Smaller code if this is the only SPI device
+    Device Drivers
+      CONFIG_SPI=y                          : Enable SPI support
+      CONFIG_SPI_EXCHANGE=y                 : The exchange() method is supported
+      CONFIG_SPI_OWNBUS=y                   : Smaller code if this is the only SPI device
 
-        CONFIG_INPUT=y                        : Enable support for input devices
-        CONFIG_INPUT_ADS7843E=y               : Enable support for the XPT2046
-        CONFIG_ADS7843E_SPIDEV=2              : Use SPI CS 2 for communication
-        CONFIG_ADS7843E_SPIMODE=0             : Use SPI mode 0
-        CONFIG_ADS7843E_FREQUENCY=1000000     : SPI BAUD 1MHz
-        CONFIG_ADS7843E_SWAPXY=y              : If landscape orientation
-        CONFIG_ADS7843E_THRESHX=51            : These will probably need to be tuned
-        CONFIG_ADS7843E_THRESHY=39
+      CONFIG_INPUT=y                        : Enable support for input devices
+      CONFIG_INPUT_ADS7843E=y               : Enable support for the XPT2046
+      CONFIG_ADS7843E_SPIDEV=2              : Use SPI CS 2 for communication
+      CONFIG_ADS7843E_SPIMODE=0             : Use SPI mode 0
+      CONFIG_ADS7843E_FREQUENCY=1000000     : SPI BAUD 1MHz
+      CONFIG_ADS7843E_SWAPXY=y              : If landscape orientation
+      CONFIG_ADS7843E_THRESHX=51            : These will probably need to be tuned
+      CONFIG_ADS7843E_THRESHY=39
 
-      System Type -> Peripherals:
-        CONFIG_SAM34_SPI0=y                   : Enable support for SPI
+    System Type -> Peripherals:
+      CONFIG_SAM34_SPI0=y                   : Enable support for SPI
 
-      System Type:
-        CONFIG_SAM34_GPIO_IRQ=y               : GPIO interrupt support
-        CONFIG_SAM34_GPIOA_IRQ=y              : Enable GPIO interrupts from port A
+    System Type:
+      CONFIG_SAM34_GPIO_IRQ=y               : GPIO interrupt support
+      CONFIG_SAM34_GPIOA_IRQ=y              : Enable GPIO interrupts from port A
 
-      RTOS Features:
-        CONFIG_DISABLE_SIGNALS=n              : Signals are required
+    RTOS Features:
+      CONFIG_DISABLE_SIGNALS=n              : Signals are required
 
-      Library Support:
-        CONFIG_SCHED_WORKQUEUE=y              : Work queue support required
+    Library Support:
+      CONFIG_SCHED_WORKQUEUE=y              : Work queue support required
 
-      Application Configuration:
-        CONFIG_EXAMPLES_TOUCHSCREEN=y         : Enable the touchscreen built-in test
+    Application Configuration:
+      CONFIG_EXAMPLES_TOUCHSCREEN=y         : Enable the touchscreen built-in test
 
-      Defaults should be okay for related touchscreen settings.  Touchscreen
-      debug output on UART0 can be enabled with:
+    Defaults should be okay for related touchscreen settings.  Touchscreen
+    debug output on UART0 can be enabled with:
 
-      Build Setup:
-        CONFIG_DEBUG=y                    : Enable debug features
-        CONFIG_DEBUG_VERBOSE=y            : Enable verbose debug output
-        CONFIG_DEBUG_INPUT=y              : Enable debug output from input devices
+    Build Setup:
+      CONFIG_DEBUG=y                    : Enable debug features
+      CONFIG_DEBUG_VERBOSE=y            : Enable verbose debug output
+      CONFIG_DEBUG_INPUT=y              : Enable debug output from input devices
+
+  STATUS
+    2014-3-27: As of this writing, the touchscreen is untested.
+
+ILI9325-Based LCD
+=================
+
+  The SAM4E-EK carries a TFT transmissive LCD module with touch panel,
+  FTM280C34D. Its integrated driver IC is ILI9325. The LCD display area is
+  2.8 inches diagonally measured, with a native resolution of 240 x 320
+  dots.
+
+  No driver has been developed for the SAM4E-EK LCD as of this writing.
+  Some technical information follows might be useful to anyone who is
+  inspired to develop that driver:
+
+  Connectivity
+  ------------
+
+    The SAM4E16 communicates with the LCD through PIOC where an 8-bit
+    parallel "8080-like" protocol data bus has to be implemented in
+    software.
+
+    ---- ----- --------- --------------------------------
+    PIN  PIO   SIGNAL    NOTES
+    ---- ----- --------- --------------------------------
+      1                  VDD
+      2  PC7   DB17
+      3  PC6   DB16
+      4  PC5   DB15
+      5  PC4   DB14
+      6  PC3   DB13
+      7  PC2   DB12
+      8  PC1   DB11
+      9  PC0   DB10
+     10        DB9       Pulled low
+     11        DB8       Pulled low
+     12        DB7       Pulled low
+     13        DB6       Pulled low
+     14        DB5       Pulled low
+     15        DB4       Pulled low
+     16        DB3       Pulled low
+     17        DB2       Pulled low
+     18        DB1       Pulled low
+     19        DB0       Pulled low
+    ---- ----- --------- --------------------------------
+     20                  VDD
+     21  PC11  RD
+     22  PC8   WR
+     23  PC19  RS
+     24  PD18  CS        Via J8, pulled high.  Connects to NRST.
+     25        RESET     Connects to NSRST
+     26        IM0       Pulled high
+     27        IM1       Grounded
+     28        GND
+    ---- ----- --------- --------------------------------
+     29 [PC13] LED-A     Backlight controls:  PC13 enables
+     30 [PC13] LEDK1       AAT3155 charge pump that drives
+     31 [PC13] LEDK2       the backlight LEDs
+     32 [PC13] LEDK3
+     33 [PC13] LEDK4
+     34 [PC13] LEDK1
+    ---- ----- --------- --------------------------------
+     35        Y+        These go to the ADS7843
+     36        Y-          touchscreen controller.
+     37        X+
+     38        X-
+     39        NC
+    ---- ----- --------- --------------------------------
+
+  Backlight
+  ---------
+
+    LCD backlight is made of 4 white chip LEDs in parallel, driven by an
+    AAT3155 charge pump, MN4. The AAT3155 is controlled by the SAM3U4E
+    through a single line Simple Serial Control (S2Cwire) interface, which
+    permits to enable, disable, and set the LED drive current (LED
+    brightness control) from a 32-level logarithmic scale. Four resistors
+    R93/R94/R95/R96 are implemented for optional current limitation.
+
+  Resources
+  ---------
+
+    If you want to implement LCD support, here are some references that may
+    help you:
+
+    1. Atmel Sample Code (ASF).  There is no example for the SAM4E-EK, but
+       there is for the SAM4S-EK.  The LCD and its processor connectivity
+       appear to be equivalent to the SAM4E-EK so this sample code should be
+       a good place to begin.  NOTE that the clock frequencies may be
+       different and pin usage may be different.  So it may be necessary to
+       adjust the SAM configuration to use this example.
+
+    2. There is an example of an LCD driver for the SAM3U at
+       configs/sam4u-ek/src/up_lcd.c.  That LCD driver is for an LCD with a
+       different LCD controller but should provide the NuttX SAM framework
+       for an LCD driver.
+
+    3. There are other LCD drivers for different MCUs that do support the
+       ILI9325 LCD.  Look at configs/shenzhou/src/up_ili93xx.c,
+       configs/stm3220g-eval/src/up_lcd.c, and
+       configs/stm3240g-eval/src/up_lcd.c.  I believe that the Shenzhou
+       driver is the most recent.
+
+  STATUS:
+    2014-3-27:  Not implemented.
 
 SAM4E-EK-specific Configuration Options
 =======================================
@@ -1103,7 +1245,11 @@ Configurations
 
     NOTES:
 
-    1. Default stack sizes are large and should really be tuned to reduce
+    1. This configuration runs with a CPU clock of 120MHz and with the
+       the CMCC enabled.  If you disable these, then you must also
+       re-calibrate the delay loop.
+
+    2. Default stack sizes are large and should really be tuned to reduce
        the RAM footprint:
 
          CONFIG_ARCH_INTERRUPTSTACK=2048
@@ -1112,7 +1258,7 @@ Configurations
          CONFIG_PTHREAD_STACK_DEFAULT=2048
          ... and others ...
 
-    2. NSH built-in applications are supported.
+    3. NSH built-in applications are supported.
 
        Binary Formats:
          CONFIG_BUILTIN=y                    : Enable support for built-in programs
@@ -1120,7 +1266,7 @@ Configurations
        Applicaton Configuration:
          CONFIG_NSH_BUILTIN_APPS=y           : Enable starting apps from NSH command line
 
-    3. This configuration has the network enabled by default.  This can be
+    4. This configuration has the network enabled by default.  This can be
        easily disabled or reconfigured (See see the network related
        configuration settings above in the section entitled "Networking").
 
@@ -1140,7 +1286,7 @@ Configurations
        2014-3-13: The basic NSH serial console is working.  Network support
                   has been verified.
 
-    4. This configuration supports a network with fixed IP address.  You
+    5. This configuration supports a network with fixed IP address.  You
        may have to change these settings for your network:
 
        CONFIG_NSH_IPADDR=0x0a000002        : IP address: 10.0.0.2
@@ -1156,7 +1302,7 @@ Configurations
        CONFIG_NSH_DHCPC=y                  : Tells NSH to use DHCPC, not
                                            : the fixed addresses
 
-    5. This configuration has the DMA-based SPI0 and AT25 Serial FLASH
+    6. This configuration has the DMA-based SPI0 and AT25 Serial FLASH
        support enabled by default.  This can be easily disabled or
        reconfigured (See see the configuration settings and usage notes
        above in the section entitled "AT25 Serial FLASH").
@@ -1169,29 +1315,27 @@ Configurations
        2014-3-14: The DMA-based SPI appears to be functional and can be used
                   to support a FAT file system on the AT25 Serial FLASH.
 
-    6. USB device support is not enabled in this configuration by default.
+    7. USB device support is not enabled in this configuration by default.
        To add USB device support to this configuration, see the instructions
        above under "USB Full-Speed Device."
 
        STATUS:
-       2014-3-21: USB support is under development and USB MSC support is
-                  only partially functional.  Additional test and integration
-                  is required.
+       2014-3-21: USB support is partially functional.  Additional test and
+                  integration is required. See STATUS in the "USB Full-Speed
+                  Device" for further information
        2014-3-22: USB seems to work properly (there are not obvious errors
-                  in a USB bus capture.  However, the AT25 does not mount
-                  on either the Linux or Windows host.  Since there are no
-                  USB errors, this could only be an issue with the USB MSC
-                  protocol (not likely) or with the FAT format on the AT25
-                  serial FLASH (likely).
+                  in a USB bus capture.  However, as of this data the AT25
+                  does not mount on either the Linux or Windows host.  This
+                  needs to be retested.
 
-    7. This configuration can be used to verify the touchscreen on on the
+    8. This configuration can be used to verify the touchscreen on on the
        SAM4E-EK LCD.  See the instructions above in the paragraph entitled
        "Touchscreen".
 
        STATUS:
          2014-3-21:  The touchscreen has not yet been tested.
 
-    8. Enabling HSMCI support. The SAM3U-KE provides a an SD memory card
+    9. Enabling HSMCI support. The SAM3U-KE provides a an SD memory card
        slot.  Support for the SD slot can be enabled following the
        instructions provided above in the paragraph entitled "HSMCI."
 
@@ -1201,7 +1345,8 @@ Configurations
                      to data overrun problems.  The current HSMCI driver
                      supports DMA via the DMAC.  However, the data sheet
                      only discusses PDC-based HSMCI DMA (although there is
-                     a DMA channel interface definition for HSMCI).
+                     a DMA channel interface definition for HSMCI).  So
+                     this is effort is dead-in-the-water for now.
 
   usbnsh:
 
@@ -1210,7 +1355,7 @@ Configurations
 
     STATUS:
       2014-3-23: This configuration appears to be fully functional.
-      
+
     NOTES:
 
     1. See the NOTES in the description of the nsh configuration.  Those
@@ -1224,7 +1369,7 @@ Configurations
           entitled "USB Full-Speed Device",
 
        b. The CDC/ACM serial class is enabled as described in the paragraph
-          "CDC/ACM Serial Device Class"
+          "CDC/ACM Serial Device Class".
 
        c. The serial console is disabled:
 
@@ -1240,6 +1385,11 @@ Configurations
 
        d. Support for debug output on UART0 is provided as described in the
           next note.
+
+    3. If you send large amounts of data to the target, you may see data
+       loss due to RX overrun errors.  See the NOTES in the section entitled
+       "CDC/ACM Serial Device Class" for an explanation and some possible
+       work-arounds.
 
     3. This configuration does have UART0 output enabled and set up as
        the system logging device:

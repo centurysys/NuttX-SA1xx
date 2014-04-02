@@ -71,14 +71,14 @@
  ****************************************************************************/
 /* SDRAM differences */
 
-#if defined(CONFIG_SAMA5_MT47H128M16RT)
+#if defined(CONFIG_SAMA5D3xEK_MT47H128M16RT)
 
   /* Used for SDRAM command handshaking */
 
 #  define DDR2_BA0    (1 << 26)
 #  define DDR2_BA1    (1 << 27)
 
-#elif defined(CONFIG_SAMA5_MT47H64M16HR)
+#elif defined(CONFIG_SAMA5D3xEK_MT47H64M16HR)
 
   /* Used for SDRAM command handshaking */
 
@@ -122,8 +122,6 @@ static inline void sam_sdram_delay(unsigned int loops)
  * Name: sam_sdram_config
  *
  * Description:
- *   Configures DDR2 (MT47H128M16RT 128MB/ MT47H64M16HR)
- *
  *   Configures DDR2 (MT47H128M16RT 128MB or, optionally,  MT47H64M16HR)
  *
  *   Per the SAMA5D3x-EK User guide: "Two SDRAM/DDR2 used as main system memory.
@@ -222,7 +220,7 @@ void sam_sdram_config(void)
    * Register
    */
 
-#if defined(CONFIG_SAMA5_MT47H128M16RT)
+#if defined(CONFIG_SAMA5D3xEK_MT47H128M16RT)
 
   /* For MT47H128M16RT
    *
@@ -250,7 +248,7 @@ void sam_sdram_config(void)
            MPDDRC_CR_NDQS |     /* Not DQS */
            MPDDRC_CR_UNAL;      /* upport Unaligned Access */
 
-#elif defined(CONFIG_SAMA5_MT47H64M16HR)
+#elif defined(CONFIG_SAMA5D3xEK_MT47H64M16HR)
   /* For MT47H64M16HR
    *
    *   NC      = 10 DDR column bits

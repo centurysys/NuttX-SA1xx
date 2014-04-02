@@ -72,23 +72,23 @@
  * Private Function Prototypes
  ****************************************************************************/
 
-/**************************************************************************
+/****************************************************************************
  * Global Function Prototypes
  ****************************************************************************/
- 
+
 int vsscanf(FAR const char *buf, FAR const char *fmt, va_list ap);
- 
-/**************************************************************************
+
+/****************************************************************************
  * Global Constant Data
- **************************************************************************/
+ ****************************************************************************/
 
 /****************************************************************************
  * Global Variables
  ****************************************************************************/
 
-/**************************************************************************
+/****************************************************************************
  * Private Constant Data
- **************************************************************************/
+ ****************************************************************************/
 
 static const char spaces[] = " \t\n\r\f\v";
 
@@ -136,14 +136,14 @@ static int findwidth(FAR const char *buf, FAR const char *fmt)
         }
     }
 
-  /* No... the format has not delimiter and is back-to-back with the next
-   * formats (or no is following by a delimiter that does not exist in the
+  /* No... the format has no delimiter and is back-to-back with the next
+   * format (or is followed by a delimiter that does not exist in the
    * input string).  At this point we just bail and Use the input up until
    * the first white space is encountered.
    *
    * NOTE:  This means that values from the following format may be
    * concatenated with the first. This is a bug.  We have no generic way of
-   * determining the width of the data if there is no fieldwith, no space
+   * determining the width of the data if there is no fieldwidth, no space
    * separating the input, and no usable delimiter character.
    */
 
@@ -271,7 +271,7 @@ int vsscanf(FAR const char *buf, FAR const char *fmt, va_list ap)
                * update the 'ap' variable.
                */
 
-              tv = NULL;      /* To avoid warnings about beign uninitialized */
+              tv = NULL;      /* To avoid warnings about begin uninitialized */
               if (!noassign)
                 {
                   tv    = va_arg(ap, char*);
@@ -284,6 +284,8 @@ int vsscanf(FAR const char *buf, FAR const char *fmt, va_list ap)
 
               if (*buf)
                 {
+                  /* Skip over white space */
+
                   while (isspace(*buf))
                     {
                       buf++;
@@ -303,12 +305,9 @@ int vsscanf(FAR const char *buf, FAR const char *fmt, va_list ap)
 
                   if (!noassign)
                     {
-                      if (width > 0)
-                        {
-                          strncpy(tv, buf, width);
-                        }
-
+                      strncpy(tv, buf, width);
                       tv[width] = '\0';
+                      count++;
                     }
 
                   /* Update the buffer pointer past the string in the input */
@@ -341,7 +340,7 @@ int vsscanf(FAR const char *buf, FAR const char *fmt, va_list ap)
 
               if (*buf)
                 {
-                  /* Was a fieldwidth specified? */
+                  /* Was a field width specified? */
 
                   if (!width)
                     {
@@ -356,6 +355,7 @@ int vsscanf(FAR const char *buf, FAR const char *fmt, va_list ap)
                     {
                       strncpy(tv, buf, width);
                       tv[width] = '\0';
+                      count++;
                     }
 
                   /* Update the buffer pointer past the character(s) in the
@@ -398,7 +398,7 @@ int vsscanf(FAR const char *buf, FAR const char *fmt, va_list ap)
                     }
                 }
 
-              /* But we only perform the data conversion is we still have
+              /* But we only perform the data conversion if we still have
                * bytes remaining in the input data stream.
                */
 
@@ -456,17 +456,19 @@ int vsscanf(FAR const char *buf, FAR const char *fmt, va_list ap)
                   buf += width;
                   if (!noassign)
                     {
-                      char *endptr;
-                      int   errsave;
-                      long  tmplong;
+                      FAR char *endptr;
+                      int       errsave;
+                      long      tmplong;
 
-                      errsave = errno;
+                      /* Preserve the errno value */
+
+                      errsave = get_errno();
                       set_errno(0);
                       tmplong = strtol(tmp, &endptr, base);
 
                       /* Number can't be converted */
 
-                      if (tmp == endptr || errno == ERANGE)
+                      if (tmp == endptr || get_errno() == ERANGE)
                         {
                           return count;
                         }
@@ -489,6 +491,8 @@ int vsscanf(FAR const char *buf, FAR const char *fmt, va_list ap)
                                 tmplong, pint);
                           *pint = (int)tmplong;
                         }
+
+                      count++;
                     }
                 }
             }
@@ -570,13 +574,15 @@ int vsscanf(FAR const char *buf, FAR const char *fmt, va_list ap)
                       int       errsave;
                       double_t  dvalue;
 
-                      errsave = errno;
+                      /* Preserve the errno value */
+
+                      errsave = get_errno();
                       set_errno(0);
                       dvalue  = strtod(tmp, &endptr);
 
                       /* Number can't be converted */
 
-                      if (tmp == endptr || errno == ERANGE)
+                      if (tmp == endptr || get_errno() == ERANGE)
                         {
                           return count;
                         }
@@ -599,6 +605,8 @@ int vsscanf(FAR const char *buf, FAR const char *fmt, va_list ap)
                           lvdbg("vsscanf: Return %f to %p\n", dvalue, pf);
                           *pf = (float)dvalue;
                         }
+
+                      count++;
                     }
                 }
 #endif
@@ -614,6 +622,8 @@ int vsscanf(FAR const char *buf, FAR const char *fmt, va_list ap)
                 {
                   size_t nchars = (size_t)(buf - bufstart);
 
+                  /* Note %n does not count as a conversion */
+
                   if (lflag)
                     {
                       FAR long *plong = va_arg(ap, long*);
@@ -625,13 +635,6 @@ int vsscanf(FAR const char *buf, FAR const char *fmt, va_list ap)
                       *pint = (int)nchars;
                     }
                 }
-            }
-
-          /* Note %n does not count as a conversion */
-
-          if (!noassign && *fmt != 'n')
-            {
-              count++;
             }
 
           width    = 0;
@@ -672,5 +675,9 @@ int vsscanf(FAR const char *buf, FAR const char *fmt, va_list ap)
         }
     }
 
-  return count;
+  /* sscanf is required to return EOF if the input ends before the first
+   * matching failure or conversion.
+   */
+
+  return count ? count : EOF;
 }

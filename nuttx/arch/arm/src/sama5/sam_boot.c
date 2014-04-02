@@ -86,15 +86,21 @@
 #  error High vector remap cannot be performed if we are using a ROM page table
 #endif
 
-/* if SDRAM is used, then it will be configured twice:  It will first be
- * configured to a temporary state to support low-level ininitialization.
- * After the SDRAM has been fully initialized, SRAM be used to
- * set the SDRM in its final, fully cache-able state.
+/* If SDRAM needs to be configured, then it will be configured twice:  It
+ * will first be configured to a temporary state to support low-level
+ * initialization.  After the SDRAM has been fully initialized, SRAM be used
+ * to set the SDRM in its final, fully cache-able state.
  */
 
+#undef NEED_SDRAM_CONFIGURATION
+#if defined(CONFIG_SAMA5_DDRCS) && !defined(CONFIG_SAMA5_BOOT_SDRAM)
+#  define NEED_SDRAM_CONFIGURATION 1
+#endif
+
+#undef NEED_SDRAM_MAPPING
 #undef NEED_SDRAM_REMAPPING
-#if defined(CONFIG_SAMA5_DDRCS) && !defined(CONFIG_SAMA5_BOOT_SDRAM) && \
-   !defined(CONFIG_ARCH_ROMPGTABLE)
+#if defined(NEED_SDRAM_CONFIGURATION) && !defined(CONFIG_ARCH_ROMPGTABLE)
+#  define NEED_SDRAM_MAPPING 1
 #  define NEED_SDRAM_REMAPPING 1
 #endif
 
@@ -135,18 +141,23 @@ static const struct section_mapping_s section_mapping[] =
    *      mapping to map the boot region at 0x0000:0000 to virtual address
    *      0x0000:00000
    *
-   * The first level bootloader is supposed to provide the AXI MATRIX
-   * mapping for us at boot time base on the state of the BMS pin.  However,
-   * I have found that in the test environments that I use, I cannot always
-   * be assured of that physical address mapping.
+   * When executing from NOR FLASH, the first level bootloader is supposed
+   * to provide the AXI MATRIX mapping for us at boot time base on the state
+   * of the BMS pin.  However, I have found that in the test environments
+   * that I use, I cannot always be assured of that physical address mapping.
    *
-   * So we do both here.  If we are exectuing from FLASH, then we provide
+   * So we do both here.  If we are executing from FLASH, then we provide
    * the MMU to map the physical address of FLASH to address 0x0000:0000;
-   * if we are executing from the internal SRAM, then we trust the bootload
-   * to setup the AXI MATRIX mapping.
+   *
+   * If we are executing out of ISRAM, then the SAMA5 primary bootloader
+   * probably copied us into ISRAM.  If we are executing from external
+   * SDRAM, then a secondary bootloader must have loaded us into SDRAM. In
+   * either case we trust the bootloader to setup the AXI MATRIX mapping on
+   * our behalf.
    */
 
-#if defined(CONFIG_ARCH_LOWVECTORS) && !defined(CONFIG_SAMA5_BOOT_ISRAM)
+#if defined(CONFIG_ARCH_LOWVECTORS) && !defined(CONFIG_SAMA5_BOOT_ISRAM) && \
+   !defined(CONFIG_SAMA5_BOOT_SDRAM)
   { CONFIG_FLASH_VSTART,   0x00000000,
     MMU_ROMFLAGS,          1
   },
@@ -199,6 +210,9 @@ static const struct section_mapping_s section_mapping[] =
  * second level boot loader has properly configured SRAM for us.  In that
  * case, we set the MMU flags for the final, fully cache-able state.
  *
+ * Also, in this case, the mapping for the SDRAM was done in arm_head.S and
+ * need not be repeated here.
+ *
  * If we are running from ISRAM or NOR flash, then we will need to configure
  * the SDRAM ourselves.  In this case, we set the MMU flags to the strongly
  * ordered, non-cacheable state.  We need this direct access to SDRAM in
@@ -206,16 +220,10 @@ static const struct section_mapping_s section_mapping[] =
  * configured in its final state.
  */
 
-#ifdef CONFIG_SAMA5_DDRCS
-#ifdef CONFIG_SAMA5_BOOT_SDRAM
+#ifdef NEED_SDRAM_MAPPING
   { SAM_DDRCS_PSECTION,    SAM_DDRCS_VSECTION,
     MMU_STRONGLY_ORDERED,  SAM_DDRCS_NSECTIONS
   },
-#else
-  { SAM_DDRCS_PSECTION,    SAM_DDRCS_VSECTION,
-    SAM_DDRCS_MMUFLAGS,    SAM_DDRCS_NSECTIONS
-  },
-#endif
 #endif
 
 /* SAMA5 CS1-3 External Memories */

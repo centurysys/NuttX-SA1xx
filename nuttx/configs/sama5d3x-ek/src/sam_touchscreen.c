@@ -1,5 +1,5 @@
 /************************************************************************************
- * configs/sama5d3-ek/src/sam_touchscreen.c
+ * configs/sama5d3x-ek/src/sam_touchscreen.c
  *
  *   Copyright (C) 2013 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
@@ -58,8 +58,8 @@
 #  error "Touchscreen support requires CONFIG_INPUT"
 #endif
 
-#ifndef CONFIG_SAMA5_TSD_DEVMINOR
-#  define CONFIG_SAMA5_TSD_DEVMINOR 0
+#ifndef CONFIG_SAMA5D3xEK_TSD_DEVMINOR
+#  define CONFIG_SAMA5D3xEK_TSD_DEVMINOR 0
 #endif
 
 /****************************************************************************
@@ -126,11 +126,11 @@ int arch_tcinitialize(int minor)
 
       /* Initialize and register the SPI touchscreen device */
 
-      ret = sam_tsd_register(adc, CONFIG_SAMA5_TSD_DEVMINOR);
+      ret = sam_tsd_register(adc, CONFIG_SAMA5D3xEK_TSD_DEVMINOR);
       if (ret < 0)
         {
           idbg("ERROR: Failed to register touchscreen device /dev/input%d: %d\n",
-               CONFIG_SAMA5_TSD_DEVMINOR, ret);
+               CONFIG_SAMA5D3xEK_TSD_DEVMINOR, ret);
           return -ENODEV;
         }
 

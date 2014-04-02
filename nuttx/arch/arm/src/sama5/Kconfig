@@ -89,20 +89,34 @@ config ARCH_CHIP_ATSAMA5D35
 	select SAMA5_HAVE_TC1
 	select ARCH_NAND_HWECC
 
+config ARCH_CHIP_ATSAMA5D36
+	bool "Atmel ATSAMA5D356"
+	select ARCH_CHIP_SAMA5D3
+	select SAMA5_HAVE_EMAC
+	select SAMA5_HAVE_GMAC
+	select SAMA5_HAVE_HSMCI2
+	select SAMA5_HAVE_LCDC
+	select SAMA5_HAVE_UART0
+	select SAMA5_HAVE_UART1
+	select SAMA5_HAVE_CAN0
+	select SAMA5_HAVE_CAN1
+	select SAMA5_HAVE_TC1
+	select ARCH_NAND_HWECC
+
 endchoice # Atmel AT91SAMA5 Chip Selection
 
 menu "SAMA5 Peripheral Support"
 
 config SAMA5_DBGU
-	bool "Debug Unit Interrupt (DBGU)"
+	bool "Debug Unit (DBGU)"
 	default n
 
 config SAMA5_PIT
-	bool "Periodic Interval Timer Interrupt (PIT)"
+	bool "Periodic Interval Timer (PIT)"
 	default n
 
 config SAMA5_WDT
-	bool "Watchdog timer Interrupt (WDT)"
+	bool "Watchdog timer (WDT)"
 	default n
 	select WATCHDOG
 
@@ -330,6 +344,43 @@ config SAMA5_PIOE_IRQ
 	default n
 
 endif # PIO_IRQ
+
+menu "DBGU Configuration"
+	depends on SAMA5_DBGU
+
+config SAMA5_DBGU_CONSOLE
+	bool "DBGU serial console"
+	---help---
+		Select to use the DBGU as the serial console.
+
+config SAMA5_DBGU_RXBUFSIZE
+	int "Receive buffer size"
+	default 256
+	---help---
+		Characters are buffered as they are received. This specifies
+		the size of the receive buffer.
+
+config SAMA5_DBGU_TXBUFSIZE
+	int "Transmit buffer size"
+	default 256
+	---help---
+		Characters are buffered before being sent.  This specifies
+		the size of the transmit buffer.
+
+config SAMA5_DBGU_BAUD
+	int "BAUD rate"
+	default 115200
+	---help---
+		The configured BAUD of the UART.
+
+config SAMA5_DBGU_PARITY
+	int "Parity setting"
+	default 0
+	range 0 2
+	---help---
+		0=no parity, 1=odd parity, 2=even parity
+
+endmenu #DBGU Configuration
 
 if SAMA5_LCDC
 menu "LCDC Configuration"
@@ -3499,7 +3550,6 @@ config SAMA5_BOOT_ISRAM
 
 config SAMA5_BOOT_SDRAM
 	bool "Running from external SDRAM"
-	depends on SAMA5_DDRCS
 
 config SAMA5_BOOT_CS0FLASH
 	bool "Running in external FLASH CS0"

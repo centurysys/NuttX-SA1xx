@@ -66,11 +66,11 @@ Contents
   - GNU Toolchain Options
   - IDEs
   - NuttX EABI "buildroot" Toolchain
-  - NuttX OABI "buildroot" Toolchain
   - NXFLAT Toolchain
   - Loading Code into SRAM with J-Link
   - Writing to FLASH using SAM-BA
   - Creating and Using NORBOOT
+  - Running NuttX from SDRAM
   - Buttons and LEDs
   - Serial Consoles
   - Networking
@@ -129,11 +129,8 @@ GNU Toolchain Options
     CONFIG_ARMV7A_TOOLCHAIN_GNU_EABIW=y      : Generic GCC ARM EABI toolchain for Windows
 
   The CodeSourcery GCC toolchain is selected with
-  CONFIG_ARMV7A_TOOLCHAIN_GNU_EABIW=y and setting the PATH variable
+  CONFIG_ARMV7A_TOOLCHAIN_CODESOURCERYW=y and setting the PATH variable
   appropriately.
-
-  If you are not using AtmelStudio GCC toolchain, then you may also have to
-  modify the PATH in the setenv.h file if your make cannot find the tools.
 
   NOTE about Windows native toolchains
   ------------------------------------
@@ -165,20 +162,11 @@ GNU Toolchain Options
 
        MKDEP                = $(TOPDIR)/tools/mknulldeps.sh
 
-  NOTE 1: Older CodeSourcery toolchains (2009q1) do not work with default
-  optimization level of -Os (See Make.defs).  It will work with -O0, -O1, or
-  -O2, but not with -Os.
-
-  NOTE 2: The devkitARM toolchain includes a version of MSYS make.  Make sure that
-  the paths to Cygwin's /bin and /usr/bin directories appear BEFORE the devkitARM
-  path or will get the wrong version of make.
-
 IDEs
 ====
 
   NuttX is built using command-line make.  It can be used with an IDE, but some
-  effort will be required to create the project (There is a simple RIDE project
-  in the RIDE subdirectory).
+  effort will be required to create the project.
 
   Makefile Build
   --------------
@@ -204,7 +192,7 @@ IDEs
   Startup files will probably cause you some headaches.  The NuttX startup file
   is arch/arm/src/sam34/sam_vectors.S.  You may need to build NuttX
   one time from the Cygwin command line in order to obtain the pre-built
-  startup object needed by RIDE.
+  startup object needed by an IDE.
 
 NuttX EABI "buildroot" Toolchain
 ================================
@@ -230,9 +218,23 @@ NuttX EABI "buildroot" Toolchain
 
   4. cd <some-dir>/buildroot
 
-  5. cp configs/cortexm3-eabi-defconfig-4.6.3 .config
+  5.  Copy the configuration file from the configs/ sub-directory to the
+      top-level build directory:
 
-  6. make oldconfig
+      cp configs/cortexa8-eabi-defconfig-4.8.2 .config
+
+  6a. You may wish to modify the configuration before you build it.  For
+      example, it is recommended that you build the kconfig-frontends tools,
+      generomfs, and the NXFLAT tools as well.  You may also want to change
+      the selected toolchain.  These reconfigurations can all be done with
+
+      make menuconfig
+
+  6b. If you chose to make the configuration with no changes, then you
+      should still do the following to make certain that the build
+      configuration is up-to-date:
+
+      make oldconfig
 
   7. make
 
@@ -242,21 +244,6 @@ NuttX EABI "buildroot" Toolchain
   See the file configs/README.txt in the buildroot source tree.  That has more
   details PLUS some special instructions that you will need to follow if you are
   building a Cortex-M3 toolchain for Cygwin under Windows.
-
-  NOTE:  Unfortunately, the 4.6.3 EABI toolchain is not compatible with the
-  the NXFLAT tools.  See the top-level TODO file (under "Binary loaders") for
-  more information about this problem. If you plan to use NXFLAT, please do not
-  use the GCC 4.6.3 EABI toochain; instead use the GCC 4.3.3 OABI toolchain.
-  See instructions below.
-
-NuttX OABI "buildroot" Toolchain
-================================
-
-  The older, OABI buildroot toolchain is also available.  To use the OABI
-  toolchain, use the build instructions above, but (1) modify the
-  cortexm3-eabi-defconfig-4.6.3 configuration to use OABI (using 'make
-  menuconfig'), or (2) use an existing OABI configuration such as
-  cortexm3-defconfig-4.3.3
 
 NXFLAT Toolchain
 ================
@@ -290,6 +277,11 @@ NXFLAT Toolchain
 
   8. Edit setenv.h, if necessary, so that the PATH variable includes
      the path to the newly built NXFLAT binaries.
+
+  NOTE:  There are some known incompatibilities with 4.6.3 EABI toolchain
+  and the NXFLAT tools.  See the top-level TODO file (under "Binary
+  loaders") for more information about this problem. If you plan to use
+  NXFLAT, please do not use the GCC 4.6.3 EABI toochain.
 
 Loading Code into SRAM with J-Link
 ==================================
@@ -432,7 +424,7 @@ Creating and Using NORBOOT
 
       The norboot program can also be configured to jump directly into
       NOR FLASH without requiring the final halt and go by setting
-      CONFIG_SAMA5_NOR_START=y in the NuttX configuration.  However,
+      CONFIG_SAMA5D3xEK_NOR_START=y in the NuttX configuration.  However,
       since I have been debugging the early boot sequence, the above
       sequence has been most convenient for me since it allows me to
       step into the program in NOR.
@@ -453,6 +445,266 @@ Creating and Using NORBOOT
         jumper does nothing on my board???  So I have been using the norboot
         configuration exclusively to start the program-under-test in NOR FLASH.
 
+Running NuttX from SDRAM
+========================
+
+  NuttX may be executed from SDRAM.  But this case means that the NuttX
+  binary must reside on some other media (typically NAND FLASH, Serial
+  FLASH, or, perhaps even a TFTP server).  In these cases, an intermediate
+  bootloader such as U-Boot or Barebox must be used to configure the
+  SAMA5D3 clocks and SDRAM and then to copy the NuttX binary into SDRAM.
+
+    - NuttX Configuration
+    - Boot sequence
+    - NAND FLASH Memory Map
+    - Programming the AT91Boostrap Binary
+    - Programming U-Boot
+    - Load NuttX with U-Boot on AT91 boards
+
+NuttX Configuration
+-------------------
+
+  In order to run from SDRAM, NuttX must be built at origin 0x20008000 in
+  SDRAM (skipping over SDRAM memory used by the bootloader).  The following
+  configuration option is required:
+
+    CONFIG_SAMA5_BOOT_SDRAM=y
+    CONFIG_BOOT_RUNFROMSDRAM=y
+
+  These options tell the NuttX code that it will be booting and running from
+  SDRAM.  In this case, the start-logic will do to things:  (1) it will not
+  configure the SAMA5D3 clocking.  Rather, it will use the clock configuration
+  as set up by the bootloader.  And (2) it will not attempt to configure the
+  SDRAM.  Since NuttX is already running from SDRAM, it must accept the SDRAM
+  configuration as set up by the bootloader.
+
+Boot sequence
+-------------
+
+  Reference: http://www.at91.com/linux4sam/bin/view/Linux4SAM/GettingStarted
+
+  Several pieces of software are involved to boot a Nutt5X into SDRAM.  First
+  is the primary bootloader in ROM which is in charge to check if a valid
+  application is present on supported media (NOR FLASH, Serial DataFlash,
+  NAND FLASH, SD card).
+
+  The boot sequence of linux4SAM is done in several steps :
+
+  1. The ROM bootloader checks if a valid application is present in FLASH
+     and if it is the case downloads it into internal SRAM.  This program
+     is usually a second level bootloader called AT91BootStrap.
+
+  2. AT91Bootstrap is the second level bootloader. It is in charge of the
+     hardware configuration.  It downloads U-Boot / Barebox binary from
+     FLASH to SDRAM / DDRAM and starts the third level bootloader
+     (U-Boot / Barebox)
+
+    (see http://www.at91.com/linux4sam/bin/view/Linux4SAM/AT91Bootstrap).
+
+  3. The third level bootloader is either U-Boot or Barebox.  The third
+     level bootloader is in charge of downloading NuttX binary from FLASH,
+     network, SD card, etc.  It then starts NuttX.
+
+   4. Then NuttX runs from SDRAM
+
+NAND FLASH Memory Map
+---------------------
+
+  Reference: http://www.at91.com/linux4sam/bin/view/Linux4SAM/GettingStarted
+
+  0x0000:0000 - 0x0003:ffff: AT91BootStrap
+  0x0004:0000 - 0x000b:ffff: U-Boot
+  0x000c:0000 - 0x000f:ffff: U-Boot environment
+  0x0010:0000 - 0x0017:ffff: U-Boot environement redundant
+  0x0018:0000 - 0x001f:ffff: Device tree (DTB)
+  0x0020:0000 - 0x007f:ffff: NuttX
+  0x0080:0000 - end:         Available for use as a NAND file system
+
+Programming the AT91Boostrap Binary
+-----------------------------------
+
+  Reference: http://www.at91.com/linux4sam/bin/view/Linux4SAM/AT91Bootstrap
+
+  This section describes how to program AT91Bootstrap binary into the boot
+  media with SAM-BA tool using NandFlash as boot media.
+
+  1. Get AT91BootStrap binaries.  Build instructions are available here:
+
+       http://www.at91.com/linux4sam/bin/view/Linux4SAM/AT91Bootstrap#Build_AT91Bootstrap_from_sources
+
+     A pre-built AT91BootStrap binary is available here:
+
+      ftp://www.at91.com/pub/at91bootstrap/AT91Bootstrap3.6.0/sama5d3xek-nandflashboot-uboot-3.6.0.bin
+
+  2. Start the SAM-BA GUI Application:
+
+     - Connect the USB Device interface to your host machine using the USB
+       Device Cable.
+     - Make sure that the chip can execute the SAM-BA Monitor.
+     - Start SAM-BA GUI application.
+     - Select the board in the drop-down menu and choose the USB connection.
+
+  3. In the SAM-BA GUI Application:
+
+     - Choose the "NandFlash" tab in the SAM-BA GUI interface.
+     - Initialize the NandFlash by choosing the "Enable NandFlash" action in
+       the Scripts rolling menu, then press "Execute" button.
+     - Erase the NandFlash device by choosing the "Erase All" action, then
+       press "Execute" button.
+     - Enable the PMECC by choosing the "Enable OS PMECC parameters" action,
+       then press "Execute" button.
+
+         PMECC
+         Number of sectors per page: 4
+         Spare Size: 64
+         Number of ECC bits required: 4
+         Size of the ECC sector: 512
+         ECC offset: 36
+
+   - Choose "Send Boot File" action, then press Execute button to select the
+     at91bootstrap binary file and to program the binary to the NandFlash.
+   - Close SAM-BA, remove the USB Device cable.
+
+Programming U-Boot
+-------------------
+
+  Reference http://www.at91.com/linux4sam/bin/view/Linux4SAM/U-Boot
+
+  1. Get U-Boot Binaries.  Build instructions are available here:
+
+     http://www.at91.com/linux4sam/bin/view/Linux4SAM/U-Boot#Build_U_Boot_from_sources
+
+     A pre-built binary is available here:
+
+     ftp://www.at91.com/pub/uboot/u-boot-v2012.10/u-boot-sama5d3xek_nandflash_linux4sam_4.2.bin
+
+  2. Start the SAM-BA GUI Application:
+
+     - Connect the USB Device interface to your host machine using the USB
+       Device Cable.
+     - Make sure that the chip can execute the SAM-BA Monitor.
+     - Start SAM-BA GUI application.
+     - Select the board in the drop-down menu and choose the USB connection.
+
+  3. In the SAM-BA GUI Application:
+
+     - Choose the NandFlash tab in the SAM-BA GUI interface.
+     - Initialize the NandFlash by choosing the "Enable NandFlash" action in
+       the Scripts rolling menu, then press Execute button.
+     - Enable the PMECC by choosing the "Enable OS PMECC parameters" action,
+       then press Execute button.
+
+         PMECC
+         Number of sectors per page: 4
+         Spare Size: 64
+         Number of ECC bits required: 4
+         Size of the ECC sector: 512
+         ECC offset: 36
+
+     - Press the "Send File Name" Browse button
+     - Choose u-boot.bin binary file and press Open
+     - Enter the proper address on media in the Address text field:
+       0x00040000
+     - Press the "Send File" button
+     - Close SAM-BA, remove the USB Device cable.
+
+  You should now be able to interrupt with U-Boot vie the DBGU interface.
+
+Load NuttX with U-Boot on AT91 boards
+-------------------------------------
+
+  Reference http://www.at91.com/linux4sam/bin/view/Linux4SAM/U-Boot
+
+  Preparing NuttX image
+
+    U-Boot does not support normal binary images.  Instead you have to
+    create an uImage file with the mkimage tool which encapsulates kernel
+    image with header information, CRC32 checksum, etc.
+
+    mkimage comes in source code with U-Boot distribution and it is built
+    during U-Boot compilation (u-boot-source-dir/tools/mkimage).  There
+    are also sites where you can download pre-built mkimage binaries.  For
+    example: http://www.trimslice.com/wiki/index.php/U-Boot_images
+
+    See the U-Boot README file for more information.  More information is
+    also available in the mkimage man page (for example,
+    http://linux.die.net/man/1/mkimage).
+
+    Command to generate an uncompressed uImage file (4) :
+
+      mkimage -A arm -O linux -C none -T kernel -a 20008000 -e 20008000 \
+        -n nuttx -d nuttx.bin uImage
+
+    Where:
+
+      -A arm: Set architecture to ARM
+      -O linux: Select operating system. bootm command of u-boot changes
+         boot method by os type.
+      -T kernel: Set image type.
+      -C none: Set compression type.
+      -a 20008000:  Set load address.
+      -e 20008000: Set entry point.
+      -n nuttx: Set image name.
+      -d nuttx.bin: Use image data from nuttx.bin.
+
+    This will generate a binary called uImage.
+
+  Loading through network
+
+    On a development system, it is useful to get the kernel and root file
+    system through the network. U-Boot provides support for loading
+    binaries from a remote host on the network using the TFTP protocol.
+
+    To manage to use TFTP with U-Boot, you will have to configure a TFTP
+    server on your host machine. Check your distribution manual or Internet
+    resources to configure a Linux or Windows TFTP server on your host:
+
+      - U-Boot documentation on a Linux host:
+        http://www.denx.de/wiki/view/DULG/SystemSetup#Section_4.6.
+
+      - Another TFTP configuration reference:
+        http://www.linuxhomenetworking.com/wiki/index.php/Quick_HOWTO_:_Ch16_:_Telnet%2C_TFTP%2C_and_xinetd#TFTP
+
+    On the U-Boot side, you will have to setup the networking parameters:
+
+     1. Setup an Ethernet address (MAC address)
+        Check this U-Boot network BuildRootFAQ entry to choose a proper MAC
+        address: http://www.denx.de/wiki/DULG/EthernetDoesNotWork
+
+          setenv ethaddr 3e:36:65:ba:6f:be
+
+     2. Setup IP parameters:
+        The board ip address
+
+          setenv ipaddr 10.0.0.2
+
+        The server ip address where the TFTP server is running
+
+          setenv serverip 10.0.0.1
+
+     3. saving Environment to flash
+
+          saveenv
+
+     4. If Ethernet Phy has not been detected during former bootup, reset
+        the board to reload U-Boot : the Ethernet address and Phy
+        initialization shall be ok, now
+
+     5. Download the NuttX uImage and the root file system to a ram location
+       using the U-Boot tftp command (Cf. U-Boot script capability chapter).
+
+     6. Launch NuttX issuing a bootm or boot command.
+
+    If the board has both emac and gmac, you can use following to choose
+    which one to use:
+
+       setenv ethact macb0,gmacb0
+       setenv ethprime gmacb0
+
+  STATUS:
+    2014-3-30:  These instructions were adapted from the Linux4SAM website
+                but have not yet been used.
+
 Buttons and LEDs
 ================
 
@@ -469,7 +721,7 @@ Buttons and LEDs
   Only the momentary push button is controllable by software (labeled
   "PB_USER1" on the board):
 
-    - PE27.  Pressing the switch connect PE27 to grounded.  Therefore, PE27
+    - PE27.  Pressing the switch connects PE27 to grounded.  Therefore, PE27
       must be pulled high internally.  When the button is pressed the SAMA5
       will sense "0" is on PE27.
 
@@ -575,11 +827,11 @@ Networking
   System Type -> EMAC device driver options
     CONFIG_SAMA5_EMAC_NRXBUFFERS=16     : Set aside some RS and TX buffers
     CONFIG_SAMA5_EMAC_NTXBUFFERS=4
-    CONFIG_SAMA5_EMAC_PHYADDR=1         : KSZ8051 PHY is at address 1
+    CONFIG_SAMA5_EMAC_PHYADDR=1         : KSZ8021/31 PHY is at address 1
     CONFIG_SAMA5_EMAC_AUTONEG=y         : Use autonegotiation
     CONFIG_SAMA5_EMAC_RMII=y            : Either MII or RMII interface should work
-    CONFIG_SAMA5_EMAC_PHYSR=30          : Address of PHY status register on KSZ8051
-    CONFIG_SAMA5_EMAC_PHYSR_ALTCONFIG=y : Needed for KSZ8051
+    CONFIG_SAMA5_EMAC_PHYSR=30          : Address of PHY status register on KSZ8021/31
+    CONFIG_SAMA5_EMAC_PHYSR_ALTCONFIG=y : Needed for KSZ8021/31
     CONFIG_SAMA5_EMAC_PHYSR_ALTMODE=0x7 : "    " " " "     "
     CONFIG_SAMA5_EMAC_PHYSR_10HD=0x1    : "    " " " "     "
     CONFIG_SAMA5_EMAC_PHYSR_100HD=0x2   : "    " " " "     "
@@ -587,7 +839,7 @@ Networking
     CONFIG_SAMA5_EMAC_PHYSR_100FD=0x6   : "    " " " "     "
 
   PHY selection.  Later in the configuration steps, you will need to select
-  the KSZ8051 PHY for EMAC (See below)
+  the KSZ8021/31 PHY for EMAC (See below)
 
   Selecting the GMAC peripheral
   -----------------------------
@@ -631,7 +883,7 @@ Networking
   Device drivers -> Network Device/PHY Support
     CONFIG_NETDEVICES=y                 : Enabled PHY selection
     CONFIG_ETH0_PHY_KSZ8051=y           : Select the KSZ8051 PHY (for EMAC), OR
-    CONFIG_ETH0_PHY_KSZ90x1=y           : Select teh KSZ9021/31 PHY (for GMAC)
+    CONFIG_ETH0_PHY_KSZ90x1=y           : Select the KSZ9021/31 PHY (for GMAC)
 
   Application Configuration -> Network Utilities
     CONFIG_NETUTILS_RESOLV=y            : Enable host address resolution
@@ -695,7 +947,7 @@ Networking
   the first time you ping due to the default handling of the ARP
   table.
 
-  On the host side, you should also be able to ping the SAMA5D3-EK:
+  On the host side, you should also be able to ping the SAMA5D3x-EK:
 
     $ ping 10.0.0.2
 
@@ -786,8 +1038,8 @@ AT25 Serial FLASH
       CONFIG_NSH_ARCHINIT=y                 : NSH board-initialization
 
     Board Selection
-      CONFIG_SAMA5_AT25_AUTOMOUNT=y         : Mounts AT25 for NSH
-      CONFIG_SAMA5_AT25_FTL=y               : Create block driver for FAT
+      CONFIG_SAMA5D3xEK_AT25_AUTOMOUNT=y    : Mounts AT25 for NSH
+      CONFIG_SAMA5D3xEK_AT25_FTL=y          : Create block driver for FAT
 
   NOTE that you must close JP1 on the Embest/Ronetix board in order to
   enable the AT25 FLASH chip select.
@@ -821,7 +1073,7 @@ HSMCI Card Slots
   labelled MCI1).
 
   The full size SD card slot connects via HSMCI0.  The card detect discrete
-  is available on PB17 (pulled high).  The write protect discrete is tied to
+  is available on PD17 (pulled high).  The write protect discrete is tied to
   ground (via PP6) and not available to software.  The slot supports 8-bit
   wide transfer mode, but the NuttX driver currently uses only the 4-bit
   wide transfer mode
@@ -839,7 +1091,7 @@ HSMCI Card Slots
     PD0  MCI0_CDA
 
   The microSD connects vi HSMCI1.  The card detect discrete is available on
-  PB18 (pulled high):
+  PD18 (pulled high):
 
     PD18  MCI1_CD
     PB20  MCI1_DA0
@@ -1295,9 +1547,9 @@ SDRAM Support
 
     System Type->External Memory Configuration
       CONFIG_SAMA5_DDRCS=y                  : Tell the system that DRAM is at the DDR CS
-      CONFIG_SAMA5_DDRCS_SIZE=268435456     : 2Gb DRAM -> 256GB
+      CONFIG_SAMA5_DDRCS_SIZE=268435456     : 2Gb DRAM -> 256MB
       CONFIG_SAMA5_DDRCS_LPDDR2=y           : Its DDR2
-      CONFIG_SAMA5_MT47H128M16RT=y          : This is the type of DDR2
+      CONFIG_SAMA5D3xEK_MT47H128M16RT=y     : This is the type of DDR2
 
     System Type->Heap Configuration
       CONFIG_SAMA5_DDRCS_HEAP=y             : Add the SDRAM to the heap
@@ -1365,10 +1617,10 @@ SDRAM Support
       CONFIG_SAMA5_DDRCS=y                  : Tell the system that DRAM is at the DDR CS
       CONFIG_SAMA5_DDRCS_SIZE=268435456     : 2Gb DRAM -> 256GB
       CONFIG_SAMA5_DDRCS_LPDDR2=y           : Its DDR2
-      CONFIG_SAMA5_MT47H128M16RT=y          : This is the type of DDR2
+      CONFIG_SAMA5D3xEK_MT47H128M16RT=y     : This is the type of DDR2
 
     System Type->Heap Configuration
-      CONFIG_SAMA5_ISRAM_HEAP=n              : These do not apply in this case
+      CONFIG_SAMA5_ISRAM_HEAP=n             : These do not apply in this case
       CONFIG_SAMA5_DCRS_HEAP=n
 
     System Type->Boot Memory Configuration
@@ -1508,7 +1760,7 @@ NAND Support
 
     Board Selection
       CONFIG_SAMA5_NAND_AUTOMOUNT=y     : Enable FS support on NAND
-      CONFIG_SAMA5_NAND_NXFFS=y         : Use the NXFFS file system
+      CONFIG_SAMA5D3xEK_NAND_NXFFS=y    : Use the NXFFS file system
 
       Other file systems are not recommended because only NXFFS can handle
       bad blocks and only NXFFS performs wear-levelling.
@@ -1532,7 +1784,7 @@ NAND Support
 
     Board Selection
       CONFIG_SAMA5_NAND_AUTOMOUNT=y     : Enable FS support on NAND
-      CONFIG_SAMA5_NAND_FTL=y           : Use an flash translation layer
+      CONFIG_SAMA5D3xEK_NAND_FTL=y      : Use an flash translation layer
 
       NOTE:  FTL will require some significant buffering because of
       the large size of the NAND flash blocks.  You will also need
@@ -1550,7 +1802,7 @@ NAND Support
     ---------------------
 
     With the options CONFIG_SAMA5_NAND_AUTOMOUNT=y and
-    CONFIG_SAMA5_NAND_NXFFS=y, the NAND FLASH will be mounted in the NSH
+    CONFIG_SAMA5D3xEK_NAND_NXFFS=y, the NAND FLASH will be mounted in the NSH
     start-up logic before the NSH prompt appears.  There is no feedback as
     to whether or not the mount was successful.  You can, however, see the
     mounted file systems using the nsh 'mount' command:
@@ -1772,8 +2024,8 @@ AT24 Serial EEPROM
                                             : Other defaults are probably OK
 
     Board Selection
-      CONFIG_SAMA5_AT24_AUTOMOUNT=y         : Mounts AT24 for NSH
-      CONFIG_SAMA5_AT24_NXFFS=y             : Mount the AT24 using NXFFS
+      CONFIG_SAMA5D3xEK_AT24_AUTOMOUNT=y    : Mounts AT24 for NSH
+      CONFIG_SAMA5D3xEK_AT24_NXFFS=y        : Mount the AT24 using NXFFS
 
   You can then format the AT24 EEPROM for a FAT file system and mount the
   file system at /mnt/at24 using these NSH commands:
@@ -1794,7 +2046,7 @@ I2C Tool
 ========
 
   I2C Tool. NuttX supports an I2C tool at apps/system/i2c that can be used
-  to peek and poke I2C devices.  That tool cal be enabled by setting the
+  to peek and poke I2C devices.  That tool can be enabled by setting the
   following:
 
     System Type -> SAMA5 Peripheral Support
@@ -1930,7 +2182,7 @@ CAN Usage
   CAN connectors
   --------------
 
-  CAN1 and CAN2 are available via RJ-11 connectors on the SAMA5Dx-EK.  Each
+  CAN1 and CAN2 are available via RJ-11 connectors on the SAMA5D3x-EK.  Each
   is wired as follows.  Also shown below is the matching pins if you want connect
   the CAN to a device that uses an DB-9 connector (Such as the IXXAT USB-to-CAN
   Compact).  Both connector types (as well as RJ-45) are common.
@@ -2242,7 +2494,7 @@ Touchscreen Testing
       CONFIG_INPUT=y                      : (automatically selected)
 
     Board Selection:
-       CONFIG_SAMA5_TSD_DEVMINOR=0        : Register as /dev/input0
+       CONFIG_SAMA5D3xEK_TSD_DEVMINOR=0   : Register as /dev/input0
 
     Library Support:
       CONFIG_SCHED_WORKQUEUE=y            : Work queue support required
@@ -2384,8 +2636,8 @@ I2S Audio Support
       CONFIG_EXAMPLES_I2SCHAR_DEVINIT=y
 
     Board Selection
-      CONFIG_SAMA5D3X_EK_I2SCHAR_MINOR=0
-      CONFIG_SAMA5D3X_EK_SSC_PORT=0     : 0 or SSC0, 1 for SSC1
+      CONFIG_SAMA5D3xEK_I2SCHAR_MINOR=0
+      CONFIG_SAMA5D3xEK_SSC_PORT=0      : 0 or SSC0, 1 for SSC1
 
     Library Routines
       CONFIG_SCHED_WORKQUEUE=y          : Driver needs work queue support
@@ -2474,10 +2726,10 @@ SAMA5D3x-EK Configuration Options
 
   Individual subsystems can be enabled:
 
-    CONFIG_SAMA5_DBGU        - Debug Unit Interrupt
-    CONFIG_SAMA5_PIT         - Periodic Interval Timer Interrupt
-    CONFIG_SAMA5_WDT         - Watchdog timer Interrupt
-    CONFIG_SAMA5_HSMC        - Multi-bit ECC Interrupt
+    CONFIG_SAMA5_DBGU        - Debug Unit
+    CONFIG_SAMA5_PIT         - Periodic Interval Timer
+    CONFIG_SAMA5_WDT         - Watchdog timer
+    CONFIG_SAMA5_HSMC        - Multi-bit ECC
     CONFIG_SAMA5_SMD         - SMD Soft Modem
     CONFIG_SAMA5_USART0      - USART 0
     CONFIG_SAMA5_USART1      - USART 1
@@ -2531,7 +2783,16 @@ SAMA5D3x-EK Configuration Options
     CONFIG_USART2_ISUART     - USART2 is configured as a UART
     CONFIG_USART3_ISUART     - USART3 is configured as a UART
 
-  ST91SAMA5 specific device driver settings
+  AT91SAMA5 specific device driver settings
+
+    CONFIG_SAMA5_DBGU_SERIAL_CONSOLE - selects the DBGU
+      for the console and ttyDBGU
+    CONFIG_SAMA5_DBGU_RXBUFSIZE - Characters are buffered as received.
+       This specific the size of the receive buffer
+    CONFIG_SAMA5_DBGU_TXBUFSIZE - Characters are buffered before
+       being sent.  This specific the size of the transmit buffer
+    CONFIG_SAMA5_DBGU_BAUD - The configure BAUD of the DBGU.
+    CONFIG_SAMA5_DBGU_PARITY - 0=no parity, 1=odd parity, 2=even parity
 
     CONFIG_U[S]ARTn_SERIAL_CONSOLE - selects the USARTn (n=0,1,2,3) or UART
            m (m=4,5) for the console and ttys0 (default is the USART1).
@@ -2539,9 +2800,9 @@ SAMA5D3x-EK Configuration Options
        This specific the size of the receive buffer
     CONFIG_U[S]ARTn_TXBUFSIZE - Characters are buffered before
        being sent.  This specific the size of the transmit buffer
-    CONFIG_U[S]ARTn_BAUD - The configure BAUD of the UART.  Must be
+    CONFIG_U[S]ARTn_BAUD - The configure BAUD of the UART.
     CONFIG_U[S]ARTn_BITS - The number of bits.  Must be either 7 or 8.
-    CONFIG_U[S]ARTn_PARTIY - 0=no parity, 1=odd parity, 2=even parity
+    CONFIG_U[S]ARTn_PARITY - 0=no parity, 1=odd parity, 2=even parity
     CONFIG_U[S]ARTn_2STOP - Two stop bits
 
   AT91SAMA5 USB Host Configuration
@@ -2577,7 +2838,7 @@ Configurations
 
   Information Common to All Configurations
   ----------------------------------------
-  Each SAM3U-EK configuration is maintained in a sub-directory and
+  Each SAMA5D3x-EK configuration is maintained in a sub-directory and
   can be selected as follow:
 
     cd tools
@@ -2609,7 +2870,7 @@ Configurations
        reconfiguration process.
 
   2. Unless stated otherwise, all configurations generate console
-     output on UART0 (J3).
+     output on USART1 (J8).
 
   3. All of these configurations use the Code Sourcery for Windows toolchain
      (unless stated otherwise in the description of the configuration).  That
@@ -2731,7 +2992,7 @@ Configurations
        Relevant configuration settings are provided in the paragraph entitled
        "SDRAM Support" above.
 
-    6. The Real Time Clock/Calendar RTC) is enabled.  See the section entitled
+    6. The Real Time Clock/Calendar (RTC) is enabled.  See the section entitled
        "RTC" above.
 
     7. The Embest or Ronetix CPU module includes an Atmel AT25DF321A,
@@ -2761,6 +3022,9 @@ Configurations
     STATUS:
        See the To-Do list below
 
+       2014-3-30: I some casual retesting, I am seeing some slow boot-
+                  up times and possible microSD card issues.  I will
+                  need to revisit this.
   hello:
 
     This configuration directory, performs the (almost) simplest of all
@@ -2819,7 +3083,7 @@ Configurations
     2. The default norboot program initializes the NOR memory,
        displays a message and halts.  The norboot program can also be
        configured to jump directly into NOR FLASH without requiring the
-       final halt and go by setting CONFIG_SAMA5_NOR_START=y in the
+       final halt and go by setting CONFIG_SAMA5D3xEK_NOR_START=y in the
        NuttX configuration.
 
     3. Be aware that the default norboot also disables the watchdog.
@@ -2919,7 +3183,7 @@ Configurations
         configuration instrcutions in the section entitled "Touchscreen
         Testing" above.
 
-    16. The Real Time Clock/Calendar RTC) may be enabled by reconfiguring NuttX.
+    16. The Real Time Clock/Calendar (RTC) may be enabled by reconfiguring NuttX.
         See the section entitled "RTC" above for detailed configuration settings.
 
     17. This example can be configured to exercise the watchdog timer test
@@ -3105,7 +3369,7 @@ To-Do List
 
 7) The NxWM example does not work well.  This example was designed to work
    with much smaller displays and does not look good or work well with the
-   SAMA5Dx-EKs 800x480 display.  See above for details.
+   SAMA5D3x-EK's 800x480 display.  See above for details.
 
 8) There are lots of LCDC hardware features that are not tested with NuttX.
    The simple NuttX graphics system does not have support for all of the

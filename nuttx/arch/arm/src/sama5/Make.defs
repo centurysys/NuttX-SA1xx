@@ -94,8 +94,8 @@ CHIP_ASRCS  =
 # SAMA5-specific C source files
 
 CHIP_CSRCS  = sam_allocateheap.c sam_boot.c sam_clockconfig.c sam_irq.c
-CHIP_CSRCS += sam_lowputc.c sam_memories.c sam_pck.c sam_pio.c sam_serial.c
-CHIP_CSRCS += sam_timerisr.c
+CHIP_CSRCS += sam_lowputc.c sam_memories.c sam_pck.c sam_pio.c sam_pmc.c
+CHIP_CSRCS += sam_serial.c sam_timerisr.c
 
 # Configuration dependent C and assembly language files
 
@@ -117,6 +117,10 @@ endif
 
 ifeq ($(CONFIG_SAMA5_WDT),y)
 CHIP_CSRCS += sam_wdt.c
+endif
+
+ifeq ($(CONFIG_SAMA5_DBGU),y)
+CHIP_CSRCS += sam_dbgu.c
 endif
 
 ifeq ($(CONFIG_SAMA5_TRNG),y)
@@ -167,13 +171,13 @@ endif
 endif
 
 ifeq ($(CONFIG_SAMA5_HSMCI0),y)
-CHIP_CSRCS += sam_hsmci.c
+CHIP_CSRCS += sam_hsmci.c sam_hsmci_clkdiv.c
 else
 ifeq ($(CONFIG_SAMA5_HSMCI1),y)
-CHIP_CSRCS += sam_hsmci.c
+CHIP_CSRCS += sam_hsmci.c sam_hsmci_clkdiv.c
 else
 ifeq ($(CONFIG_SAMA5_HSMCI2),y)
-CHIP_CSRCS += sam_hsmci.c
+CHIP_CSRCS += sam_hsmci.c sam_hsmci_clkdiv.c
 endif
 endif
 endif
