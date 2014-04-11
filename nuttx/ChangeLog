@@ -7108,3 +7108,61 @@
 	  DBGU (2014-4-1).
 	* configs/sama5d3-xplained/nsh:  Configurations now use the DBGU for
 	  the serial console (instead of USART1) (2014-4-1).
+	* libc/stdio/lib_sccanf.c:  Use stroul() vs strol() with %u format
+	  otherwise, range of values is restricted because of sign bit
+	  from kfrolov (2014-4-2).
+	* arch/arm/src/sama5/sam_boot.c, sam_irq.c, chip/sama5d3x_memorymap.h:
+	  When running from SDRAM, vectors must lie in SRAM (2014-4-2).
+	* arch/arm/src/armv7-a/arm_head.S and cache.h:  On start-up, make
+	  certain the the MMU and caches are disabled (probably un-necessary)
+	  (2014-4-2).
+	* arch/arm/src/sama5/sam_boot.c:  If we have to copy vectors, then
+	  make sure to clean the DCache to be sure that the copied vectors are
+	  in the physical RAM (2014-4-2).
+	* arch/arm/src/sama5/sam_irq.c:  After we modify the AXI MATRIX, make
+	  sure to invalidate all caches and TLBs (probably un-necessary)
+	  (2014-4-2).
+	* arch/arm/src/sama5/sam_irq.c: Set the VBAR register to zero.  If
+	  were started by a bootloader (vs. a RESET), then the VBAR register
+	  may not be in its reset state (zero, 2014-4-3).
+	* arch/arm/src/sama5/sam_boot.c, sam_irq.c, and chip/sama5d3x_memorymap.h:
+	  When booting from SDRAM, don't relocated vectors to ISRAM.  Instead,
+	  just set the VBAR register to address of the vectors in SDRAM.
+	* arch/arm/src/sama5/sam_clockconfig.c: BMS Fixed to match what the HW
+	  does.  From David Sidrane (2014-4-3).
+	* arch/arm/src/sama5/Kconfig, sam_boot.c, andsam_clockconfig.c:  On some
+	  hardware, reconfiguring the PLL while executing out of NOR FLASH causes
+	  crashes.  This was fixed by David Sidrane by implementing RAM functions.
+	  The killer code is copied and executed from ISRAM and the crash is
+	  avoided (2014-4-3).
+	* configs/sama5d3-xplained/Kconfig and include/board*.h;
+	  configs/sama5d3x-ek/Kconfig and include/board*.h:  Add support for
+	  528MHz CPU clock (2014-4-3).
+	* arch/arm/src/sama5/Make.defs:  Fix a build error that occurs when
+	  only USB device tracing is enabled (2014-4-4).
+	* Documentation/UsbTrace.html:  Add some discussion of the USB monitor
+	  (2014-4-4).
+	* nuttx/arch/arm/src/armv7-a/mmu.h:  Bufferable bit did not do what
+	  I thought it was going to do.  Result was the NOR FLASH accesses
+	  were very slow (2014-4-3).
+	* arch/arm/src/sama5/sam_udphs.c:  Fix a case where received status
+	  was not clear, causing OUT SETUP commands to fail (2014-4-6).
+	* arch/arm/src/tiva/tiva_syscontrol.c:  Add logic for TM4C125GXL based
+	  on logic from Daniel Carvalho with modifications.  I think the
+	  LM4F120 may have broken before as well(?).  In any event, the LM4F120
+	  also works well with this chanage (2014-4-7).
+	* Back out part of 610e2aa0c224e2936fe8009ef4a2351ce607067a: Need to
+	  be able to select USB console devices when there is no /dev/console
+	  enabled. Noted by Librae (2014-4-8).
+	* configs/*/defconfig:  Increase the number of preallocated watchdogs
+	  in all configurations that use networking or USB (2014-3-9).
+	* include/nuttx/syslog/syslog.h and ramlog.h:  Move syslog.h and
+	  ramlog.h to include/nutt/syslog (2014-4-10).
+	* sched/errno_getptr.c and getpid.c:  Add some checks.  If these
+	  functions are called early in initialization before the tasking
+	  structures are initialized, they will not behavr properly
+	  (2014-4-10).
+	* arch/arm/src/sama5/sam_twi.c: TWI data sending is fails to increment
+	  the number of byes transferred on first byte sent.  from David Sidrane
+	  (2014-4-10).
+

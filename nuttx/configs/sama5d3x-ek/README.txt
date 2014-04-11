@@ -647,7 +647,56 @@ Load NuttX with U-Boot on AT91 boards
       -n nuttx: Set image name.
       -d nuttx.bin: Use image data from nuttx.bin.
 
-    This will generate a binary called uImage.
+    This will generate a binary called uImage.  If you have the path to
+    mkimage in your PATH variable, then you can automatically build the
+    uImage file by adding the following to your .config file:
+
+      CONFIG_RAW_BINARY=y
+      CONFIG_UBOOT_UIMAGE=y
+      CONFIG_UIMAGE_LOAD_ADDRESS=0x20008000
+      CONFIG_UIMAGE_ENTRY_POINT=0x20008040
+
+    The uImage file can them be loaded into memory from a variety of sources
+    (serial, SD card, JFFS2 on NAND, TFTP).
+
+    STATUS:
+      2014-4-1:  So far, I am unable to get U-Boot to execute the uImage
+                 file.  I get the following error messages (in this case
+                 trying to load from an SD card):
+
+        U-Boot> fatload mmc 0 0x22000000 uimage
+        reading uimage
+        97744 bytes read in 21 ms (4.4 MiB/s)
+
+        U-Boot> bootm 0x22000000
+        ## Booting kernel from Legacy Image at 0x22000000 ...
+           Image Name:   nuttx
+           Image Type:   ARM Linux Kernel Image (uncompressed)
+           Data Size:    97680 Bytes = 95.4 KiB
+           Load Address: 20008000
+           Entry Point:  20008040
+           Verifying Checksum ... OK
+           XIP Kernel Image ... OK
+        FDT and ATAGS support not compiled in - hanging
+        ### ERROR ### Please RESET the board ###
+
+      This, however, appears to be a usable workaround:
+
+        U-Boot> fatload mmc 0 0x20008000 nuttx.bin
+        mci: setting clock 257812 Hz, block size 512
+        mci: setting clock 257812 Hz, block size 512
+        mci: setting clock 257812 Hz, block size 512
+        gen_atmel_mci: CMDR 00001048 ( 8) ARGR 000001aa (SR: 0c100025) Command Time Out
+        mci: setting clock 257812 Hz, block size 512
+        mci: setting clock 22000000 Hz, block size 512
+        reading nuttx.bin
+        108076 bytes read in 23 ms (4.5 MiB/s)
+
+        U-Boot> go 0x20008040
+        ## Starting application at 0x20008040 ...
+
+        NuttShell (NSH) NuttX-7.2
+        nsh>
 
   Loading through network
 
@@ -671,7 +720,7 @@ Load NuttX with U-Boot on AT91 boards
         Check this U-Boot network BuildRootFAQ entry to choose a proper MAC
         address: http://www.denx.de/wiki/DULG/EthernetDoesNotWork
 
-          setenv ethaddr 3e:36:65:ba:6f:be
+          setenv ethaddr 00:e0:de:ad:be:ef
 
      2. Setup IP parameters:
         The board ip address
@@ -783,8 +832,10 @@ Serial Consoles
     PB28 RXD1       PIO_USART1_RXD
     PB26 CTS1       PIO_USART1_CTS
 
-    NOTE: Debug TX and RX pins also go to the ADM3312EARU, but I am
-    uncertain of the functionality.
+    NOTE: Debug TX (DTXD) and RX (DRXD) pins also are routed to the 
+    ADM3312EARU via non populated 0 Ohm resistors. Thus allowing one
+    skilled with a soldering iron to choose which UART is level
+    translated by the ADM3312EARU
 
     -------------------------------
     SAMA5 FUNCTION  NUTTX PIO
@@ -1385,11 +1436,6 @@ USB High-Speed Host
     Application Configuration -> NSH Library
       CONFIG_NSH_ARCHINIT=y                 : NSH board-initialization
 
-  NOTE:  When OHCI is selected, the SAMA5 will operate at 384MHz instead of
-  396MHz.  This is so that the PLL generates a frequency which is a multiple
-  of the 48MHz needed for OHCI.  The delay loop calibration values that are
-  used will be off slightly because of this.
-
   EHCI
   ----
 
@@ -1579,7 +1625,7 @@ SDRAM Support
       CONFIG_SYSTEM_RAMTEST=y
 
   In this configuration, the SDRAM is not added to heap and so is not
-  accessable to the applications.  So the RAM test can be freely executed
+  accessible to the applications.  So the RAM test can be freely executed
   against the SRAM memory beginning at address 0x2000:0000 (DDR CS):
 
     nsh> ramtest -h
@@ -2905,6 +2951,35 @@ Configurations
      create a very corrupt configuration that may not be easy to recover
      from.
 
+  4. The SAMA5Dx is running at 396MHz by default in these configurations.
+     This is because the original timing for the PLLs, NOR FLASH, and SDRAM
+     came from the Atmel NoOS sample code which runs at that rate.
+
+     The SAMA5Dx is capable of running at 528MHz, however, and is easily
+     re-configured:
+
+       Board Selection -> CPU Frequency
+         CONFIG_SAMA5D3xEK_396MHZ=n     # Disable 396MHz operation
+         CONFIG_SAMA5D3xEK_528MHZ=y     # Enable 528MHz operation
+
+     If you switch to 528MHz, you should also check the loop calibration
+     value in your .config file.  Of course, it would be best to re-calibrate
+     the timing loop, but these values should get you in the ballpark:
+
+       CONFIG_BOARD_LOOPSPERMSEC=49341  # Calibrated on SAMA5D3-EK at 396MHz
+                                        # running from ISRAM
+       CONFIG_BOARD_LOOPSPERMSEC=65775  # Calibrated on SAMA4D3-Xplained at
+                                        # 528MHz running from SDRAM
+
+     Operation at 528MHz has been verified but is not the default in these
+     configurations because most testing was done at 396MHz.  NAND has not
+     been verified at these rates.
+
+   5. By default, all of these configurations run from ISRAM or NOR FLASH
+     (as indicated below in each description of the configuration).
+     Operation from SDRAM is also an option as described in the paragraph
+     entitled, "Running NuttX from SDRAM."
+
   Configuration Sub-directories
   -----------------------------
   Summary:  Some of the descriptions below are long and wordy. Here is the
@@ -3336,17 +3411,16 @@ Configurations
 To-Do List
 ==========
 
-1) Currently the SAMA5Dx is running at 396MHz in these configurations.  This
-   is because the timing for the PLLs, NOR FLASH, and SDRAM came from the
-   Atmel NoOS sample code which runs at that rate.  The SAMA5Dx is capable
-   of running at 528MHz, however.  The setup for that configuration exists
-   in the Bareboard assembly language setup and should be incorporated.
-
-2) Most of these configurations execute from NOR FLASH. I have been unable
+1) Most of these configurations execute from NOR FLASH. I have been unable
    to execute these configurations from NOR FLASH by closing the BMS jumper
    (J9).  As far as I can tell, this jumper does nothing on my board???  I
    have been using the norboot configuration to start the program in NOR
    FLASH (see just above).  See "Creating and Using NORBOOT" above.
+
+   UPDATE: It has been confirmed at that there is an issue with the BMS
+   jumper on my board. However, other NuttX users have confirmed operation
+   booting directly into NOR FLASH.  So although I cannot confirm this
+   behavior, this appears to be no longer an issue.
 
 3) Neither USB OHCI nor EHCI support Isochronous endpoints.  Interrupt
    endpoint support in the EHCI driver is untested (but works in similar

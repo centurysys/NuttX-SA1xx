@@ -1,7 +1,7 @@
 /****************************************************************************
  * arch/arm/src/sama5/sam_clockconfig.c
  *
- *   Copyright (C) 2013 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2013-2014 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -56,10 +56,33 @@
  * Pre-processor Definitions
  ****************************************************************************/
 
+/* Do we need to setup the POLL?  Yes if we are booting from ISRAM or NOR
+ * FLASH on CS0.
+ */
+
 #undef NEED_PLLSETUP
 #if defined(CONFIG_SAMA5_BOOT_ISRAM) || defined(CONFIG_SAMA5_BOOT_CS0FLASH)
 #  define NEED_PLLSETUP 1
 #endif
+
+/* Problems have been seen when reconfiguring the PLL while executing out
+ * of NOR FLASH on CS0.  In that case, we required RAM function support.  The
+ * critical functions will be copied from NOR into ISRAM for execution.  This
+ * prevents any strange behavior from the NOR while we reconfigure the PLL.
+ */
+
+#if defined(CONFIG_SAMA5_BOOT_CS0FLASH) && !defined(CONFIG_ARCH_RAMFUNCS)
+# error "CONFIG_ARCH_RAMFUNCS must be defined for this logic"
+#endif
+
+#ifndef CONFIG_ARCH_RAMFUNCS
+#  undef  __ramfunc__
+#  define __ramfunc__
+#endif
+
+/****************************************************************************
+ * Private Function Prototypes
+ ****************************************************************************/
 
 /****************************************************************************
  * Private Types
@@ -86,7 +109,7 @@
  ****************************************************************************/
 
 #if defined(NEED_PLLSETUP)
-static void sam_pmcwait(uint32_t bit)
+static void __ramfunc__ sam_pmcwait(uint32_t bit)
 {
   /* There is no timeout on this wait.  Why not?  Because the symptoms there
    * is no fallback if the wait times out and if the wait does time out, it
@@ -107,7 +130,7 @@ static void sam_pmcwait(uint32_t bit)
  ****************************************************************************/
 
 #if defined(NEED_PLLSETUP)
-static inline void sam_enablemosc(void)
+static inline void __ramfunc__ sam_enablemosc(void)
 {
   uint32_t regval;
 
@@ -162,7 +185,7 @@ static inline void sam_enablemosc(void)
  ****************************************************************************/
 
 #if defined(NEED_PLLSETUP)
-static inline void sam_selectmosc(void)
+static inline void __ramfunc__ sam_selectmosc(void)
 {
   uint32_t regval;
 
@@ -190,7 +213,7 @@ static inline void sam_selectmosc(void)
  ****************************************************************************/
 
 #if defined(NEED_PLLSETUP)
-static inline void sam_pllasetup(void)
+static inline void __ramfunc__ sam_pllasetup(void)
 {
   uint32_t regval;
 
@@ -220,7 +243,7 @@ static inline void sam_pllasetup(void)
  ****************************************************************************/
 
 #if defined(NEED_PLLSETUP)
-static inline void sam_plladivider(void)
+static inline void __ramfunc__ sam_plladivider(void)
 {
   uint32_t regval;
 
@@ -271,7 +294,7 @@ static inline void sam_plladivider(void)
  ****************************************************************************/
 
 #if defined(NEED_PLLSETUP)
-static inline void sam_mckprescaler(void)
+static inline void __ramfunc__ sam_mckprescaler(void)
 {
   uint32_t regval;
 
@@ -298,7 +321,7 @@ static inline void sam_mckprescaler(void)
  ****************************************************************************/
 
 #if defined(NEED_PLLSETUP)
-static inline void sam_mckdivider(void)
+static inline void __ramfunc__ sam_mckdivider(void)
 {
   uint32_t regval;
 
@@ -324,7 +347,7 @@ static inline void sam_mckdivider(void)
  ****************************************************************************/
 
 #if defined(NEED_PLLSETUP)
-static inline void sam_selectplla(void)
+static inline void __ramfunc__ sam_selectplla(void)
 {
   uint32_t regval;
 
@@ -482,10 +505,10 @@ static inline void sam_usbclockconfig(void)
  *   configured to work in different ways using the BMS pin and the contents
  *   of the Boot Sequence Configuration Register (BSC_CR).
  *
- *   If the BMS_BIT is read "1", then the first level bootloader will
+ *   If the BMS_BIT is read "0", then the first level bootloader will
  *   support execution of code in the memory connected to CS0 on the EBI
  *   interface (presumably NOR flash).  The following sequence is performed
- *   by the first level bootloader if BMS_BIT is "1":
+ *   by the first level bootloader if BMS_BIT is "0":
  *
  *     - The main clock is the on-chip 12 MHz RC oscillator,
  *     - The Static Memory Controller is configured with timing allowing
@@ -504,7 +527,7 @@ static inline void sam_usbclockconfig(void)
  *     - Program and Start the PLL
  *     - Switch the system clock to the new value
  *
- *  If the BMS_BIT is read "0", then the first level bootloader will
+ *  If the BMS_BIT is read "1", then the first level bootloader will
  *  perform:
  *
  *     - Basic chip initialization: XTal or external clock frequency
@@ -533,7 +556,7 @@ static inline void sam_usbclockconfig(void)
  *
  ****************************************************************************/
 
-void sam_clockconfig(void)
+void __ramfunc__ sam_clockconfig(void)
 {
 #ifdef CONFIG_SAMA5_BOOT_CS0FLASH
   bool config = false;
@@ -545,9 +568,9 @@ void sam_clockconfig(void)
    */
 
 #ifdef CONFIG_SAMA5_BOOT_CS0FLASH
-  /* Yes... did we get here via the first level bootloader? */
+  /* Yes... did we get here via the first level bootloader?  */
 
-  if ((getreg32(SAM_SFR_EBICFG) & SFR_EBICFG_BMS) != 0)
+  if ((getreg32(SAM_SFR_EBICFG) & SFR_EBICFG_BMS) == 0)
     {
       /* Yes.. Perform the following operations in order to complete the
        * clocks and SMC timings configuration to run at a higher clock
@@ -587,11 +610,11 @@ void sam_clockconfig(void)
    * clock.
    */
 
+#if defined(NEED_PLLSETUP)
 #ifdef CONFIG_SAMA5_BOOT_CS0FLASH
   if (config)
 #endif /* CONFIG_SAMA5_BOOT_CS0FLASH */
     {
-#if defined(NEED_PLLSETUP)
       /* Enable main oscillator (if it has not already been selected) */
 
       sam_enablemosc();
@@ -622,10 +645,10 @@ void sam_clockconfig(void)
       /* Finally, elect the PLLA output as the input clock for PCK and MCK. */
 
       sam_selectplla();
+    }
 #endif /* NEED_PLLSETUP */
 
-      /* Setup USB clocking */
+  /* Setup USB clocking */
 
-      sam_usbclockconfig();
-    }
+  sam_usbclockconfig();
 }

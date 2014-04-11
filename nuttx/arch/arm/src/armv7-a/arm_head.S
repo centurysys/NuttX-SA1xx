@@ -190,6 +190,13 @@ __start:
 	mov		r0, #(PSR_MODE_SVC | PSR_I_BIT | PSR_F_BIT)
 	msr		cpsr_c, r0
 
+	/* The MMU and caches should be disabled */
+
+	mrc		CP15_SCTLR(r0)
+	bic		r0, r0, #(SCTLR_M | SCTLR_C)
+	bic		r0, r0, #(SCTLR_I)
+	mcr		CP15_SCTLR(r0)
+
 	/* Clear the 16K level 1 page table */
 
 	ldr		r5, .LCppgtable			/* r5=phys. page table */
@@ -267,7 +274,7 @@ __start:
 
 	add		r2, r5, r2, lsr #18		/* R2=Offset page table address */
 
-	/* No loop until each page table entry has been written for the .text
+	/* Now loop until each page table entry has been written for the .text
 	 * region.
 	 */
 
@@ -389,6 +396,7 @@ __start:
 	 * example, we get here via a bootloader and the control register is in some
 	 * unknown state.
 	 *
+	 *   SCTLR_M    Bit 0:  Enable the MMU
 	 *   SCTLR_A    Bit 1:  Strict alignment disabled (reset value)
 	 *   SCTLR_C    Bit 2:  DCache disabled (reset value)
 	 *

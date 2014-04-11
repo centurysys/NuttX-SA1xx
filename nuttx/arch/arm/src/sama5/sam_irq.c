@@ -1,7 +1,7 @@
 /****************************************************************************
  * arch/arm/src/sama5/sam_irq.c
  *
- *   Copyright (C) 2013 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2013-2014 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -54,6 +54,9 @@
 #  include "sam_pio.h"
 #endif
 
+#include "mmu.h"
+#include "cache.h"
+#include "sctlr.h"
 #include "chip/sam_aic.h"
 #include "chip/sam_matrix.h"
 #include "chip/sam_aximx.h"
@@ -75,6 +78,11 @@ typedef uint32_t *(*doirq_t)(int irq, uint32_t *regs);
  ****************************************************************************/
 
 volatile uint32_t *current_regs;
+
+/* Symbols defined via the linker script */
+
+extern uint32_t _vector_start; /* Beginning of vector block */
+extern uint32_t _vector_end;   /* End+1 of vector block */
 
 /****************************************************************************
  * Private Data
@@ -114,7 +122,7 @@ static void sam_dumpaic(const char *msg, int irq)
   lldbg("  SSR: %08x  SMR: %08x  SVR: %08x  IVR: %08x\n",
         getreg32(SAM_AIC_SSR),  getreg32(SAM_AIC_SMR),
         getreg32(SAM_AIC_SVR),  getreg32(SAM_AIC_IVR));
-  lldbg("  FVR: %08x ISR: %08x\n",
+  lldbg("  FVR: %08x  ISR: %08x\n",
         getreg32(SAM_AIC_FVR),  getreg32(SAM_AIC_ISR));
   lldbg("  IPR: %08x       %08x       %08x       %08x\n",
         getreg32(SAM_AIC_IPR0), getreg32(SAM_AIC_IPR1),
@@ -122,14 +130,33 @@ static void sam_dumpaic(const char *msg, int irq)
   lldbg("  IMR: %08x CISR: %08x  SPU: %08x FFSR: %08x\n",
         getreg32(SAM_AIC_IMR),  getreg32(SAM_AIC_CISR),
         getreg32(SAM_AIC_SPU),  getreg32(SAM_AIC_FFSR));
-  lldbg("  DCR: %08x WPMR: %08x WPMR: %08x\n",
+  lldbg("  DCR: %08x WPMR: %08x WPSR: %08x\n",
         getreg32(SAM_AIC_DCR),  getreg32(SAM_AIC_WPMR),
-        getreg32(SAM_AIC_WPMR));
+        getreg32(SAM_AIC_WPSR));
   irqrestore(flags);
 }
 #else
 #  define sam_dumpaic(msg, irq)
 #endif
+
+/****************************************************************************
+ * Name: sam_vectorsize
+ *
+ * Description:
+ *   Return the size of the vector data
+ *
+ ****************************************************************************/
+
+static inline size_t sam_vectorsize(void)
+{
+  uintptr_t src;
+  uintptr_t end;
+
+  src  = (uintptr_t)&_vector_start;
+  end  = (uintptr_t)&_vector_end;
+
+  return (size_t)(end - src);
+}
 
 /****************************************************************************
  * Name: sam_spurious
@@ -210,6 +237,9 @@ static uint32_t *sam_fiqhandler(int irq, uint32_t *regs)
 
 void up_irqinitialize(void)
 {
+#if defined(CONFIG_SAMA5_BOOT_ISRAM) || defined(CONFIG_SAMA5_BOOT_CS0FLASH)
+  size_t vectorsize;
+#endif
   int i;
 
   /* The following operations need to be atomic, but since this function is
@@ -280,16 +310,57 @@ void up_irqinitialize(void)
 
   putreg32(AIC_WPMR_WPKEY | AIC_WPMR_WPEN, SAM_AIC_WPMR);
 
-#if defined(CONFIG_ARCH_LOWVECTORS) && defined(CONFIG_SAMA5_BOOT_ISRAM)
-  /* Disable MATRIX write protection */
+#if defined(CONFIG_ARCH_LOWVECTORS)
+  /* If CONFIG_ARCH_LOWVECTORS is defined, then the vectors located at the
+   * beginning of the .text region must appear at address at the address
+   * specified in the VBAR.  There are three ways to accomplish this:
+   *
+   *   1. By explicitly mapping the beginning of .text region with a page
+   *      table entry so that the virtual address zero maps to the beginning
+   *      of the .text region.  VBAR == 0x0000:0000.
+   *
+   *   2. A second way is to map the use the AXI MATRIX remap register to
+   *      map physical address zero to the beginning of the text region,
+   *      either internal SRAM or EBI CS 0.  Then we can set an identity
+   *      mapping to map the boot region at 0x0000:0000 to virtual address
+   *      0x0000:00000.   VBAR == 0x0000:0000.
+   *
+   *      This method is used when booting from ISRAM or NOR FLASH.  In
+   &      that case, vectors must lie at the beginning of NOFR FLASH.
+   *
+   *   3. Set the Cortex-A5 VBAR register so that the vector table address
+   *      is moved to a location other than 0x0000:0000.
+   *
+   *      This is the method used when booting from SDRAM.
+   *
+   * - When executing from NOR FLASH, the first level bootloader is supposed
+   *   to provide the AXI MATRIX mapping for us at boot time base on the state
+   *   of the BMS pin.  However, I have found that in the test environments
+   *   that I use, I cannot always be assured of that physical address mapping.
+   *
+   * - If we are executing out of ISRAM, then the SAMA5 primary bootloader
+   *   probably copied us into ISRAM and set the AXI REMAP bit for us.
+   *
+   * - If we are executing from external SDRAM, then a secondary bootloader
+   *   must have loaded us into SDRAM.  In this case, simply set the VBAR
+   *   register to the address of the vector table (not necessary at the
+   *   beginning or SDRAM).
+   */
+
+#if defined(CONFIG_SAMA5_BOOT_ISRAM) || defined(CONFIG_SAMA5_BOOT_CS0FLASH)
+  /* Set the vector base address register to 0x0000:0000 */
+
+  cp15_wrvbar(0);
 
 #if 0 /* Disabled on reset */
+  /* Disable MATRIX write protection */
+
   putreg32(MATRIX_WPMR_WPKEY, SAM_MATRIX_WPMR);
 #endif
 
-  /* Set remap state 0 if we are running from internal SRAM.  If we booted
-   * into NOR FLASH, then the first level bootloader should have already
-   * provided this mapping for us.
+  /* Set remap state 0 if we are running from internal SRAM or from SDRAM.
+   * If we booted into NOR FLASH, then the first level bootloader should
+   * have already provided this mapping for us.
    *
    * This is done late in the boot sequence.  Any exceptions taken before
    * this point in time will be handled by the ROM code, not by the NuttX
@@ -306,17 +377,35 @@ void up_irqinitialize(void)
    * address 0x0000:0000 in that case anyway.
    */
 
-  putreg32(MATRIX_MRCR_RCB0, SAM_MATRIX_MRCR);   /* Enable remap */
-  putreg32(AXIMX_REMAP_REMAP0, SAM_AXIMX_REMAP); /* Remap SRAM */
+  putreg32(MATRIX_MRCR_RCB0, SAM_MATRIX_MRCR);   /* Enable Cortex-A5 remap */
 
-  /* Restore MATRIX write protection */
+#if defined(CONFIG_SAMA5_BOOT_ISRAM)
+  putreg32(AXIMX_REMAP_REMAP0, SAM_AXIMX_REMAP); /* Remap SRAM */
+#else /* elif defined(CONFIG_SAMA5_BOOT_CS0FLASH) */
+  putreg32(AXIMX_REMAP_REMAP1, SAM_AXIMX_REMAP); /* Remap NOR FLASH on CS0 */
+#endif
+
+  /* Make sure that there is no trace of any previous mapping */
+
+  vectorsize = sam_vectorsize();
+  cp15_invalidate_icache();
+  cp15_invalidate_dcache(0, vectorsize);
+  mmu_invalidate_region(0, vectorsize);
 
 #if 0 /* Disabled on reset */
+  /* Restore MATRIX write protection */
+
   putreg32(MATRIX_WPMR_WPKEY | MATRIX_WPMR_WPEN, SAM_MATRIX_WPMR);
 #endif
 
-  /* It might be wise to flush the instruction cache here */
-#endif
+#elif defined(CONFIG_SAMA5_BOOT_SDRAM)
+  /* Set the VBAR register to the address of the vector table in SDRAM */
+
+  DEBUGASSERT((((uintptr_t)&_vector_start) & ~VBAR_MASK) == 0);
+  cp15_wrvbar((uint32_t)&_vector_start);
+
+#endif /* CONFIG_SAMA5_BOOT_ISRAM || CONFIG_SAMA5_BOOT_CS0FLASH */
+#endif /* CONFIG_ARCH_LOWVECTORS */
 
   /* currents_regs is non-NULL only while processing an interrupt */
 

@@ -1,8 +1,7 @@
 /****************************************************************************
- * include/nuttx/syslog.h
- * The NuttX SYSLOGing interface
+ * apps/include/netutils/ntpclient.h
  *
- *   Copyright (C) 2012 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2014 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -34,8 +33,8 @@
  *
  ****************************************************************************/
 
-#ifndef __INCLUDE_NUTTX_SYSLOG_H
-#define __INCLUDE_NUTTX_SYSLOG_H
+#ifndef __APPS_INCLUDE_NETUTILS_NTPCLIENT_H
+#define __APPS_INCLUDE_NETUTILS_NTPCLIENT_H 1
 
 /****************************************************************************
  * Included Files
@@ -44,46 +43,37 @@
 #include <nuttx/config.h>
 
 /****************************************************************************
- * Pre-Processor Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 /* Configuration ************************************************************/
-/* CONFIG_SYSLOG - Enables generic system logging features.
- * CONFIG_SYSLOG_DEVPATH - The full path to the system logging device
- *
- * In addition, some SYSLOG device must also be enabled that will provide
- * the syslog_putc() function.  As of this writing, there are two SYSLOG
- * devices avaiable:
- *
- *   1. A RAM SYSLOGing device that will log data into a circular buffer
- *      that can be dumped using the NSH dmesg command.  This device is
- *      described in the include/nuttx/ramlog.h header file.
- *
- *   2. And a generic character device that may be used as the SYSLOG.  The
- *      generic device interfaces are described in this file.  A disadvantage
- *      of using the generic character device for the SYSLOG is that it
- *      cannot handle debug output generated from interrupt level handlers.
- *
- * CONFIG_SYSLOG_CHAR - Enable the generic character device for the SYSLOG.
- *   The full path to the SYSLOG device is provided by CONFIG_SYSLOG_DEVPATH.
- *   A valid character device must exist at this path.  It will by opened
- *   by syslog_initialize.
- *
- *   NOTE:  No more than one SYSLOG device should be configured.
- */
 
-#ifndef CONFIG_SYSLOG
-#  undef CONFIG_SYSLOG_CHAR
+#ifndef CONFIG_NETUTILS_NTPCLIENT_SERVERIP
+#  define CONFIG_NETUTILS_NTPCLIENT_SERVERIP 0x0a000001
 #endif
 
-#if defined(CONFIG_SYSLOG_CHAR) && !defined(CONFIG_SYSLOG_DEVPATH)
-#  define CONFIG_SYSLOG_DEVPATH "/dev/ttyS1"
+#ifndef CONFIG_NETUTILS_NTPCLIENT_PORTNO
+#  define CONFIG_NETUTILS_NTPCLIENT_PORTNO 123
 #endif
+
+#ifndef CONFIG_NETUTILS_NTPCLIENT_STACKSIZE
+#  define CONFIG_NETUTILS_NTPCLIENT_STACKSIZE 2048
+#endif
+
+#ifndef CONFIG_NETUTILS_NTPCLIENT_SERVERPRIO
+#  define CONFIG_NETUTILS_NTPCLIENT_SERVERPRIO 100
+#endif
+
+#ifndef CONFIG_NETUTILS_NTPCLIENT_POLLDELAYSEC
+#  define CONFIG_NETUTILS_NTPCLIENT_POLLDELAYSEC 60
+#endif
+
+/****************************************************************************
+ * Public Types
+ ****************************************************************************/
 
 /****************************************************************************
  * Public Data
  ****************************************************************************/
-
-#ifndef __ASSEMBLY__
 
 #ifdef __cplusplus
 #define EXTERN extern "C"
@@ -96,41 +86,28 @@ extern "C" {
  * Public Function Prototypes
  ****************************************************************************/
 /****************************************************************************
- * Name: syslog_initialize
+ * Name: ntpclient_start
  *
  * Description:
- *   Initialize to use the character device (or file) at
- *   CONFIG_SYSLOG_DEVPATH as the SYSLOG sink.
- *
- *   NOTE that this implementation excludes using a network connection as
- *   SYSLOG device.  That would be a good extension.
+ *   Start the NTP daemon
  *
  ****************************************************************************/
 
-#ifdef CONFIG_SYSLOG_CHAR
-EXTERN int syslog_initialize(void);
-#endif
+int ntpclient_start(void);
 
 /****************************************************************************
- * Name: syslog_putc
+ * Name: ntpclient_stop
  *
  * Description:
- *   This is the low-level system logging interface.  The debugging/syslogging
- *   interfaces are syslog() and lowsyslog().  The difference is that
- *   the syslog() internface writes to fd=1 (stdout) whereas lowsyslog() uses
- *   a lower level interface that works from interrupt handlers.  This
- *   function is a a low-level interface used to implement lowsyslog().
+ *   Stop the NTP daemon
  *
  ****************************************************************************/
 
-#ifdef CONFIG_SYSLOG
-EXTERN int syslog_putc(int ch);
-#endif
+int ntpclient_stop(void);
 
 #undef EXTERN
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* __ASSEMBLY__ */
-#endif /* __INCLUDE_NUTTX_SYSLOG_H */
+#endif /* __APPS_INCLUDE_NETUTILS_NTPCLIENT_H */

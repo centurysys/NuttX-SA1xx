@@ -5,7 +5,7 @@ README
   development board. This board features the Atmel SAMA5D36 microprocessor.
   See http://www.atmel.com/devices/sama5d36.aspx for further information.
 
-    PARAMTER                  SAMA5D36
+    PARAMETER                 SAMA5D36
     ------------------------- -------------
     Pin Count                 324
     Max. Operating Frequency  536 MHz
@@ -526,7 +526,56 @@ Load NuttX with U-Boot on AT91 boards
       -n nuttx: Set image name.
       -d nuttx.bin: Use image data from nuttx.bin.
 
-    This will generate a binary called uImage.
+    This will generate a binary called uImage.  If you have the path to
+    mkimage in your PATH variable, then you can automatically build the
+    uImage file by adding the following to your .config file:
+
+      CONFIG_RAW_BINARY=y
+      CONFIG_UBOOT_UIMAGE=y
+      CONFIG_UIMAGE_LOAD_ADDRESS=0x20008000
+      CONFIG_UIMAGE_ENTRY_POINT=0x20008040
+
+    The uImage file can them be loaded into memory from a variety of sources
+    (serial, SD card, JFFS2 on NAND, TFTP).
+
+    STATUS:
+      2014-4-1:  So far, I am unable to get U-Boot to execute the uImage
+                 file.  I get the following error messages (in this case
+                 trying to load from an SD card):
+
+        U-Boot> fatload mmc 0 0x22000000 uimage
+        reading uimage
+        97744 bytes read in 21 ms (4.4 MiB/s)
+
+        U-Boot> bootm 0x22000000
+        ## Booting kernel from Legacy Image at 0x22000000 ...
+           Image Name:   nuttx
+           Image Type:   ARM Linux Kernel Image (uncompressed)
+           Data Size:    97680 Bytes = 95.4 KiB
+           Load Address: 20008000
+           Entry Point:  20008040
+           Verifying Checksum ... OK
+           XIP Kernel Image ... OK
+        FDT and ATAGS support not compiled in - hanging
+        ### ERROR ### Please RESET the board ###
+
+      This, however, appears to be a usable workaround:
+
+        U-Boot> fatload mmc 0 0x20008000 nuttx.bin
+        mci: setting clock 257812 Hz, block size 512
+        mci: setting clock 257812 Hz, block size 512
+        mci: setting clock 257812 Hz, block size 512
+        gen_atmel_mci: CMDR 00001048 ( 8) ARGR 000001aa (SR: 0c100025) Command Time Out
+        mci: setting clock 257812 Hz, block size 512
+        mci: setting clock 22000000 Hz, block size 512
+        reading nuttx.bin
+        108076 bytes read in 23 ms (4.5 MiB/s)
+
+        U-Boot> go 0x20008040
+        ## Starting application at 0x20008040 ...
+
+        NuttShell (NSH) NuttX-7.2
+        nsh>
 
   Loading through network
 
@@ -550,7 +599,7 @@ Load NuttX with U-Boot on AT91 boards
         Check this U-Boot network BuildRootFAQ entry to choose a proper MAC
         address: http://www.denx.de/wiki/DULG/EthernetDoesNotWork
 
-          setenv ethaddr 3e:36:65:ba:6f:be
+          setenv ethaddr 00:e0:de:ad:be:ef
 
      2. Setup IP parameters:
         The board ip address
@@ -2576,6 +2625,30 @@ Configurations
      create a very corrupt configuration that may not be easy to recover
      from.
 
+  4. The SAMA5Dx is running at 396MHz by default in these configurations.
+     This is because the original timing for the PLLs, NOR FLASH, and SDRAM
+     came from the Atmel NoOS sample code which runs at that rate.
+
+     The SAMA5Dx is capable of running at 528MHz, however, and is easily
+     re-configured:
+
+       Board Selection -> CPU Frequency
+         CONFIG_SAMA5D3xEK_396MHZ=n     # Disable 396MHz operation
+         CONFIG_SAMA5D3xEK_528MHZ=y     # Enable 528MHz operation
+
+     If you switch to 528MHz, you should also check the loop calibration
+     value in your .config file.  Of course, it would be best to re-calibrate
+     the timing loop, but these values should get you in the ballpark:
+
+       CONFIG_BOARD_LOOPSPERMSEC=49341  # Calibrated on SAMA5D3-EK at 396MHz
+                                        # running from ISRAM
+       CONFIG_BOARD_LOOPSPERMSEC=65775  # Calibrated on SAMA4D3-Xplained at
+                                        # 528MHz running from SDRAM
+
+     Operation at 528MHz has been verified but is not the default in these
+     configurations because most testing was done at 396MHz.  NAND has not
+     been verified at these rates.
+
   Configuration Sub-directories
   -----------------------------
   Summary:  Some of the descriptions below are long and wordy. Here is the
@@ -2623,8 +2696,14 @@ Configurations
        for further information.
 
     3. This configuration executes out of SDRAM flash and is loaded into
-       SDRAM from NAND, Serial DataFlash, or from a TFTPC sever via
+       SDRAM from NAND, Serial DataFlash, SD card or from a TFTPC sever via
        U-Boot or BareBox.  Data also is positioned in SDRAM.
+
+       I did most testing with nuttx.bin on an SD card.  These are the
+       commands that I used to boot NuttX from the SD card:
+
+         U-Boot> fatload mmc 0 0x20008000 nuttx.bin
+         U-Boot> go 0x20008040
 
     4. This configuration has support for NSH built-in applications enabled.
        However, no built-in applications are selected in the base configuration.
@@ -2678,26 +2757,16 @@ Configurations
     STATUS:
        See the To-Do list below
 
-      I2C
-      2014-9-12:  The I2C tool, however, seems to work well.  It succesfully
-        enumerates the devices on the bus and successfully exchanges a few
-        commands.  The real test of the come later when a real I2C device is
-        integrated.
+       2014-4-3:  Delay loop calibrated: CONFIG_BOARD_LOOPSPERMSEC=65775
 
 To-Do List
 ==========
 
-1) Currently the SAMA5Dx is running at 396MHz in these configurations.  This
-   is because the timing for the PLLs, NOR FLASH, and SDRAM came from the
-   Atmel NoOS sample code which runs at that rate.  The SAMA5Dx is capable
-   of running at 536MHz, however.  The setup for that configuration exists
-   in the BareBox assembly language setup and should be incorporated.
-
-2) Neither USB OHCI nor EHCI support Isochronous endpoints.  Interrupt
+1) Neither USB OHCI nor EHCI support Isochronous endpoints.  Interrupt
    endpoint support in the EHCI driver is untested (but works in similar
    EHCI drivers).
 
-3) HSCMI TX DMA support is currently commented out.
+2) HSCMI TX DMA support is currently commented out.
 
-7) GMAC has only been tested on a 10/100Base-T network.  I don't have a
+3) GMAC has only been tested on a 10/100Base-T network.  I don't have a
    1000Base-T network to support additional testing.

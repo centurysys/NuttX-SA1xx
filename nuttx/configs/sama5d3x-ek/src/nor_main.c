@@ -1,7 +1,7 @@
 /*****************************************************************************
  * configs/sama5d3x-ek/src/nor_main.c
  *
- *   Copyright (C) 2013 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2013-2014 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -61,6 +61,15 @@
 
 #define NOR_ENTRY ((nor_entry_t)SAM_EBICS0_VSECTION)
 
+#define NOR_WAIT        1
+#define NOR_NO_WAIT     0
+
+#ifdef CONFIG_SAMA5D3xEK_NOR_START
+#  define NOR_BOOT_MODE NOR_NO_WAIT
+#else
+#  define NOR_BOOT_MODE NOR_WAIT
+#endif
+
 /****************************************************************************
  * Private Types
  ****************************************************************************/
@@ -88,11 +97,13 @@ int nor_main(int argc, char *argv)
 {
   uint32_t regval;
 
-#ifdef CONFIG_SAMA5D3xEK_NOR_START
-  printf("Configuring and booting from NOR FLASH on CS0\n");
-#else
-  printf("Configuring NOR FLASH on CS0 and halting\n");
-#endif
+  /* Here we have a in memory value we can change in the debugger
+   * to begin booting in NOR Flash
+   */
+
+  static volatile uint32_t wait = NOR_BOOT_MODE;
+
+  printf("Configuring NOR FLASH on CS0 and %s\n", wait ? "waiting" : "booting");
 
   /* Make sure that the SMC peripheral is enabled (But of course it is... we
    * are executing from NOR FLASH now).
@@ -180,16 +191,13 @@ int nor_main(int argc, char *argv)
   cp15_invalidate_dcache_all();
   cp15_invalidate_tlbs();
 
-#ifdef CONFIG_SAMA5D3xEK_NOR_START
   /* Then jump into NOR flash */
 
+  while (wait)
+    {
+    }
+
   NOR_ENTRY();
-
-#else
-  /* Or just wait patiently for the user to break in with GDB. */
-
-  for (;;);
-#endif
 
   return 0; /* We should not get here in either case */
 }
