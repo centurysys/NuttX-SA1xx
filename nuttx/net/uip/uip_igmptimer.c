@@ -10,30 +10,30 @@
  *   Copyright (c) 2002 CITEL Technologies Ltd.
  *   All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without 
- * modification, are permitted provided that the following conditions 
- * are met: 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
  *
- * 1. Redistributions of source code must retain the above copyright 
- *    notice, this list of conditions and the following disclaimer. 
- * 2. Redistributions in binary form must reproduce the above copyright 
- *    notice, this list of conditions and the following disclaimer in the 
- *    documentation and/or other materials provided with the distribution. 
- * 3. Neither the name of CITEL Technologies Ltd nor the names of its contributors 
- *    may be used to endorse or promote products derived from this software 
- *    without specific prior written permission. 
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of CITEL Technologies Ltd nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY CITEL TECHNOLOGIES AND CONTRIBUTORS ``AS IS''
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE 
- * ARE DISCLAIMED.  IN NO EVENT SHALL CITEL TECHNOLOGIES OR CONTRIBUTORS BE LIABLE 
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL 
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS 
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) 
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT 
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY 
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
- * SUCH DAMAGE. 
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL CITEL TECHNOLOGIES OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
  *
  ****************************************************************************/
 
@@ -123,7 +123,7 @@ static void uip_igmptimeout(int argc, uint32_t arg, ...)
   /* If the group exists and is no an IDLE MEMBER, then it must be a DELAYING
    * member.  Race conditions are avoided because (1) the timer is not started
    * until after the first IGMPv2_MEMBERSHIP_REPORT during the join, and (2)
-   * the timer is canceled before sending the IGMP_LEAVE_GROUP during a leave.
+   * the timer is cancelled before sending the IGMP_LEAVE_GROUP during a leave.
    */
 
   if (!IS_IDLEMEMBER(group->flags))
@@ -141,7 +141,7 @@ static void uip_igmptimeout(int argc, uint32_t arg, ...)
        * is stranded if both reports were lost?  This is consistent with the
        * RFC that states: "To cover the possibility of the initial Membership
        * Report being lost or damaged, it is recommended that it be repeated
-       * once or twice after shortdelays [Unsolicited Report Interval]..."
+       * once or twice after short delays [Unsolicited Report Interval]..."
        */
     }
 }
@@ -190,8 +190,11 @@ void uip_igmpstartticks(FAR struct igmp_group_s *group, int ticks)
   /* Start the timer */
 
   gtmrlldbg("ticks: %d\n", ticks);
+
   ret = wd_start(group->wdog, ticks, uip_igmptimeout, 1, (uint32_t)group);
+
   DEBUGASSERT(ret == OK);
+  UNUSED(ret);
 }
 
 void uip_igmpstarttimer(FAR struct igmp_group_s *group, uint8_t decisecs)
@@ -199,7 +202,7 @@ void uip_igmpstarttimer(FAR struct igmp_group_s *group, uint8_t decisecs)
   /* Convert the decisec value to system clock ticks and start the timer.
    * Important!! this should be a random timer from 0 to decisecs
    */
-  
+
   gtmrdbg("decisecs: %d\n", decisecs);
   uip_igmpstartticks(group, uip_decisec2tick(decisecs));
 }
@@ -213,7 +216,7 @@ void uip_igmpstarttimer(FAR struct igmp_group_s *group, uint8_t decisecs)
  *   avoid race conditions) and return true.
  *
  * Assumptions:
- *   This function may be called from most any context.  If true is retuend
+ *   This function may be called from most any context.  If true is returned
  *   then the caller must call uip_igmpstartticks() to restart the timer
  *
  ****************************************************************************/

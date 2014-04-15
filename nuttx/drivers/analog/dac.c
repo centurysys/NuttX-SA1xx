@@ -4,7 +4,7 @@
  *   Copyright (C) 2011 Li Zhuoyi. All rights reserved.
  *   Author: Li Zhuoyi <lzyy.cn@gmail.com>
  *   History: 0.1 2011-08-04 initial version
- * 
+ *
  * Derived from drivers/can.c
  *
  *   Copyright (C) 2008-2009Gregory Nutt. All rights reserved.
@@ -398,19 +398,19 @@ static ssize_t dac_write(FAR struct file *filep, FAR const char *buffer, size_t 
           fifo->af_buffer[fifo->af_tail].am_data=*(uint32_t *)&buffer[nsent];
           fifo->af_buffer[fifo->af_tail].am_data&=0xffffff00;
         }
-      else if(msglen == 3)
+      else if (msglen == 3)
         {
           fifo->af_buffer[fifo->af_tail].am_channel=buffer[nsent];
           fifo->af_buffer[fifo->af_tail].am_data=(*(uint16_t *)&buffer[nsent+1]);
           fifo->af_buffer[fifo->af_tail].am_data<<=16;
         }
-      else if(msglen == 2)
+      else if (msglen == 2)
         {
           fifo->af_buffer[fifo->af_tail].am_channel=0;
           fifo->af_buffer[fifo->af_tail].am_data=(*(uint16_t *)&buffer[nsent]);
           fifo->af_buffer[fifo->af_tail].am_data<<=16;
         }
-      else if(msglen == 1)
+      else if (msglen == 1)
        {
           fifo->af_buffer[fifo->af_tail].am_channel=0;
           fifo->af_buffer[fifo->af_tail].am_data=buffer[nsent];

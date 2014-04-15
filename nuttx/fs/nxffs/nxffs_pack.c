@@ -286,7 +286,7 @@ static inline int nxffs_startpos(FAR struct nxffs_volume_s *volume,
    * compacting.
    */
 
-  for(;;)
+  for (;;)
     {
       /* Is there wasted space between the offset where the we could have
        * valid data and the offset to the beginning of the first valid
@@ -471,7 +471,7 @@ static int nxffs_destsetup(FAR struct nxffs_volume_s *volume,
     {
       /* Is there room for an inode structure in this block?  */
 
-      if(pack->iooffset + SIZEOF_NXFFS_INODE_HDR > volume->geo.blocksize)
+      if (pack->iooffset + SIZEOF_NXFFS_INODE_HDR > volume->geo.blocksize)
         {
           /* No.. that inode name will not fit in this block. Return an
            * indication that we are at the end of the block and try again

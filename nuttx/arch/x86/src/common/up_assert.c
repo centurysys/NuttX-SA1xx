@@ -64,7 +64,7 @@
 #  undef CONFIG_ARCH_USBDUMP
 #endif
 
-/* Output debug info if stack dump is selected -- even if 
+/* Output debug info if stack dump is selected -- even if
  * debug is not selected.
  */
 
@@ -242,7 +242,7 @@ static void _up_assert(int errorcode)
   if (current_regs || ((struct tcb_s*)g_readytorun.head)->pid == 0)
     {
        (void)irqsave();
-        for(;;)
+        for (;;)
           {
 #ifdef CONFIG_ARCH_LEDS
             board_led_on(LED_PANIC);

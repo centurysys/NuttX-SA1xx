@@ -36,7 +36,7 @@
 /****************************************************************************
  * Included Files
  ****************************************************************************/
- 
+
 #include <nuttx/config.h>
 
 #include <stdint.h>
@@ -49,7 +49,7 @@
 #include <nuttx/net/uip/uip.h>
 
 #include <apps/netutils/uiplib.h>
-#include <apps/netutils/resolv.h>
+#include <apps/netutils/dnsclient.h>
 #include <apps/netutils/webclient.h>
 
 /****************************************************************************
@@ -144,7 +144,7 @@ int wget_main(int argc, char *argv[])
   uip_setnetmask("eth0", &addr);
 
   /* Then start the server */
-  
+
   wget(CONFIG_EXAMPLES_WGET_URL, g_iobuffer, 512, callback, NULL);
   return 0;
 }

@@ -9,7 +9,7 @@
  *   Copyright (C) 2011 Li Zhuoyi. All rights reserved.
  *   Author: Li Zhuoyi <lzyy.cn@gmail.com>
  *   History: 0.1 2011-08-05 initial version
- * 
+ *
  * This file is a part of NuttX:
  *
  *   Copyright (C) 2010-2012 Gregory Nutt. All rights reserved.
@@ -165,23 +165,23 @@ static void adc_reset(FAR struct adc_dev_s *dev)
   clkdiv&=0xff00;
   putreg32(ADC_CR_PDN|ADC_CR_BURST|clkdiv|priv->mask,LPC43_ADC_CR);
 
-  if(priv->mask&0x01)
+  if (priv->mask&0x01)
     lpc43_configgpio(GPIO_AD0p0);
-  else if(priv->mask&0x02)
+  else if (priv->mask&0x02)
     lpc43_configgpio(GPIO_AD0p1);
-  else if(priv->mask&0x04)
+  else if (priv->mask&0x04)
     lpc43_configgpio(GPIO_AD0p2);
-  else if(priv->mask&0x08)
+  else if (priv->mask&0x08)
     lpc43_configgpio(GPIO_AD0p3);
-  else if(priv->mask&0x10)
+  else if (priv->mask&0x10)
     lpc43_configgpio(GPIO_AD0p4);
-  else if(priv->mask&0x20)
+  else if (priv->mask&0x20)
     lpc43_configgpio(GPIO_AD0p5);
-  else if(priv->mask&0x40)
+  else if (priv->mask&0x40)
     lpc43_configgpio(GPIO_AD0p6);
-  else if(priv->mask&0x80)
+  else if (priv->mask&0x80)
     lpc43_configgpio(GPIO_AD0p7);
-    
+
   irqrestore(flags);
 }
 
@@ -244,7 +244,7 @@ static int adc_interrupt(int irq, void *context)
   FAR struct up_dev_s *priv = (FAR struct up_dev_s *)g_adcdev.ad_priv;
   unsigned char ch;
   int32_t value;
-    
+
   regval = getreg32(LPC43_ADC_GDR);
   ch = (regval >> 24) & 0x07;
   priv->buf[ch] += regval & 0xfff0;

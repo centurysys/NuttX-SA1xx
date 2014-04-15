@@ -203,7 +203,7 @@ int elf_loadshdrs(FAR struct elf_loadinfo_s *loadinfo)
   /* Get the total size of the section header table */
 
   shdrsize = (size_t)loadinfo->ehdr.e_shentsize * (size_t)loadinfo->ehdr.e_shnum;
-  if(loadinfo->ehdr.e_shoff + shdrsize > loadinfo->filelen)
+  if (loadinfo->ehdr.e_shoff + shdrsize > loadinfo->filelen)
     {
       bdbg("Insufficent space in file for section header table\n");
       return -ESPIPE;
@@ -265,7 +265,7 @@ int elf_findsection(FAR struct elf_loadinfo_s *loadinfo,
           bdbg("elf_sectname failed: %d\n", ret);
           return ret;
         }
- 
+
       /* Check if the name of this section is 'sectname' */
 
       bvdbg("%d. Comparing \"%s\" and .\"%s\"\n",

@@ -156,7 +156,7 @@ void uip_icmpinput(struct uip_driver_s *dev)
        * checksum for the change of type
        */
 
-      if( picmp->icmpchksum >= HTONS(0xffff - (ICMP_ECHO_REQUEST << 8)))
+      if (picmp->icmpchksum >= HTONS(0xffff - (ICMP_ECHO_REQUEST << 8)))
         {
           picmp->icmpchksum += HTONS(ICMP_ECHO_REQUEST << 8) + 1;
         }
@@ -221,7 +221,7 @@ typeerr:
             }
 
           /* We should now send a neighbor advertisement back to where the
-           * neighbor solicication came from.
+           * neighbor solicitation came from.
            */
 
           picmp->type = ICMP6_NEIGHBOR_ADVERTISEMENT;

@@ -70,7 +70,7 @@
 /* DHCPC may be used in conjunction with any other feature (or not) */
 
 #ifdef CONFIG_EXAMPLES_UIP_DHCPC
-# include <apps/netutils/resolv.h>
+# include <apps/netutils/dnsclient.h>
 # include <apps/netutils/dhcpc.h>
 #endif
 
@@ -154,7 +154,7 @@ int uip_main(int argc, char *argv[])
 #ifdef CONFIG_EXAMPLES_UIP_DHCPC
   /* Set up the resolver */
 
-  resolv_init();
+  dns_bind();
 
   /* Get the MAC address of the NIC */
 
@@ -174,18 +174,22 @@ int uip_main(int argc, char *argv[])
         struct dhcpc_state ds;
         (void)dhcpc_request(handle, &ds);
         uip_sethostaddr("eth1", &ds.ipaddr);
+
         if (ds.netmask.s_addr != 0)
           {
             uip_setnetmask("eth0", &ds.netmask);
           }
+
         if (ds.default_router.s_addr != 0)
           {
             uip_setdraddr("eth0", &ds.default_router);
           }
+
         if (ds.dnsaddr.s_addr != 0)
           {
-            resolv_conf(&ds.dnsaddr);
+            dns_setserver(&ds.dnsaddr);
           }
+
         dhcpc_close(handle);
         printf("IP: %s\n", inet_ntoa(ds.ipaddr));
     }
@@ -198,7 +202,7 @@ int uip_main(int argc, char *argv[])
   httpd_listen();
 #endif
 
-  while(1)
+  while (1)
     {
       sleep(3);
       printf("uip_main: Still running\n");
@@ -206,5 +210,6 @@ int uip_main(int argc, char *argv[])
       fflush(stdout);
 #endif
     }
+
   return 0;
 }

@@ -101,7 +101,9 @@ int tc_main(int argc, char *argv[])
 #endif
   int fd;
   int errval = 0;
+#ifdef CONFIG_EXAMPLES_TOUCHSCREEN_ARCHINIT
   int ret;
+#endif
 
   /* If this example is configured as an NX add-on, then limit the number of
    * samples that we collect before returning.  Otherwise, we never return
@@ -118,6 +120,7 @@ int tc_main(int argc, char *argv[])
   message("tc_main: nsamples: %d\n", CONFIG_EXAMPLES_TOUCHSCREEN_NSAMPLES);
 #endif
 
+#ifdef CONFIG_EXAMPLES_TOUCHSCREEN_ARCHINIT
   /* Initialization of the touchscreen hardware is performed by logic
    * external to this test.
    */
@@ -130,6 +133,7 @@ int tc_main(int argc, char *argv[])
       errval = 1;
       goto errout;
     }
+#endif
 
   /* Open the touchscreen device for reading */
 
@@ -249,9 +253,13 @@ int tc_main(int argc, char *argv[])
 
 errout_with_dev:
   close(fd);
+
 errout_with_tc:
+#ifdef CONFIG_EXAMPLES_TOUCHSCREEN_ARCHINIT
   arch_tcuninitialize();
+
 errout:
+#endif
   message("Terminating!\n");
   msgflush();
   return errval;

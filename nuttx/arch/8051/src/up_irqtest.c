@@ -72,7 +72,7 @@ bool g_irqtest;
 volatile uint8_t g_irqtos;
 uint8_t g_irqregs[REGS_SIZE];
 int g_nirqs;
-FAR struct xcptcontext *g_irqcontext; 
+FAR struct xcptcontext *g_irqcontext;
 
 /************************************************************************
  * Private Functions
@@ -207,7 +207,7 @@ void os_start(void)
 
   _up_puts("Test complete");
   _up_putnl();
-  for(;;);
+  for (;;);
 }
 
 /************************************************************************

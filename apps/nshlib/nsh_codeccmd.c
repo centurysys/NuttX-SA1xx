@@ -338,7 +338,7 @@ static int cmd_codecs_proc(FAR struct nsh_vtbl_s *vtbl, int argc, char **argv,
 
       buff_len = calc_codec_buffsize(src_buff_len+2, mode);
       buffer = malloc(buff_len);
-      while(true)
+      while (true)
         {
           memset(src_buffer, 0, src_buff_len+2);
           ret=read(fd, src_buffer, src_buff_len);
@@ -348,7 +348,7 @@ static int cmd_codecs_proc(FAR struct nsh_vtbl_s *vtbl, int argc, char **argv,
               ret = ERROR;
               goto exit;
             }
-          else if(ret==0)
+          else if (ret==0)
             {
               break;
             }
@@ -391,7 +391,7 @@ static int cmd_codecs_proc(FAR struct nsh_vtbl_s *vtbl, int argc, char **argv,
           MD5Final(mac, &ctx);
           pSrc = (char *)&mac;
           pDest = buffer;
-          for(i=0;i<16;i++,pSrc++)
+          for (i = 0; i < 16; i++, pSrc++)
             {
               *pDest++ = hex_chars[(*pSrc) >> 4];
               *pDest++ = hex_chars[(*pSrc) & 0x0f];
@@ -427,7 +427,7 @@ static int cmd_codecs_proc(FAR struct nsh_vtbl_s *vtbl, int argc, char **argv,
               MD5Final(mac, &ctx);
               pSrc = (char *)&mac;
               pDest = buffer;
-              for(i=0;i<16;i++,pSrc++)
+              for (i = 0; i < 16; i++, pSrc++)
                 {
                   *pDest++ = hex_chars[(*pSrc) >> 4];
                   *pDest++ = hex_chars[(*pSrc) & 0x0f];

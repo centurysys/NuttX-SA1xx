@@ -88,7 +88,7 @@ void rtos_kfree(void *addr)
 
 /**
  * The interrupt can be nested. The pair of rtos_enter_interrupt()
- * and rtos_exit_interrupt() make sure the context switch is 
+ * and rtos_exit_interrupt() make sure the context switch is
  * performed only in the last IRQ exit.
  */
 void rtos_enter_interrupt(void)
@@ -151,9 +151,10 @@ void rtos_stop_running(void)
 
     nuttx_arch_exit();
 
-    while(1) {
-		arch_hlt();
-    }
+    while (1)
+      {
+	arch_hlt();
+      }
 }
 
 int rtos_vnet_init(struct rgmp_vnet *vnet)

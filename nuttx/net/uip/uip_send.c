@@ -48,7 +48,7 @@
 #include <nuttx/net/uip/uip-arch.h>
 
 /****************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 
 /****************************************************************************
@@ -87,14 +87,14 @@
  *   the network interface driver.
  *
  * Assumptions:
- *   Called from the interrupt level or, at a mimimum, with interrupts
+ *   Called from the interrupt level or, at a minimum, with interrupts
  *   disabled.
  *
  ****************************************************************************/
 
 void uip_send(struct uip_driver_s *dev, const void *buf, int len)
 {
-  /* Some sanity checks -- note that the actually available length in the 
+  /* Some sanity checks -- note that the actually available length in the
    * buffer is considerably less than CONFIG_NET_BUFSIZE.
    */
 

@@ -69,7 +69,7 @@
 #if defined(CONFIG_NET_ICMP) && defined(CONFIG_NET_ICMP_PING) && \
    !defined(CONFIG_DISABLE_CLOCK) && !defined(CONFIG_DISABLE_SIGNALS)
 #  include <apps/netutils/uiplib.h>
-#  include <apps/netutils/resolv.h>
+#  include <apps/netutils/dnsclient.h>
 #endif
 
 #if defined(CONFIG_NET_UDP) && CONFIG_NFILE_DESCRIPTORS > 0
@@ -88,7 +88,7 @@
 #  ifdef CONFIG_HAVE_GETHOSTBYNAME
 #    include <netdb.h>
 #  else
-#    include <apps/netutils/resolv.h>
+#    include <apps/netutils/dnsclient.h>
 #  endif
 #  include <apps/netutils/dhcpc.h>
 #endif
@@ -320,7 +320,7 @@ int ifconfig_callback(FAR struct uip_driver_s *dev, void *arg)
   nsh_output(vtbl, "Mask:%s\n", inet_ntoa(addr));
 
 #if defined(CONFIG_NSH_DHCPC) || defined(CONFIG_NSH_DNS)
-  resolv_getserver(&addr);
+  dns_getserver(&addr);
   nsh_output(vtbl, "\tDNSaddr:%s\n", inet_ntoa(addr));
 #endif
 
@@ -619,7 +619,7 @@ int cmd_ifconfig(FAR struct nsh_vtbl_s *vtbl, int argc, char **argv)
 
   if (argc > 2)
     {
-      for(i = 0; i < argc; i++)
+      for (i = 0; i < argc; i++)
         {
           if (i == 1)
             {
@@ -644,7 +644,7 @@ int cmd_ifconfig(FAR struct nsh_vtbl_s *vtbl, int argc, char **argv)
                       badarg = true;
                     }
                 }
-              else if(!strcmp(tmp, "netmask"))
+              else if (!strcmp(tmp, "netmask"))
                 {
                   if (argc-1 >= i+1)
                     {
@@ -770,7 +770,7 @@ int cmd_ifconfig(FAR struct nsh_vtbl_s *vtbl, int argc, char **argv)
       addr.s_addr = gip;
     }
 
-  resolv_conf(&addr);
+  dns_setserver(&addr);
 #endif
 
 #if defined(CONFIG_NSH_DHCPC)
@@ -807,7 +807,7 @@ int cmd_ifconfig(FAR struct nsh_vtbl_s *vtbl, int argc, char **argv)
 
           if (ds.dnsaddr.s_addr != 0)
             {
-              resolv_conf(&ds.dnsaddr);
+              dns_setserver(&ds.dnsaddr);
             }
 
           dhcpc_close(handle);
