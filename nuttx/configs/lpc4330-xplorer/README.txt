@@ -699,10 +699,6 @@ LPC4330-Xplorer Configuration Options
 
        CONFIG_RAM_START=0x10000000
 
-    CONFIG_ARCH_IRQPRIO - The LPC43xx supports interrupt prioritization
-
-       CONFIG_ARCH_IRQPRIO=y
-
     CONFIG_ARCH_FPU - The LPC43xxx supports a floating point unit (FPU)
 
        CONFIG_ARCH_FPU=y
@@ -825,8 +821,6 @@ LPC4330-Xplorer Configuration Options
     CONFIG_NET_EMACRAM_SIZE - Size of EMAC RAM.  Default: 16Kb
     CONFIG_NET_NTXDESC - Configured number of Tx descriptors. Default: 18
     CONFIG_NET_NRXDESC - Configured number of Rx descriptors. Default: 18
-    CONFIG_NET_PRIORITY - Ethernet interrupt priority.  The is default is
-      the higest priority.
     CONFIG_NET_WOL - Enable Wake-up on Lan (not fully implemented).
     CONFIG_NET_REGDEBUG - Enabled low level register debug.  Also needs
       CONFIG_DEBUG.

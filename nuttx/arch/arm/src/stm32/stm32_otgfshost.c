@@ -69,7 +69,7 @@
 #if defined(CONFIG_USBHOST) && (defined(CONFIG_STM32_OTGFS) || defined(CONFIG_STM32_OTGFS2))
 
 /*******************************************************************************
- * Definitions
+ * Pre-processor Definitions
  *******************************************************************************/
 /* Configuration ***************************************************************/
 /*
@@ -133,11 +133,6 @@
 #ifndef CONFIG_DEBUG
 #  undef CONFIG_STM32_USBHOST_REGDEBUG
 #  undef CONFIG_STM32_USBHOST_PKTDUMP
-#endif
-
-#undef HAVE_USB_TRACE
-#if defined(CONFIG_USBHOST_TRACE) || (defined(CONFIG_DEBUG) && defined(CONFIG_DEBUG_USB))
-#  define HAVE_USB_TRACE 1
 #endif
 
 /* HCD Setup *******************************************************************/
@@ -356,7 +351,7 @@ static inline void stm32_gint_ptxfeisr(FAR struct stm32_usbhost_s *priv);
 static inline void stm32_gint_hcisr(FAR struct stm32_usbhost_s *priv);
 static inline void stm32_gint_hprtisr(FAR struct stm32_usbhost_s *priv);
 static inline void stm32_gint_discisr(FAR struct stm32_usbhost_s *priv);
-static inline void stm32_gint_iisooxfrisr(FAR struct stm32_usbhost_s *priv);
+static inline void stm32_gint_ipxfrisr(FAR struct stm32_usbhost_s *priv);
 
 /* First level, global interrupt handler */
 
@@ -726,7 +721,7 @@ static void stm32_chan_configure(FAR struct stm32_usbhost_s *priv, int chidx)
     case OTGFS_EPTYPE_CTRL:
     case OTGFS_EPTYPE_BULK:
       {
-#ifdef HAVE_USB_TRACE
+#ifdef HAVE_USBHOST_TRACE_VERBOSE
         uint16_t intrace;
         uint16_t outtrace;
 
@@ -779,7 +774,7 @@ static void stm32_chan_configure(FAR struct stm32_usbhost_s *priv, int chidx)
                             priv->chan[chidx].epno);
             regval |= OTGFS_HCINT_BBERR;
           }
-#ifdef HAVE_USB_TRACE
+#ifdef HAVE_USBHOST_TRACE_VERBOSE
         else
           {
             usbhost_vtrace2(OTGFS_VTRACE2_CHANCONF_INTR_OUT, chidx,
@@ -803,7 +798,7 @@ static void stm32_chan_configure(FAR struct stm32_usbhost_s *priv, int chidx)
                             priv->chan[chidx].epno);
             regval |= (OTGFS_HCINT_TXERR | OTGFS_HCINT_BBERR);
           }
-#ifdef HAVE_USB_TRACE
+#ifdef HAVE_USBHOST_TRACE_VERBOSE
         else
           {
             usbhost_vtrace2(OTGFS_VTRACE2_CHANCONF_ISOC_OUT, chidx,
@@ -1166,6 +1161,10 @@ static void stm32_transfer_start(FAR struct stm32_usbhost_s *priv, int chidx)
   if ((stm32_getreg(STM32_OTGFS_HFNUM) & 1) == 0)
     {
       regval |= OTGFS_HCCHAR_ODDFRM;
+    }
+  else
+    {
+      regval &= ~OTGFS_HCCHAR_ODDFRM;
     }
 
   regval &= ~OTGFS_HCCHAR_CHDIS;
@@ -1945,18 +1944,18 @@ static inline void stm32_gint_hcinisr(FAR struct stm32_usbhost_s *priv,
 
   else if ((pending & OTGFS_HCINT_NAK) != 0)
     {
-      /* For a BULK tranfer, the hardware is capable of retrying
+      /* For a BULK transfer, the hardware is capable of retrying
        * automatically on a NAK.  However, this is not always
        * what we need to do.  So we always halt the transfer and
        * return control to high level logic in the even of a NAK.
        */
 
-#if 0
+#if 1
       /* Halt the interrupt channel */
 
-      if (chan->eptype == OTGFS_EPTYPE_CTRL)
+      if (chan->eptype == OTGFS_EPTYPE_INTR)
         {
-          /* Halt the channel -- the CHH interrrupt is expected next */
+          /* Halt the channel -- the CHH interrupt is expected next */
 
           stm32_chan_halt(priv, chidx, CHREASON_NAK);
         }
@@ -1976,10 +1975,11 @@ static inline void stm32_gint_hcinisr(FAR struct stm32_usbhost_s *priv,
           stm32_putreg(STM32_OTGFS_HCCHAR(chidx), regval);
         }
 #else
-      /* Halt all transfers on the NAK -- the CHH interrrupt is expected next */
+      /* Halt all transfers on the NAK -- the CHH interrupt is expected next */
 
       stm32_chan_halt(priv, chidx, CHREASON_NAK);
 #endif
+
       /* Clear the NAK condition */
 
       stm32_putreg(STM32_OTGFS_HCINT(chidx), OTGFS_HCINT_NAK);
@@ -2654,6 +2654,7 @@ static inline void stm32_gint_hprtisr(FAR struct stm32_usbhost_s *priv)
   uint32_t newhprt;
   uint32_t hcfg;
 
+  usbhost_vtrace1(OTGFS_VTRACE1_GINT_HPRT, 0);
   /* Read the port status and control register (HPRT) */
 
   hprt = stm32_getreg(STM32_OTGFS_HPRT);
@@ -2672,6 +2673,7 @@ static inline void stm32_gint_hprtisr(FAR struct stm32_usbhost_s *priv)
     {
       /* Set up to clear the POCCHNG status in the new HPRT contents. */
 
+      usbhost_vtrace1(OTGFS_VTRACE1_GINT_HPRT_POCCHNG, 0);
       newhprt |= OTGFS_HPRT_POCCHNG;
     }
 
@@ -2685,7 +2687,9 @@ static inline void stm32_gint_hprtisr(FAR struct stm32_usbhost_s *priv)
        * process the new connection event.
        */
 
+      usbhost_vtrace1(OTGFS_VTRACE1_GINT_HPRT_PCDET, 0);
       newhprt |= OTGFS_HPRT_PCDET;
+      stm32_portreset(priv);
       stm32_gint_connected(priv);
     }
 
@@ -2695,6 +2699,7 @@ static inline void stm32_gint_hprtisr(FAR struct stm32_usbhost_s *priv)
     {
       /* Set up to clear the PENCHNG status in the new HPRT contents. */
 
+      usbhost_vtrace1(OTGFS_VTRACE1_GINT_HPRT_PENCHNG, 0);
       newhprt |= OTGFS_HPRT_PENCHNG;
 
       /* Was the port enabled? */
@@ -2717,12 +2722,15 @@ static inline void stm32_gint_hprtisr(FAR struct stm32_usbhost_s *priv)
             {
               /* Set the Host Frame Interval Register for the 6KHz speed */
 
+              usbhost_vtrace1(OTGFS_VTRACE1_GINT_HPRT_LSDEV, 0);
               stm32_putreg(STM32_OTGFS_HFIR, 6000);
 
               /* Are we switching from FS to LS? */
 
               if ((hcfg & OTGFS_HCFG_FSLSPCS_MASK) != OTGFS_HCFG_FSLSPCS_LS6MHz)
                 {
+
+                  usbhost_vtrace1(OTGFS_VTRACE1_GINT_HPRT_FSLSSW, 0);
                   /* Yes... configure for LS */
 
                   hcfg &= ~OTGFS_HCFG_FSLSPCS_MASK;
@@ -2736,12 +2744,16 @@ static inline void stm32_gint_hprtisr(FAR struct stm32_usbhost_s *priv)
             }
           else /* if ((hprt & OTGFS_HPRT_PSPD_MASK) == OTGFS_HPRT_PSPD_FS) */
             {
+
+              usbhost_vtrace1(OTGFS_VTRACE1_GINT_HPRT_FSDEV, 0);
               stm32_putreg(STM32_OTGFS_HFIR, 48000);
 
               /* Are we switching from LS to FS? */
 
               if ((hcfg & OTGFS_HCFG_FSLSPCS_MASK) != OTGFS_HCFG_FSLSPCS_FS48MHz)
                 {
+
+                  usbhost_vtrace1(OTGFS_VTRACE1_GINT_HPRT_LSFSSW, 0);
                   /* Yes... configure for FS */
 
                   hcfg &= ~OTGFS_HCFG_FSLSPCS_MASK;
@@ -2781,14 +2793,14 @@ static inline void stm32_gint_discisr(FAR struct stm32_usbhost_s *priv)
 }
 
 /*******************************************************************************
- * Name: stm32_gint_iisooxfrisr
+ * Name: stm32_gint_ipxfrisr
  *
  * Description:
- *   USB OTG FS incomplete isochronous interrupt handler
+ *   USB OTG FS incomplete periodic interrupt handler
  *
  *******************************************************************************/
 
-static inline void stm32_gint_iisooxfrisr(FAR struct stm32_usbhost_s *priv)
+static inline void stm32_gint_ipxfrisr(FAR struct stm32_usbhost_s *priv)
 {
   uint32_t regval;
 
@@ -2802,7 +2814,7 @@ static inline void stm32_gint_iisooxfrisr(FAR struct stm32_usbhost_s *priv)
 
   /* Clear the incomplete isochronous OUT interrupt */
 
-  stm32_putreg(STM32_OTGFS_GINTSTS, OTGFS_GINT_IISOOXFR);
+  stm32_putreg(STM32_OTGFS_GINTSTS, OTGFS_GINT_IPXFR);
 }
 
 /*******************************************************************************
@@ -2851,7 +2863,6 @@ static int stm32_gint_isr(int irq, FAR void *context)
 
       /* Otherwise, process each pending, unmasked GINT interrupts */
 
-      usbhost_vtrace1(OTGFS_VTRACE1_GINT, 0);
 
       /* Handle the start of frame interrupt */
 
@@ -2899,7 +2910,6 @@ static int stm32_gint_isr(int irq, FAR void *context)
 
       if ((pending & OTGFS_GINT_HPRT) != 0)
         {
-          usbhost_vtrace1(OTGFS_VTRACE1_GINT_HPRT, 0);
           stm32_gint_hprtisr(priv);
         }
 
@@ -2911,12 +2921,12 @@ static int stm32_gint_isr(int irq, FAR void *context)
           stm32_gint_discisr(priv);
         }
 
-      /* Handle the incomplete isochronous OUT transfer */
+      /* Handle the incomplete periodic transfer */
 
-      if ((pending & OTGFS_GINT_IISOOXFR) != 0)
+      if ((pending & OTGFS_GINT_IPXFR) != 0)
         {
-          usbhost_vtrace1(OTGFS_VTRACE1_GINT_IISOOXFR, 0);
-          stm32_gint_iisooxfrisr(priv);
+          usbhost_vtrace1(OTGFS_VTRACE1_GINT_IPXFR, 0);
+          stm32_gint_ipxfrisr(priv);
         }
     }
 
@@ -3025,7 +3035,7 @@ static inline void stm32_hostinit_enable(void)
   regval |= (OTGFS_GINT_SOF    | OTGFS_GINT_RXFLVL   | OTGFS_GINT_IISOOXFR |
              OTGFS_GINT_HPRT   | OTGFS_GINT_HC       | OTGFS_GINT_DISC);
 #else
-  regval |= (OTGFS_GINT_RXFLVL | OTGFS_GINT_IISOOXFR | OTGFS_GINT_HPRT     |
+  regval |= (OTGFS_GINT_RXFLVL | OTGFS_GINT_IPXFR    | OTGFS_GINT_HPRT     |
              OTGFS_GINT_HC     | OTGFS_GINT_DISC);
 #endif
   stm32_putreg(STM32_OTGFS_GINTMSK, regval);
@@ -3356,7 +3366,7 @@ static int stm32_getdevinfo(FAR struct usbhost_driver_s *drvr,
  *      the class create() method.
  *   epdesc - Describes the endpoint to be allocated.
  *   ep - A memory location provided by the caller in which to receive the
- *      allocated endpoint desciptor.
+ *      allocated endpoint descriptor.
  *
  * Returned Values:
  *   On success, zero (OK) is returned. On a failure, a negated errno value is
@@ -3433,7 +3443,7 @@ errout:
  * Input Parameters:
  *   drvr - The USB host driver instance obtained as a parameter from the call to
  *      the class create() method.
- *   ep - The endpint to be freed.
+ *   ep - The endpoint to be freed.
  *
  * Returned Values:
  *   On success, zero (OK) is returned. On a failure, a negated errno value is
@@ -3967,7 +3977,7 @@ static void stm32_portreset(FAR struct stm32_usbhost_s *priv)
   regval |= OTGFS_HPRT_PRST;
   stm32_putreg(STM32_OTGFS_HPRT, regval);
 
-  up_mdelay(10);
+  up_mdelay(20);
 
   regval &= ~OTGFS_HPRT_PRST;
   stm32_putreg(STM32_OTGFS_HPRT, regval);

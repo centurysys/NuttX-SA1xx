@@ -402,10 +402,6 @@ PIC32MX Configuration Options
 
        CONFIG_RAM_START=0xa0000000
 
-    CONFIG_ARCH_IRQPRIO - The PIC32MXx supports interrupt prioritization
-
-       CONFIG_ARCH_IRQPRIO=y
-
     CONFIG_ARCH_LEDS - Use LEDs to show state. Unique to boards that
        have LEDs
 
@@ -573,8 +569,6 @@ PIC32MX specific PHY/Ethernet device driver settings
     CONFIG_PHY_FDUPLEX - Select full (vs. half) duplex
     CONFIG_NET_NTXDESC - Configured number of Tx descriptors. Default: 2
     CONFIG_NET_NRXDESC - Configured number of Rx descriptors. Default: 4
-    CONFIG_NET_PRIORITY - Ethernet interrupt priority.  The is default is
-      the higest priority.
     CONFIG_NET_WOL - Enable Wake-up on Lan (not fully implemented).
     CONFIG_NET_DUMPPACKET - Dump all received and transmitted packets.
       Also needs CONFIG_DEBUG.

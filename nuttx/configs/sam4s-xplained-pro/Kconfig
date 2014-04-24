@@ -1,0 +1,13 @@
+#
+# For a description of the syntax of this configuration file,
+# see misc/tools/kconfig-language.txt.
+#
+
+if ARCH_BOARD_SAM4S_XPLAINED_PRO
+
+config SAM4S_XPLAINED_PRO_CDCACM_DEVMINOR
+	int "CDC/ACM Device Minor"
+	default 0
+	depends on SAM34_UDP && USBDEV && CDCACM
+
+endif

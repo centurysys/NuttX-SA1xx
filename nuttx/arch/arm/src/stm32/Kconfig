@@ -433,6 +433,12 @@ config ARCH_CHIP_STM32F303VC
 	select STM32_STM32F30XX
 	select ARCH_HAVE_FPU
 
+config ARCH_CHIP_STM32F401RE
+	bool "STM32F401RE"
+	select ARCH_CORTEXM4
+	select STM32_STM32F40XX
+	select ARCH_HAVE_FPU
+
 config ARCH_CHIP_STM32F405RG
 	bool "STM32F405RG"
 	select ARCH_CORTEXM4
@@ -2722,8 +2728,9 @@ config SDIO_DMA
 config SDIO_PRI
 	hex "SDIO interrupt priority"
 	default 128
+	depends on ARCH_IRQPRIO && EXPERIMENTAL
 	---help---
-		Select SDIO interrupt prority.  Default: 128.
+		Select SDIO interrupt priority.  Default: 128.
 
 config SDIO_DMAPRIO
 	hex "SDIO DMA priority"

@@ -991,6 +991,8 @@ nuttx
  |   |- ntosd-dm320/
  |   |   |- doc/README.txt
  |   |   `- README.txt
+ |   |- nucleo-f401re/
+ |   |   `- README.txt
  |   |- nucleus2g/
  |   |   `- README.txt
  |   |- nutiny-nuc120/
@@ -1038,6 +1040,8 @@ nuttx
  |   |- sam4l-xplained/
  |   |   `- README.txt
  |   |- sam4s-xplained/
+ |   |   `- README.txt
+ |   |- sam4s-xplained-pro/
  |   |   `- README.txt
  |   |- sim/
  |   |   `- README.txt

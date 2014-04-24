@@ -7171,3 +7171,75 @@
 	  also reset the camera module.  Noted by David Sidrane (2014-4-11).
 	* arch/arm/src/stm32/stm32_usbhost.c/.h and stm32_otgfshost.c:  USB host
 	  tracing added by Leo (2014-4-12).
+	* arch/arm/src/sama5/sam_adc.c, sam_can.c, sam_emac.c, sam_gmac.c,
+	  sam_ssc.c, and sam_twi.c:  If running from SDRAM, then BOARD_MCK_FREQUENCY
+	  is not a constant and cannot be used in conditional compilation (2014-4-16).
+	* drivers/lcd/mio283qt9a.c and include/nuttx/lcd/mio283qt9a.h:  Update the
+	  MIO183QT-9A LCD driver to support reading from the LCD.  From Toby
+	  Duckworth (2014-4-16).
+	* arch/arm/src/stm32/chip/stm32f20xxx_pinmap.h:  Correct a mapping for
+	  SPI MOSI pin.  From dlsitzer (2014-4-26).
+	* arm/src/sama5/sam_clockconfig.c and common/up_internal.h: Move the
+	  un-definitions of __ramfuncs__ from the .c file to the .h file or,
+	  otherwise, the attribute will be applied differently for the prototype
+	  and the function definition.  Sourceforge patch 38 from Luciano Neri
+	  (2014-4-17).
+	* arch/arm/src/sama5/sam_emac.c:  Add missing right parentheses.  This
+	  introduced in the above change and is Sourceforge patch 39 from Luciano
+	  Neri (2014-4-17).
+	* configs/sama5dx-ek/include/board.h and sama5d3-xplained.h:  These files
+	  referenct type xcpt_t and so must include nuttx/irq.h.  This is
+	  Sourceforge bug 25 submitted by Luciano Neri (2014-4-17).
+	* arch/arm/src/stm32/stm32_otgfshost.c:  Some fixes related to low-speed
+	  devices and interrupt endpoints from Leo (2014-4-17).
+	* configs/stm32f4discovery/src/stm32_usb.c:  Add support to register
+	  keyboard and mouse classes if so configured.  From Leo (2014-4-17).
+	* include/nuttx/usb/usbhost:  Fix some USB HID-related conditional
+	  compilation.  From Leo (2014-4-17).
+	* drivers/usbhost/usbhost_hidmouse.c: Don't include NAKs from the device
+	  in the error count.  From Leo (2014-4-17).
+	* arch/arm/src/sam34/sam_irq.c:  Fix initialization of the default
+	  priorities (2014-4-17).
+	* arch/arm/src/kinetis/kinetis_irq.c, lpc17xx/lpc17_irq.c, and
+	  tiva/tiva_irq.c:  Modify the logic to disables the interrupts and sets
+	  the default interrupt priority so that it uses the ICTR to get the
+	  number of interrupt lines/registers.  This is instead of using some
+	  fixed number of initializations based a priori knowledge of the number
+	  of interrupt lines in the MCU.  This logic is untested on some MCUs
+	  on initial check-in0 (2014-4-17).
+	* arm/src/lpc17xx/Kconfig and lpc17_ethernet.c:  The default interrupt
+	  priority should be default, not the highest priority (2014-4-19).
+	* configs/lpcxpresso-lpc1768: Refreshed all defconfig files (2014-4-19).
+	* configs/olimex-lpc1766stk: Refreshed all defconfig files (2014-4-19).
+	* configs/zkit-arm-1769: Refreshed all defconfig files (2014-4-19).
+	* include/nuttx/binfmt/ieee695.h:  Beginning of header file for IEEE
+	  695 OMF header file (2014-4-19).
+	* arch/arm/include/stm32/chip.h and src/stm32/Kconfig:  Add support
+	  for the STM401RE.  From Frank Bennett (2014-4-20).
+	* README.txt, Documentation/README.html, configs/Kconfig and README.txt,
+	  configs/nucleo-f401re:  Add support for the Nucleo-F401RE board.  From
+	  Frank Bennett (2014-4-20).
+	* arch/arm/src/sam34/sam_rtc.c/.h:  Port RTC driver from SAMA5 to
+	  SAM3/4.  From Bob Doiron (2014-4-21)
+	* arch/arm/src/sam34/sam4s_periphclks.h: Fix error in macros that
+	  disable peripheral clocking.  From Bob Doiron (2014-4-21)
+	* drivers/mmcsd/mmcsd_sdio.c/.h:  Misc improvements from Bob Doiron
+	  (2014-4-21)
+	* arch/arm/src/sam34/sam_hsmci.c and chip/sam_hsmci.h:  Extensions
+	  from Bob Doiron needed to support PDC-based HSMCI DMA transfers
+	  (2014-4-21).
+	* configs/sam4s-xplained-pro:  Support for the SAM4S Xplained Pro
+	  board from Bob Doiron (2014-4-21).
+	* configs/sam4s-xplained-pro: Added card detect (kind of broken
+	  still); added proc/vfat mounting during init to save some typing.
+	  From Bob Doiron (2014-4-21).
+	* configs/sam4s-xplained-pro: Boost PLLA to 240MHz to allow USB. From
+	  Bob Doiron (2014-4-21).
+	* arch/arm/src/sam34/sam_wdt.c/.h:  Add watchdog driver.  From Bob
+	  Doiron (2014-4-21).
+	* nuttx/configs/sam4s-xplained-pro:  Add board-specific watchdog
+	  timer support.  From Bob Doiron (2014-4-21).
+	* drivers/timer.c and include/nuttx/timer.h:  Timer "upper half"
+	  driver and lower half interface definition from Bob Doiron
+	  (2014-40-22).
+

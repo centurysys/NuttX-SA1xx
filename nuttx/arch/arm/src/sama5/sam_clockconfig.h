@@ -1,7 +1,7 @@
 /****************************************************************************
  * arch/arm/src/sama5/sam_clockconfig.h
  *
- *   Copyright (C) 2013 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2013-2014 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -41,6 +41,7 @@
  ****************************************************************************/
 
 #include <nuttx/config.h>
+#include "up_internal.h"
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -83,7 +84,7 @@ extern "C"
  *
  ****************************************************************************/
 
-void sam_clockconfig(void);
+void __ramfunc__ sam_clockconfig(void);
 
 /****************************************************************************
  * Name: board_norflash_config
