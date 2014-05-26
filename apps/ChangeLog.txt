@@ -859,7 +859,7 @@
 	  is removed.  Only the newer configuration using the kconfig-frontends
 	  tools is now supported (2014-3-6).
 
-7.2 2014-xx-xx Gregory Nutt <gnutt@nuttx.org>
+7.2 2014-04-29 Gregory Nutt <gnutt@nuttx.org>
 
 	* apps/nshlib/nsh_parse.c: Fix NuttShell version number display in
 	  welcome message.  version.h was not being included (2014-3-23).
@@ -886,7 +886,7 @@
 	  from Manuel Stuehn (2014-4-12).
 	* apps/examples/touchscreen:  Add a configuration option to indicate if
 	  architecture-specific initialized is required, yes or no (2014-4-14).
-	* apps/system/nxplayer/nxplayer.c:  Complilation failure in one
+	* apps/system/nxplayer/nxplayer.c:  Compilation failure in one
 	  configuration reported by Manuel Stuhn (2014-4-21).
 	* apps/system/sdcard:  Remove an STM32 dependency.  From Bob Doiron
 	  (2014-4-21).
@@ -894,3 +894,36 @@
 	  instead of using the stack.  From Bob Doiron (2014-4-21).
 	* apps/examples/cpuhog, serialblaster, and serialrx:  Stress test
 	  examples added by Bob Doiron (2014-4-22).
+	* apps/examples/telnetd:  Naming is confused.  In someplaces 'telnetd',
+	  and in others 'shell.'  All changes to telnetd.  Noted by Pelle
+	  Windestam (2014-4-38).
+
+7.3 2014-xx-xx Gregory Nutt <gnutt@nuttx.org>
+
+	* apps/examples/serialblaster:  Update configuration an make logic in
+	  order to select that the serial blaster task priority and stack size.
+	  From Bob Doiron (2014-4-30).
+	* apps/nshlib/Kconfig and other NSH files:  The alternate console device
+	  CONFIG_NSH_CONDEV must not be defined unconditionally.  This causes errors
+	  when using Telnet sessions.  This was solved by adding CONFIG_NSH_ALTCONDEV:
+	  CONFIG_NSH_ALTCONDEV enables or disables the feature then, if enabled,
+	  CONFIG_NSH_CONDEV provides the alternative console device name (2014-5-5).
+	* apps/system/i2c/i2c_get.c:  Fix to show the updated register address on
+	  each fetch (vs. showing the same starting address each time).  From
+	  Ryan VanSickle (2014-5-8).
+	* apps/interpreters/prun and apps/include/interpreters/prun.h:  Broke out
+	  the P-code execution logic from apps/examples/pashello and moved it to
+	  these directory where it can be used more generally (2014-5-9).
+	* apps/system/prun and apps/include/interpreters/pexec_main.c:  Move the
+	  P-Code execution logic from apps/interpreters/prun to
+	  apps/system/prun; Add pexec_main.c which is an NSH built-in
+	  application that can be used to run P-Code programs from the NSH
+	  command line (2014-5-9).
+	* Several files: Convert all old-style variadic macros to the C99 form.
+	  Recent GCC changes tightens up that behavior and can cause some problems
+	  (at least for the IAR compiler for some reason).  See
+	  https://gcc.gnu.org/onlinedocs/cpp/Variadic-Macros.html#Variadic-Macros.
+	  Noted by Bob Grimes (2014-5-22).
+	* apps/system/cle:  CLE was not returning the terminating newline character.
+	  But reported by Max kriegleder; work-around reported by Lorenz Meier
+	  (2015-5-23).

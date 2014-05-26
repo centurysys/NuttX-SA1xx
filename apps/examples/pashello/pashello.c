@@ -43,20 +43,20 @@
 #include <stdlib.h>
 #include <debug.h>
 
-#include "pexec.h"
-#include "pedefs.h"
+#include <apps/interpreters/prun.h>
+
 #include "pashello.h"
 
 /****************************************************************************
  * Definitions
  ****************************************************************************/
 
-#ifndef CONFIG_PASHELLO_VARSTACKSIZE
-# define CONFIG_PASHELLO_VARSTACKSIZE 1024
+#ifndef CONFIG_EXAMPLES_PASHELLO_VARSTACKSIZE
+# define CONFIG_EXAMPLES_PASHELLO_VARSTACKSIZE 1024
 #endif
 
-#ifndef CONFIG_PASHELLO_STRSTACKSIZE
-# define CONFIG_PASHELLO_STRSTACKSIZE 128
+#ifndef CONFIG_EXAMPLES_PASHELLO_STRSTACKSIZE
+# define CONFIG_EXAMPLES_PASHELLO_STRSTACKSIZE 128
 #endif
 
 /****************************************************************************
@@ -66,33 +66,6 @@
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
-
-/****************************************************************************
- * Name: prun
- *
- * Description:
- *   This function executes the P-Code program until a stopping condition
- *   is encountered.
- *
- ****************************************************************************/
-
-static void prun(FAR struct pexec_s *st)
-{
-  int errcode;
-
-  for (;;)
-    {
-      /* Execute the instruction; Check for exceptional conditions */
-
-      errcode = pexec(st);
-      if (errcode != eNOERROR) break;
-    }
-
-  if (errcode != eEXIT)
-    {
-      printf("Runtime error 0x%02x -- Execution Stopped\n", errcode);
-    }
-}
 
 /****************************************************************************
  * Public Functions
@@ -105,29 +78,23 @@ static void prun(FAR struct pexec_s *st)
 int pashello_main(int argc, FAR char *argv[])
 {
   FAR struct pexec_s *st;
+  int exitcode = EXIT_SUCCESS;
+  int ret;
 
   /* Register the /dev/hello driver */
 
   hello_register();
 
-  /* Load the POFF file */
+  /* Execute the POFF file */
 
-  st = pload("/dev/hello", CONFIG_PASHELLO_VARSTACKSIZE, CONFIG_PASHELLO_STRSTACKSIZE);
-  if (!st)
+  ret = prun("/dev/hello", CONFIG_EXAMPLES_PASHELLO_VARSTACKSIZE,
+             CONFIG_EXAMPLES_PASHELLO_STRSTACKSIZE);
+  if (ret < 0)
     {
-      fprintf(stderr, "pashello_main: ERROR: Could not load /dev/hello\n");
-      exit(1);
+      fprintf(stderr, "pashello_main: ERROR: Execution failed\n");
+      exitcode = EXIT_FAILURE;
     }
-  printf("pashello_main: /dev/hello Loaded\n");
-  printf("pashello_main: Interpreter started:\n");
-
-  /* And start program execution */
-
-  prun(st);
-
-  /* Clean up resources used by the interpreter */
 
   printf("pashello_main: Interpreter terminated");
-  pexec_release(st);
-  return 0;
+  return exitcode;
 }

@@ -60,7 +60,7 @@
 #ifdef USE_SERIALDRIVER
 
 /****************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 
 /* System clock frequency value from ZDS target settings */
@@ -121,6 +121,9 @@ static const struct uart_ops_s g_uart_ops =
   z16f_receive,        /* receive */
   z16f_rxint,          /* rxint */
   z16f_rxavailable,    /* rxavailable */
+#ifdef CONFIG_SERIAL_IFLOWCONTROL
+  NULL,                /* rxflowcontrol */
+#endif
   z16f_send,           /* send */
   z16f_txint,          /* txint */
   z16f_txready,        /* txready */
@@ -225,8 +228,8 @@ static uart_dev_t g_uart1port =
     { 0 },                  /* recv.sem */
     0,                      /* recv.head */
     0,                      /* recv.tail */
-    CONFIG_UART0_RXBUFSIZE, /* recv.size */
-    g_uart0rxbuffer,        /* recv.buffer */
+    CONFIG_UART1_RXBUFSIZE, /* recv.size */
+    g_uart1rxbuffer,        /* recv.buffer */
   },
   &g_uart_ops,              /* ops */
   &g_uart1priv,             /* priv */
@@ -255,10 +258,10 @@ static uart_dev_t g_uart1port =
 #    define UART1_ASSIGNED      1
 #else
 #  undef CONSOLE_DEV                        /* No console */
-#  if defined(CONFIG_KINETIS_UART0)
+#  if defined(CONFIG_Z16F_UART0)
 #    define TTYS0_DEV           g_uart0port /* UART0 is ttyS0 */
 #    define UART0_ASSIGNED      1
-#  elif defined(CONFIG_KINETIS_UART1)
+#  elif defined(CONFIG_Z16F_UART1)
 #    define TTYS0_DEV           g_uart1port /* UART1 is ttyS0 */
 #    define UART1_ASSIGNED      1
 #  endif
@@ -266,10 +269,10 @@ static uart_dev_t g_uart1port =
 
 /* Pick ttys1.  This could be either of UART0-1 excluding the console UART. */
 
-#if defined(CONFIG_KINETIS_UART0) && !defined(UART0_ASSIGNED)
+#if defined(CONFIG_Z16F_UART0) && !defined(UART0_ASSIGNED)
 #  define TTYS1_DEV           g_uart0port /* UART0 is ttyS1 */
 #  define UART0_ASSIGNED      1
-#elif defined(CONFIG_KINETIS_UART1) && !defined(UART1_ASSIGNED)
+#elif defined(CONFIG_Z16F_UART1) && !defined(UART1_ASSIGNED)
 #  define TTYS1_DEV           g_uart1port /* UART1 is ttyS1 */
 #  define UART1_ASSIGNED      1
 #endif
@@ -353,7 +356,7 @@ static int z16f_setup(struct uart_dev_s *dev)
    * BRG = (freq + baud * 8)/(baud * 16)
    */
 
-  brg = (_DEFCLK + (priv->baud << 3))/(priv->baud << 4);
+  brg = (_DEFCLK + (priv->baud << 3)) / (priv->baud << 4);
   putreg16((uint16_t)brg, priv->uartbase + Z16F_UART_BR);
 
   /* Configure STOP bits */
@@ -435,6 +438,7 @@ static int z16f_attach(struct uart_dev_s *dev)
           irq_detach(priv->rxirq);
         }
     }
+
   return ret;
 }
 
@@ -451,8 +455,10 @@ static int z16f_attach(struct uart_dev_s *dev)
 static void z16f_detach(struct uart_dev_s *dev)
 {
   struct z16f_uart_s *priv = (struct z16f_uart_s*)dev->priv;
+
   up_disable_irq(priv->rxirq);
   up_disable_irq(priv->txirq);
+
   irq_detach(priv->rxirq);
   irq_detach(priv->txirq);
 }
@@ -484,8 +490,8 @@ static int z16f_rxinterrupt(int irq, void *context)
     {
       dev = &g_uart0port;
     }
-#endif
   else
+#endif
     {
       PANIC();
     }
@@ -504,10 +510,11 @@ static int z16f_rxinterrupt(int irq, void *context)
 
   if (status & Z16F_UARTSTAT0_RDA)
     {
-      /* Handline an incoming, receive byte */
+      /* Handle an incoming, received byte */
 
       uart_recvchars(dev);
     }
+
   return OK;
 }
 
@@ -538,8 +545,8 @@ static int z16f_txinterrupt(int irq, void *context)
     {
       dev = &g_uart0port;
     }
-#endif
   else
+#endif
     {
       PANIC();
     }
@@ -563,7 +570,8 @@ static int z16f_txinterrupt(int irq, void *context)
  * Name: z16f_ioctl
  *
  * Description:
- *   All ioctl calls will be routed through this method
+ *   All ioctl that are not handled by the upper half serial driver will be
+ *   routed through this method
  *
  ****************************************************************************/
 
@@ -591,6 +599,7 @@ static int z16f_receive(struct uart_dev_s *dev, uint32_t *status)
   rxd     = getreg8(priv->uartbase + Z16F_UART_RXD);
   stat0   = getreg8(priv->uartbase + Z16F_UART_STAT0);
   *status = (uint32_t)rxd | (((uint32_t)stat0) << 8);
+
   return rxd;
 }
 
@@ -626,7 +635,7 @@ static void z16f_rxint(struct uart_dev_s *dev, bool enable)
  * Name: z16f_rxavailable
  *
  * Description:
- *   Return true if the receive fifo is not empty
+ *   Return true if the receive FIFO is not empty
  *
  ****************************************************************************/
 
@@ -688,7 +697,7 @@ static void z16f_txint(struct uart_dev_s *dev, bool enable)
  * Name: z16f_txready
  *
  * Description:
- *   Return true if the tranmsit fifo is not full
+ *   Return true if the transmit FIFO is not full
  *
  ****************************************************************************/
 
@@ -702,7 +711,7 @@ static bool z16f_txready(struct uart_dev_s *dev)
  * Name: z16f_txempty
  *
  * Description:
- *   Return true if the transmit fifo is empty
+ *   Return true if the transmit FIFO is empty
  *
  ****************************************************************************/
 
@@ -713,7 +722,7 @@ static bool z16f_txempty(struct uart_dev_s *dev)
 }
 
 /****************************************************************************
- * Public Funtions
+ * Public Functions
  ****************************************************************************/
 
 /****************************************************************************
@@ -728,14 +737,47 @@ static bool z16f_txempty(struct uart_dev_s *dev)
 
 void up_earlyserialinit(void)
 {
-  /* REVISIT:  UART GPIO AFL register is not initialized */
+  uint8_t regval;
+
+  /* Configure UART alternate pin functions.  This may duplicate logic in
+   * z16f_lowuartinit() or z16f_lowinit().
+   */
+
+#ifdef CONFIG_Z16F_UART0
+  /* UART0 is PA4 and PA5, alternate function 1 */
+
+  regval  = getreg8(Z16F_GPIOA_AFL);
+  regval |= 0x30;
+  putreg8(regval, Z16F_GPIOA_AFL);
+
+  regval  = getreg8(Z16F_GPIOA_AFH);
+  regval &= ~0x30;
+  putreg8(regval, Z16F_GPIOA_AFH);
+#endif
+
+#ifdef CONFIG_Z16F_UART1
+  /* UART1 is PD4 and PD5, alternate function 1 */
+
+  regval  = getreg8(Z16F_GPIOD_AFL);
+  regval |= 0x30;
+  putreg8(regval, Z16F_GPIOD_AFL);
+
+  regval  = getreg8(Z16F_GPIOD_AFH);
+  regval &= ~0x30;
+  putreg8(regval, Z16F_GPIOD_AFH);
+#endif
+
+  /* Disable UART interrupts */
 
 #ifdef TTYS0_DEV
   (void)z16f_disableuartirq(&TTYS0_DEV);
 #endif
+
 #ifdef TTYS1_DEV
   (void)z16f_disableuartirq(&TTYS1_DEV);
 #endif
+
+  /* Configuration any serial console */
 
 #ifdef CONSOLE_DEV
   CONSOLE_DEV.isconsole = true;
@@ -779,7 +821,10 @@ int up_putc(int ch)
   uint8_t  state;
 
   /* Keep interrupts disabled so that we do not interfere with normal
-   * driver operation
+   * driver operation.
+   *
+   * REVISIT:  I can imagine scenarios where the follow logic gets pre-empted
+   * and the the UART interrupts get left in a bad state.
    */
 
   state = z16f_disableuartirq(&CONSOLE_DEV);
@@ -810,7 +855,7 @@ int up_putc(int ch)
 #else /* USE_SERIALDRIVER */
 
 /****************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 
 #ifdef CONFIG_UART1_SERIAL_CONSOLE

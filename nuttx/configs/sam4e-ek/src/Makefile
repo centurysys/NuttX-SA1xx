@@ -46,16 +46,20 @@ ifeq ($(CONFIG_HAVE_CXXINITIALIZE),y)
 CSRCS += sam_cxxinitialize.c
 endif
 
-ifeq ($(CONFIG_SAM4EEK_ILI9325),y)
-CSRCS += sam_ili9325.c
-endif
-
 ifeq ($(CONFIG_NSH_ARCHINIT),y)
 CSRCS += sam_nsh.c
 endif
 
 ifeq ($(CONFIG_SAM34_HSMCI),y)
 CSRCS += sam_hsmci.c
+endif
+
+ifeq ($(CONFIG_LCD),y)
+CSRCS += sam_ili9325.c
+endif
+
+ifeq ($(CONFIG_INPUT_ADS7843E),y)
+CSRCS += sam_ads7843e.c
 endif
 
 ifeq ($(CONFIG_SAM34_SPI0),y)
@@ -67,10 +71,6 @@ endif
 
 ifeq ($(CONFIG_USBMSC),y)
 CSRCS += sam_usbmsc.c
-endif
-
-ifeq ($(CONFIG_INPUT_ADS7843E),y)
-CSRCS += sam_touchscreen.c
 endif
 
 COBJS = $(CSRCS:.c=$(OBJEXT))

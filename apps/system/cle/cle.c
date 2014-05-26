@@ -107,15 +107,15 @@
 
 #ifdef CONFIG_CPP_HAVE_VARARGS
 #  if CONFIG_SYSTEM_CLE_DEBUGLEVEL > 0
-#    define cledbg(format, arg...) \
-       syslog(EXTRA_FMT format EXTRA_ARG, ##arg)
+#    define cledbg(format, ...) \
+       syslog(EXTRA_FMT format EXTRA_ARG, ##__VA_ARGS__)
 #  else
 #    define cledbg(x...)
 #  endif
 
 #  if CONFIG_SYSTEM_CLE_DEBUGLEVEL > 1
-#    define clevdbg(format, arg...) \
-       syslog(EXTRA_FMT format EXTRA_ARG, ##arg)
+#    define clevdbg(format, ...) \
+       syslog(EXTRA_FMT format EXTRA_ARG, ##__VA_ARGS__)
 #  else
 #    define clevdbg(x...)
 #  endif
@@ -824,36 +824,31 @@ static int cle_editloop(FAR struct cle_s *priv)
           }
           break;
 
-        /* Newline terminates editing */
+        /* Newline terminates editing.  But what is a newline? */
 
-#if defined(CONFIG_EOL_IS_CR)
+#if defined(CONFIG_EOL_IS_CR) || defined(CONFIG_EOL_IS_EITHER_CRLF)
         case '\r': /* CR terminates line */
+
+#elif defined(CONFIG_EOL_IS_LF) || defined(CONFIG_EOL_IS_BOTH_CRLF) || \
+      defined(CONFIG_EOL_IS_EITHER_CRLF)
+
+        case '\n': /* LF terminates line */
+#endif
           {
+            /* Add the newline character to the buffer at the end of the line */
+
+            priv->curpos = priv->nchars;
+            cle_insertch(priv, '\n');
+            cle_putch(priv, '\n');
             return OK;
           }
           break;
 
-#elif defined(CONFIG_EOL_IS_BOTH_CRLF)
+#if defined(CONFIG_EOL_IS_BOTH_CRLF)
         case '\r': /* Wait for the LF */
           break;
 #endif
 
-#if defined(CONFIG_EOL_IS_LF) || defined(CONFIG_EOL_IS_BOTH_CRLF)
-        case '\n': /* LF terminates line */
-          {
-            return OK;
-          }
-          break;
-#endif
-
-#ifdef CONFIG_EOL_IS_EITHER_CRLF
-        case '\r': /* Either CR or LF terminates line */
-        case '\n':
-          {
-            return OK;
-          }
-          break;
-#endif
         /* Text to insert or unimplemented/invalid keypresses */
 
         default:

@@ -50,7 +50,7 @@
 #include <errno.h>
 
 /****************************************************************************
- * Definitions
+ * Pre-processor Definitions
  ****************************************************************************/
 /* Method access macros */
 
@@ -63,7 +63,7 @@
 #define nsh_exit(v,s)          (v)->exit(v,s)
 
 #ifdef CONFIG_CPP_HAVE_VARARGS
-# define nsh_output(v, fmt...) (v)->output(v, ##fmt)
+# define nsh_output(v, ...)    (v)->output(v, ##__VA_ARGS__)
 #else
 # define nsh_output            vtbl->output
 #endif
@@ -75,16 +75,24 @@
 /* Are we using the NuttX console for I/O?  Or some other character device? */
 
 #if CONFIG_NFILE_STREAMS > 0
-#  ifdef CONFIG_NSH_CONDEV
+#  ifdef CONFIG_NSH_ALTCONDEV
+
+#    ifndef CONFIG_NSH_CONDEV
+#      error CONFIG_NSH_ALTCONDEV selected but CONFIG_NSH_CONDEV not provided
+#    endif
+
 #    define INFD(p)      ((p)->cn_confd)
 #    define INSTREAM(p)  ((p)->cn_constream)
 #    define OUTFD(p)     ((p)->cn_confd)
 #    define OUTSTREAM(p) ((p)->cn_constream)
+
 #  else
+
 #    define INFD(p)      0
 #    define INSTREAM(p)  stdin
 #    define OUTFD(p)     1
 #    define OUTSTREAM(p) stdout
+
 #  endif
 #endif
 
@@ -133,11 +141,11 @@ struct console_stdio_s
   /* NSH input/output streams */
 
 #if CONFIG_NFILE_STREAMS > 0
-#ifdef CONFIG_NSH_CONDEV
+#ifdef CONFIG_NSH_ALTCONDEV
   int    cn_confd;     /* Console I/O file descriptor */
 #endif
   int    cn_outfd;     /* Output file descriptor (possibly redirected) */
-#ifdef CONFIG_NSH_CONDEV
+#ifdef CONFIG_NSH_ALTCONDEV
   FILE  *cn_constream; /* Console I/O stream (possibly redirected) */
 #endif
   FILE  *cn_outstream; /* Output stream */

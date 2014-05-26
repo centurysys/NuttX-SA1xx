@@ -7,7 +7,7 @@ comment "STM32 Configuration Options"
 
 choice
 	prompt "STM32 Chip Selection"
-	default ARCH_CHIP_STM32F103ZET6
+	default ARCH_CHIP_STM32F103ZE
 	depends on ARCH_CHIP_STM32
 
 config ARCH_CHIP_STM32L151C6
@@ -163,6 +163,16 @@ config ARCH_CHIP_STM32L152VB
 		STM32L 100-pin EnergyLite, 128KB FLASH, 16KB SRAM, 4KB EEPRROM with
 		4x44/8x40 LCD interface
 
+config ARCH_CHIP_STM32L162ZD
+	bool "STM32L162ZD"
+	select ARCH_CORTEXM3
+	select STM32_STM32L15XX
+	select STM32_ENERGYLITE
+	select STM32_HIGHDENSITY
+	---help---
+		STM32L 144-pin EnergyLite, 384KB FLASH, 48KB SRAM, 12KB EEPRROM with
+		8x40 LCD interface
+
 config ARCH_CHIP_STM32F100C8
 	bool "STM32F100C8"
 	select ARCH_CORTEXM3
@@ -311,35 +321,35 @@ config ARCH_CHIP_STM32F103VB
 	select STM32_PERFORMANCELINE
 	select STM32_MEDIUMDENSITY
 
-config ARCH_CHIP_STM32F103RET6
+config ARCH_CHIP_STM32F103RE
 	bool "STM32F103RET6"
 	select ARCH_CORTEXM3
 	select STM32_STM32F10XX
 	select STM32_PERFORMANCELINE
 	select STM32_HIGHDENSITY
 
-config ARCH_CHIP_STM32F103VCT6
+config ARCH_CHIP_STM32F103VC
 	bool "STM32F103VCT6"
 	select ARCH_CORTEXM3
 	select STM32_STM32F10XX
 	select STM32_PERFORMANCELINE
 	select STM32_HIGHDENSITY
 
-config ARCH_CHIP_STM32F103VET6
+config ARCH_CHIP_STM32F103VE
 	bool "STM32F103VET6"
 	select ARCH_CORTEXM3
 	select STM32_STM32F10XX
 	select STM32_PERFORMANCELINE
 	select STM32_HIGHDENSITY
 
-config ARCH_CHIP_STM32F103ZET6
+config ARCH_CHIP_STM32F103ZE
 	bool "STM32F103ZET6"
 	select ARCH_CORTEXM3
 	select STM32_STM32F10XX
 	select STM32_PERFORMANCELINE
 	select STM32_HIGHDENSITY
 
-config ARCH_CHIP_STM32F105VBT7
+config ARCH_CHIP_STM32F105VB
 	bool "STM32F105VBT7"
 	select ARCH_CORTEXM3
 	select STM32_STM32F10XX
@@ -355,11 +365,13 @@ config ARCH_CHIP_STM32F207IG
 	bool "STM32F207IG"
 	select ARCH_CORTEXM3
 	select STM32_STM32F20XX
+	select STM32_STM32F207
 
 config ARCH_CHIP_STM32F207ZE
 	bool "STM32F207ZE"
 	select ARCH_CORTEXM3
 	select STM32_STM32F20XX
+	select STM32_STM32F207
 
 config ARCH_CHIP_STM32F302CB
 	bool "STM32F302CB"
@@ -437,60 +449,70 @@ config ARCH_CHIP_STM32F401RE
 	bool "STM32F401RE"
 	select ARCH_CORTEXM4
 	select STM32_STM32F40XX
+	select STM32_STM32F401
 	select ARCH_HAVE_FPU
 
 config ARCH_CHIP_STM32F405RG
 	bool "STM32F405RG"
 	select ARCH_CORTEXM4
 	select STM32_STM32F40XX
+	select STM32_STM32F405
 	select ARCH_HAVE_FPU
 
 config ARCH_CHIP_STM32F405VG
 	bool "STM32F405VG"
 	select ARCH_CORTEXM4
 	select STM32_STM32F40XX
+	select STM32_STM32F405
 	select ARCH_HAVE_FPU
 
 config ARCH_CHIP_STM32F405ZG
 	bool "STM32F405ZG"
 	select ARCH_CORTEXM4
 	select STM32_STM32F40XX
+	select STM32_STM32F405
 	select ARCH_HAVE_FPU
 
 config ARCH_CHIP_STM32F407VE
 	bool "STM32F407VE"
 	select ARCH_CORTEXM4
 	select STM32_STM32F40XX
+	select STM32_STM32F407
 	select ARCH_HAVE_FPU
 
 config ARCH_CHIP_STM32F407VG
 	bool "STM32F407VG"
 	select ARCH_CORTEXM4
 	select STM32_STM32F40XX
+	select STM32_STM32F407
 	select ARCH_HAVE_FPU
 
 config ARCH_CHIP_STM32F407ZE
 	bool "STM32F407ZE"
 	select ARCH_CORTEXM4
 	select STM32_STM32F40XX
+	select STM32_STM32F407
 	select ARCH_HAVE_FPU
 
 config ARCH_CHIP_STM32F407ZG
 	bool "STM32F407ZG"
 	select ARCH_CORTEXM4
 	select STM32_STM32F40XX
+	select STM32_STM32F407
 	select ARCH_HAVE_FPU
 
 config ARCH_CHIP_STM32F407IE
 	bool "STM32F407IE"
 	select ARCH_CORTEXM4
 	select STM32_STM32F40XX
+	select STM32_STM32F407
 	select ARCH_HAVE_FPU
 
 config ARCH_CHIP_STM32F407IG
 	bool "STM32F407IG"
 	select ARCH_CORTEXM4
 	select STM32_STM32F40XX
+	select STM32_STM32F407
 	select ARCH_HAVE_FPU
 
 config ARCH_CHIP_STM32F427V
@@ -551,14 +573,22 @@ config ARCH_CHIP_STM32F429N
 
 endchoice
 
+# This is really 15XX/16XX, but we treat the two the same.
 config STM32_STM32L15XX
 	bool
 	default n
-	select STM32_HAVE_USBDEV
 
 config STM32_ENERGYLITE
 	bool
 	default n
+	select STM32_HAVE_USBDEV
+	select STM32_HAVE_USART3
+	select STM32_HAVE_TIM6
+	select STM32_HAVE_TIM7
+	select STM32_HAVE_TIM9
+	select STM32_HAVE_TIM10
+	select STM32_HAVE_TIM11
+	select STM32_HAVE_ADC2
 
 config STM32_STM32F10XX
 	bool
@@ -567,51 +597,272 @@ config STM32_STM32F10XX
 config STM32_VALUELINE
 	bool
 	default n
+	select STM32_HAVE_USART3
+	select STM32_HAVE_USART4
+	select STM32_HAVE_USART5
+	select STM32_HAVE_TIM1
+	select STM32_HAVE_TIM5
+	select STM32_HAVE_TIM6
+	select STM32_HAVE_TIM7
+	select STM32_HAVE_TIM12
+	select STM32_HAVE_TIM13
+	select STM32_HAVE_TIM14
+	select STM32_HAVE_TIM15
+	select STM32_HAVE_TIM16
+	select STM32_HAVE_TIM17
+	select STM32_HAVE_ADC2
 
 config STM32_CONNECTIVITYLINE
 	bool
 	default n
 	select STM32_HAVE_OTGFS
+	select STM32_HAVE_USART3
+	select STM32_HAVE_USART4
+	select STM32_HAVE_USART5
+	select STM32_HAVE_TIM1
+	select STM32_HAVE_TIM5
+	select STM32_HAVE_TIM6
+	select STM32_HAVE_TIM7
+	select STM32_HAVE_TIM8
+	select STM32_HAVE_ADC2
+	select STM32_HAVE_CAN1
+	select STM32_HAVE_CAN2
+	select STM32_HAVE_ETHMAC
 
 config STM32_PERFORMANCELINE
 	bool
 	default n
 	select STM32_HAVE_USBDEV
+	select STM32_HAVE_USART3
+	select STM32_HAVE_USART4
+	select STM32_HAVE_USART5
+	select STM32_HAVE_TIM1
+	select STM32_HAVE_TIM5
+	select STM32_HAVE_TIM6
+	select STM32_HAVE_TIM7
+	select STM32_HAVE_TIM8
+	select STM32_HAVE_ADC2
+	select STM32_HAVE_CAN1
 
 config STM32_HIGHDENSITY
 	bool
 	default n
+	select STM32_HAVE_FSMC
+	select STM32_HAVE_USART3
+	select STM32_HAVE_USART4
+	select STM32_HAVE_USART5
+	select STM32_HAVE_TIM1
+	select STM32_HAVE_TIM5
+	select STM32_HAVE_TIM6
+	select STM32_HAVE_TIM7
+	select STM32_HAVE_TIM8
+	select STM32_HAVE_ADC2
+	select STM32_HAVE_ADC3
+	select STM32_HAVE_CAN1
 
 config STM32_MEDIUMDENSITY
 	bool
 	default n
+	select STM32_HAVE_USART3
+	select STM32_HAVE_USART4
+	select STM32_HAVE_USART5
+	select STM32_HAVE_TIM1
+	select STM32_HAVE_TIM5
+	select STM32_HAVE_TIM6
+	select STM32_HAVE_TIM7
+	select STM32_HAVE_TIM8
+	select STM32_HAVE_ADC2
+	select STM32_HAVE_ADC3
+	select STM32_HAVE_CAN1
 
 config STM32_LOWDENSITY
 	bool
 	default n
+	select STM32_HAVE_USART3
+	select STM32_HAVE_USART4
+	select STM32_HAVE_USART5
+	select STM32_HAVE_TIM1
+	select STM32_HAVE_TIM5
+	select STM32_HAVE_TIM6
+	select STM32_HAVE_TIM7
+	select STM32_HAVE_TIM8
+	select STM32_HAVE_ADC2
+	select STM32_HAVE_CAN1 if !STM32_VALUELINE
 
 config STM32_STM32F20XX
 	bool
 	default n
+
+config STM32_STM32F207
+	bool
+	default n
 	select STM32_HAVE_OTGFS
+	select STM32_HAVE_FSMC
+	select STM32_HAVE_USART3
+	select STM32_HAVE_USART4
+	select STM32_HAVE_USART5
+	select STM32_HAVE_USART6
+	select STM32_HAVE_TIM1
+	select STM32_HAVE_TIM5
+	select STM32_HAVE_TIM6
+	select STM32_HAVE_TIM7
+	select STM32_HAVE_TIM8
+	select STM32_HAVE_TIM9
+	select STM32_HAVE_TIM10
+	select STM32_HAVE_TIM11
+	select STM32_HAVE_TIM12
+	select STM32_HAVE_TIM13
+	select STM32_HAVE_TIM14
+	select STM32_HAVE_ADC2
+	select STM32_HAVE_ADC3
+	select STM32_HAVE_CAN1
+	select STM32_HAVE_CAN2
+	select STM32_HAVE_RNG
+	select STM32_HAVE_ETHMAC
 
 config STM32_STM32F30XX
 	bool
 	default n
 	select STM32_HAVE_USBDEV
+	select STM32_HAVE_CCM
+	select STM32_HAVE_TIM1
+	select STM32_HAVE_TIM6
+	select STM32_HAVE_TIM7
+	select STM32_HAVE_TIM8
+	select STM32_HAVE_TIM15
+	select STM32_HAVE_TIM16
+	select STM32_HAVE_TIM17
+	select STM32_HAVE_ADC2
+	select STM32_HAVE_ADC3
+	select STM32_HAVE_ADC4
+	select STM32_HAVE_CAN1
 
 config STM32_STM32F40XX
 	bool
 	default n
 	select STM32_HAVE_OTGFS
 
+config STM32_STM32F401
+	bool
+	default n
+	select STM32_HAVE_USART6
+	select STM32_HAVE_TIM1
+	select STM32_HAVE_TIM5
+	select STM32_HAVE_TIM9
+	select STM32_HAVE_TIM10
+	select STM32_HAVE_TIM11
+
+config STM32_STM32F405
+	bool
+	default n
+	select STM32_HAVE_FSMC
+	select STM32_HAVE_CCM
+	select STM32_HAVE_USART3
+	select STM32_HAVE_USART4
+	select STM32_HAVE_USART5
+	select STM32_HAVE_USART6
+	select STM32_HAVE_TIM1
+	select STM32_HAVE_TIM5
+	select STM32_HAVE_TIM6
+	select STM32_HAVE_TIM7
+	select STM32_HAVE_TIM8
+	select STM32_HAVE_TIM9
+	select STM32_HAVE_TIM10
+	select STM32_HAVE_TIM11
+	select STM32_HAVE_TIM12
+	select STM32_HAVE_TIM13
+	select STM32_HAVE_TIM14
+	select STM32_HAVE_ADC2
+	select STM32_HAVE_ADC3
+	select STM32_HAVE_CAN1
+	select STM32_HAVE_CAN2
+	select STM32_HAVE_RNG
+
+config STM32_STM32F407
+	bool
+	default n
+	select STM32_HAVE_FSMC
+	select STM32_HAVE_CCM
+	select STM32_HAVE_USART3
+	select STM32_HAVE_USART4
+	select STM32_HAVE_USART5
+	select STM32_HAVE_USART6
+	select STM32_HAVE_TIM1
+	select STM32_HAVE_TIM5
+	select STM32_HAVE_TIM6
+	select STM32_HAVE_TIM7
+	select STM32_HAVE_TIM8
+	select STM32_HAVE_TIM9
+	select STM32_HAVE_TIM10
+	select STM32_HAVE_TIM11
+	select STM32_HAVE_TIM12
+	select STM32_HAVE_TIM13
+	select STM32_HAVE_TIM14
+	select STM32_HAVE_ADC2
+	select STM32_HAVE_ADC3
+	select STM32_HAVE_CAN1
+	select STM32_HAVE_CAN2
+	select STM32_HAVE_RNG
+	select STM32_HAVE_ETHMAC
+
 # This is really 427/437, but we treat the two the same.
 config STM32_STM32F427
 	bool
+	default n
+	select STM32_HAVE_FSMC
+	select STM32_HAVE_CCM
+	select STM32_HAVE_USART3
+	select STM32_HAVE_USART4
+	select STM32_HAVE_USART5
+	select STM32_HAVE_USART6
+	select STM32_HAVE_USART7
+	select STM32_HAVE_USART8
+	select STM32_HAVE_TIM1
+	select STM32_HAVE_TIM5
+	select STM32_HAVE_TIM6
+	select STM32_HAVE_TIM7
+	select STM32_HAVE_TIM8
+	select STM32_HAVE_TIM9
+	select STM32_HAVE_TIM10
+	select STM32_HAVE_TIM11
+	select STM32_HAVE_TIM12
+	select STM32_HAVE_TIM13
+	select STM32_HAVE_TIM14
+	select STM32_HAVE_ADC2
+	select STM32_HAVE_ADC3
+	select STM32_HAVE_CAN1
+	select STM32_HAVE_CAN2
+	select STM32_HAVE_RNG
+	select STM32_HAVE_ETHMAC
 
 # This is really 429/439, but we treat the two the same.
 config STM32_STM32F429
 	bool
+	default n
+	select STM32_HAVE_FSMC
+	select STM32_HAVE_CCM
+	select STM32_HAVE_USART3
+	select STM32_HAVE_USART4
+	select STM32_HAVE_USART5
+	select STM32_HAVE_USART6
+	select STM32_HAVE_USART7
+	select STM32_HAVE_USART8
+	select STM32_HAVE_TIM1
+	select STM32_HAVE_TIM6
+	select STM32_HAVE_TIM7
+	select STM32_HAVE_TIM8
+	select STM32_HAVE_TIM9
+	select STM32_HAVE_TIM10
+	select STM32_HAVE_TIM11
+	select STM32_HAVE_TIM12
+	select STM32_HAVE_TIM13
+	select STM32_HAVE_TIM14
+	select STM32_HAVE_ADC2
+	select STM32_HAVE_ADC3
+	select STM32_HAVE_CAN1
+	select STM32_HAVE_CAN2
+	select STM32_HAVE_RNG
+	select STM32_HAVE_ETHMAC
 
 config STM32_DFU
 	bool "DFU bootloader"
@@ -623,6 +874,13 @@ config STM32_DFU
 
 menu "STM32 Peripheral Support"
 
+# These "hidden" settings determine is a peripheral option is available for the
+# selection MCU
+
+config STM32_HAVE_CCM
+	bool
+	default n
+
 config STM32_HAVE_USBDEV
 	bool
 	default n
@@ -630,6 +888,120 @@ config STM32_HAVE_USBDEV
 config STM32_HAVE_OTGFS
 	bool
 	default n
+
+config STM32_HAVE_FSMC
+	bool
+	default n
+
+config STM32_HAVE_USART3
+	bool
+	default n
+
+config STM32_HAVE_USART4
+	bool
+	default n
+
+config STM32_HAVE_USART5
+	bool
+	default n
+
+config STM32_HAVE_USART6
+	bool
+	default n
+
+config STM32_HAVE_USART7
+	bool
+	default n
+
+config STM32_HAVE_USART8
+	bool
+	default n
+
+config STM32_HAVE_TIM1
+	bool
+	default n
+
+config STM32_HAVE_TIM5
+	bool
+	default n
+
+config STM32_HAVE_TIM6
+	bool
+	default n
+
+config STM32_HAVE_TIM7
+	bool
+	default n
+
+config STM32_HAVE_TIM8
+	bool
+	default n
+
+config STM32_HAVE_TIM9
+	bool
+	default n
+
+config STM32_HAVE_TIM10
+	bool
+	default n
+
+config STM32_HAVE_TIM11
+	bool
+	default n
+
+config STM32_HAVE_TIM12
+	bool
+	default n
+
+config STM32_HAVE_TIM13
+	bool
+	default n
+
+config STM32_HAVE_TIM14
+	bool
+	default n
+
+config STM32_HAVE_TIM15
+	bool
+	default n
+
+config STM32_HAVE_TIM16
+	bool
+	default n
+
+config STM32_HAVE_TIM17
+	bool
+	default n
+
+config STM32_HAVE_ADC2
+	bool
+	default n
+
+config STM32_HAVE_ADC3
+	bool
+	default n
+
+config STM32_HAVE_ADC4
+	bool
+	default n
+
+config STM32_HAVE_CAN1
+	bool
+	default n
+
+config STM32_HAVE_CAN2
+	bool
+	default n
+
+config STM32_HAVE_RNG
+	bool
+	default n
+
+config STM32_HAVE_ETHMAC
+	bool
+	default n
+
+# These are the peripheral selections proper
 
 config STM32_ADC1
 	bool "ADC1"
@@ -640,19 +1012,19 @@ config STM32_ADC2
 	bool "ADC2"
 	default n
 	select STM32_ADC
-	depends on !STM32_VALUELINE
+	depends on STM32_HAVE_ADC2
 
 config STM32_ADC3
 	bool "ADC3"
 	default n
 	select STM32_ADC
-	depends on !STM32_VALUELINE
+	depends on STM32_HAVE_ADC3
 
 config STM32_ADC4
 	bool "ADC4"
 	default n
 	select STM32_ADC
-	depends on STM32_STM32F30XX
+	depends on STM32_HAVE_ADC4
 
 config STM32_COMP
 	bool "COMP"
@@ -667,21 +1039,21 @@ config STM32_BKP
 config STM32_BKPSRAM
 	bool "BKP RAM"
 	default n
-	depends on STM32_STM32F20XX || STM32_STM32F40XX
+	depends on STM32_STM32F207 || STM32_STM32F40XX
 
 config STM32_CAN1
 	bool "CAN1"
 	default n
 	select CAN
 	select STM32_CAN
-	depends on !STM32_VALUELINE && !STM32_STM32L15XX
+	depends on STM32_HAVE_CAN1
 
 config STM32_CAN2
 	bool "CAN2"
 	default n
-	depends on STM32_STM32F20XX || STM32_STM32F40XX
 	select CAN
 	select STM32_CAN
+	depends on STM32_HAVE_CAN2
 
 config STM32_CCMDATARAM
 	bool "CMD/DATA RAM"
@@ -700,7 +1072,7 @@ config STM32_CRC
 config STM32_CRYP
 	bool "CRYP"
 	default n
-	depends on STM32_STM32F20XX || STM32_STM32F40XX
+	depends on STM32_STM32F207 || STM32_STM32F40XX
 
 config STM32_DMA1
 	bool "DMA1"
@@ -726,24 +1098,24 @@ config STM32_DAC2
 config STM32_DCMI
 	bool "DCMI"
 	default n
-	depends on STM32_STM32F20XX || STM32_STM32F40XX
+	depends on STM32_STM32F207 || STM32_STM32F40XX
 
 config STM32_ETHMAC
 	bool "Ethernet MAC"
 	default n
-	depends on STM32_CONNECTIVITYLINE || STM32_STM32F20XX || STM32_STM32F40XX
+	depends on STM32_HAVE_ETHMAC
 	select NETDEVICES
 	select ARCH_HAVE_PHY
 
 config STM32_FSMC
 	bool "FSMC"
 	default n
-	depends on !STM32_CONNECTIVITYLINE && (STM32_HIGHDENSITY || STM32_STM32F20XX || STM32_STM32F40XX)
+	depends on STM32_HAVE_FSMC
 
 config STM32_HASH
 	bool "HASH"
 	default n
-	depends on STM32_STM32F20XX || STM32_STM32F40XX
+	depends on STM32_STM32F207 || STM32_STM32F40XX
 
 config STM32_I2C1
 	bool "I2C1"
@@ -759,7 +1131,7 @@ config STM32_I2C2
 config STM32_I2C3
 	bool "I2C3"
 	default n
-	depends on STM32_STM32F20XX || STM32_STM32F40XX
+	depends on STM32_STM32F207 || STM32_STM32F40XX
 	select STM32_I2C
 
 config STM32_LTDC
@@ -780,7 +1152,7 @@ config STM32_OTGFS
 config STM32_OTGHS
 	bool "OTG HS"
 	default n
-	depends on STM32_STM32F20XX || STM32_STM32F40XX || STM32_STM32F429
+	depends on STM32_STM32F207 || STM32_STM32F40XX || STM32_STM32F429
 
 config STM32_OTGHS_FS_MODE
 	bool "Use OTG HS in FS mode"
@@ -802,7 +1174,7 @@ config STM32_PWR
 config STM32_RNG
 	bool "RNG"
 	default n
-	depends on STM32_STM32F20XX || STM32_STM32F40XX
+	depends on STM32_HAVE_RNG
 	select ARCH_HAVE_RNG
 
 config STM32_SDIO
@@ -821,14 +1193,14 @@ config STM32_SPI1
 config STM32_SPI2
 	bool "SPI2"
 	default n
-	depends on STM32_CONNECTIVITYLINE || STM32_STM32F20XX || STM32_STM32F40XX || (STM32_VALUELINE && STM32_HIGHDENSITY) || (STM32_STM32F10XX && (STM32_HIGHDENSITY || STM32_MEDIUMDENSITY)) || STM32_STM32F30XX
+	depends on STM32_CONNECTIVITYLINE || STM32_STM32F207 || STM32_STM32F40XX || (STM32_VALUELINE && STM32_HIGHDENSITY) || (STM32_STM32F10XX && (STM32_HIGHDENSITY || STM32_MEDIUMDENSITY)) || STM32_STM32F30XX
 	select SPI
 	select STM32_SPI
 
 config STM32_SPI3
 	bool "SPI3"
 	default n
-	depends on STM32_CONNECTIVITYLINE || STM32_STM32L15XX || STM32_STM32F20XX || STM32_STM32F40XX || (STM32_VALUELINE && STM32_HIGHDENSITY) || (STM32_STM32F10XX && STM32_HIGHDENSITY)
+	depends on STM32_CONNECTIVITYLINE || STM32_STM32L15XX || STM32_STM32F207 || STM32_STM32F40XX || (STM32_VALUELINE && STM32_HIGHDENSITY) || (STM32_STM32F10XX && STM32_HIGHDENSITY)
 	select SPI
 	select STM32_SPI
 
@@ -856,12 +1228,12 @@ config STM32_SPI6
 config STM32_SYSCFG
 	bool "SYSCFG"
 	default y
-	depends on STM32_STM32L15XX || STM32_STM32F30XX || STM32_STM32F20XX || STM32_STM32F40XX
+	depends on STM32_STM32L15XX || STM32_STM32F30XX || STM32_STM32F207 || STM32_STM32F40XX
 
 config STM32_TIM1
 	bool "TIM1"
 	default n
-	depends on !STM32_STM32L15XX
+	depends on STM32_HAVE_TIM1
 
 config STM32_TIM2
 	bool "TIM2"
@@ -878,65 +1250,67 @@ config STM32_TIM4
 config STM32_TIM5
 	bool "TIM5"
 	default n
-	depends on !STM32_STM32F30XX
+	depends on STM32_HAVE_TIM5
 
 config STM32_TIM6
 	bool "TIM6"
 	default n
+	depends on STM32_HAVE_TIM6
 
 config STM32_TIM7
 	bool "TIM7"
 	default n
+	depends on STM32_HAVE_TIM7
 
 config STM32_TIM8
 	bool "TIM8"
 	default n
-	depends on !STM32_VALUELINE && !STM32_STM32L15XX
+	depends on STM32_HAVE_TIM8
 
 config STM32_TIM9
 	bool "TIM9"
 	default n
-	depends on STM32_STM32L15XX || STM32_STM32F20XX || STM32_STM32F40XX
+	depends on STM32_HAVE_TIM9
 
 config STM32_TIM10
 	bool "TIM10"
 	default n
-	depends on STM32_STM32L15XX || STM32_STM32F20XX || STM32_STM32F40XX
+	depends on STM32_HAVE_TIM10
 
 config STM32_TIM11
 	bool "TIM11"
 	default n
-	depends on STM32_STM32L15XX || STM32_STM32F20XX || STM32_STM32F40XX
+	depends on STM32_HAVE_TIM11
 
 config STM32_TIM12
 	bool "TIM12"
 	default n
-	depends on STM32_STM32F20XX || STM32_STM32F40XX || STM32_VALUELINE
+	depends on STM32_HAVE_TIM12
 
 config STM32_TIM13
 	bool "TIM13"
 	default n
-	depends on STM32_STM32F20XX || STM32_STM32F40XX || STM32_VALUELINE
+	depends on STM32_HAVE_TIM13
 
 config STM32_TIM14
 	bool "TIM14"
 	default n
-	depends on STM32_STM32F20XX || STM32_STM32F40XX || STM32_VALUELINE
+	depends on STM32_HAVE_TIM14
 
 config STM32_TIM15
 	bool "TIM15"
 	default n
-	depends on STM32_VALUELINE || STM32_STM32F30XX
+	depends on STM32_HAVE_TIM15
 
 config STM32_TIM16
 	bool "TIM16"
 	default n
-	depends on STM32_VALUELINE || STM32_STM32F30XX
+	depends on STM32_HAVE_TIM16
 
 config STM32_TIM17
 	bool "TIM17"
 	default n
-	depends on STM32_VALUELINE || STM32_STM32F30XX
+	depends on STM32_HAVE_TIM17
 
 config STM32_TSC
 	bool "TSC"
@@ -958,42 +1332,42 @@ config STM32_USART2
 config STM32_USART3
 	bool "USART3"
 	default n
-	depends on !STM32_STM32F30XX
+	depends on STM32_HAVE_USART3
 	select ARCH_HAVE_USART3
 	select STM32_USART
 
 config STM32_UART4
 	bool "UART4"
 	default n
-	depends on !STM32_STM32F30XX &&!STM32_STM32L15XX
+	depends on STM32_HAVE_USART4
 	select ARCH_HAVE_UART4
 	select STM32_USART
 
 config STM32_UART5
 	bool "UART5"
 	default n
-	depends on !STM32_STM32F30XX &&!STM32_STM32L15XX
+	depends on STM32_HAVE_USART5
 	select ARCH_HAVE_UART5
 	select STM32_USART
 
 config STM32_USART6
 	bool "USART6"
 	default n
-	depends on STM32_STM32F20XX || STM32_STM32F40XX
+	depends on STM32_HAVE_USART6
 	select ARCH_HAVE_USART6
 	select STM32_USART
 
 config STM32_UART7
 	bool "UART7"
 	default n
-	depends on STM32_STM32F427 || STM32_STM32F429
+	depends on STM32_HAVE_USART7
 	select ARCH_HAVE_UART7
 	select STM32_USART
 
 config STM32_UART8
 	bool "UART8"
 	default n
-	depends on STM32_STM32F427 || STM32_STM32F429
+	depends on STM32_HAVE_USART7
 	select ARCH_HAVE_UART8
 	select STM32_USART
 
@@ -1217,7 +1591,7 @@ endmenu
 
 config STM32_FLASH_PREFETCH
 	bool "Enable FLASH Pre-fetch"
-	depends on STM32_STM32F20XX || STM32_STM32F40XX
+	depends on STM32_STM32F207 || STM32_STM32F40XX
 	default y if STM32_STM32F427 || STM32_STM32F429
 	default n
 	---help---
@@ -1270,8 +1644,8 @@ config ARCH_BOARD_STM32_CUSTOM_CLOCKCONFIG
 
 config STM32_CCMEXCLUDE
 	bool "Exclude CCM SRAM from the heap"
-	depends on STM32_STM32F20XX || STM32_STM32F40XX || STM32_STM32F30XX
 	default y if  ARCH_DMA || ELF
+	depends on STM32_HAVE_CCM
 	---help---
 		Exclude CCM SRAM from the HEAP because (1) it cannot be used for DMA
 		and (2) it appears to be impossible to execute ELF modules from CCM
@@ -2444,7 +2818,7 @@ config USART1_RS485_DIR_POLARITY
 config USART1_RXDMA
 	bool "USART1 Rx DMA"
 	default n
-	depends on STM32_USART1 && ((STM32STM32F10XX && STM32_DMA1) || (!STM32_STM32F10XX && STM32_DMA2))
+	depends on STM32_USART1 && (((STM32_STM32F10XX || STM32_STM32L15XX) && STM32_DMA1) || (!STM32_STM32F10XX && STM32_DMA2))
 	---help---
 		In high data rate usage, Rx DMA may eliminate Rx overrun errors
 
@@ -2678,6 +3052,18 @@ endmenu
 menu "I2C Configuration"
 	depends on STM32_I2C
 
+config STM32_I2C_ALT
+	bool "Alternate I2C implementation"
+	default n if !STM32_PERFORMANCELINE
+	default y if STM32_PERFORMANCELINE
+	depends on !STM32_STM32F30XX
+	---help---
+		This selection enables an alternative I2C driver.  This alternate
+		driver implements some rather complex workarounds for errata against
+		the STM32 F103 "Performance Line".  This selection is an option
+		because: (1) It has not yet been fully verified and (2) It is not
+		certain that he scope of this workaround is needed only for the F103.
+
 config STM32_I2C_DYNTIMEO
 	bool "Use dynamic timeouts"
 	default n
@@ -2781,7 +3167,7 @@ config STM32_MII
 choice
 	prompt "MII clock configuration"
 	default STM32_MII_MCO if STM32_STM32F10XX
-	default STM32_MII_MCO1 if STM32_STM32F20XX || STM32_STM32F40XX
+	default STM32_MII_MCO1 if STM32_STM32F207 || STM32_STM32F40XX
 	depends on STM32_MII
 
 config STM32_MII_MCO
@@ -2792,13 +3178,13 @@ config STM32_MII_MCO
 
 config STM32_MII_MCO1
 	bool "Use MC01 as MII clock"
-	depends on (STM32_STM32F20XX || STM32_STM32F40XX)
+	depends on (STM32_STM32F207 || STM32_STM32F40XX)
 	---help---
 		Use MCO1 to clock the MII interface.  Default:  Use MC01
 
 config STM32_MII_MCO2
 	bool "Use MC02 as MII clock"
-	depends on (STM32_STM32F20XX || STM32_STM32F40XX)
+	depends on (STM32_STM32F207 || STM32_STM32F40XX)
 	---help---
 		Use MCO2 to clock the MII interface.  Default:  Use MC01
 
@@ -2929,7 +3315,7 @@ config STM32_RMII
 choice
 	prompt "RMII clock configuration"
 	default STM32_RMII_MCO if STM32_STM32F10XX
-	default STM32_RMII_MCO1 if STM32_STM32F20XX || STM32_STM32F40XX
+	default STM32_RMII_MCO1 if STM32_STM32F207 || STM32_STM32F40XX
 	depends on STM32_RMII
 
 config STM32_RMII_MCO
@@ -2940,13 +3326,13 @@ config STM32_RMII_MCO
 
 config STM32_RMII_MCO1
 	bool "Use MC01 as RMII clock"
-	depends on (STM32_STM32F20XX || STM32_STM32F40XX)
+	depends on (STM32_STM32F207 || STM32_STM32F40XX)
 	---help---
 		Use MCO1 to clock the RMII interface.  Default:  Use MC01
 
 config STM32_RMII_MCO2
 	bool "Use MC02 as RMII clock"
-	depends on (STM32_STM32F20XX || STM32_STM32F40XX)
+	depends on (STM32_STM32F207 || STM32_STM32F40XX)
 	---help---
 		Use MCO2 to clock the RMII interface.  Default:  Use MC01
 

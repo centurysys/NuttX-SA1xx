@@ -333,12 +333,12 @@
  *
  * Key:
  *
- *   WR    - Read/write addess allowed
+ *   WR    - Read/write address allowed
  *   R     - Read-only access allowed
  *   0,1,2 - At PL0, PL1, and/or PL2
  *
  *   PL0   - User privilege level
- *   PL1   - Privilieged mode
+ *   PL1   - Privileged mode
  *   PL2   - Software executing in Hyp mode
  */
 
@@ -498,11 +498,25 @@
  *   NMRR[19:18] = 0b00, Region is Non-cacheable
  *   NMRR[21:20] = 0b10, Region is Write-Through, no Write-Allocate
  *   NMRR[23:22] = 0b11, Region is Write-Back, no Write-Allocate
+ *
+ * Interpretation of Cacheable (C) and Bufferable (B) Bits:
+ *
+ *         Write-Through  Write-Back    Write-Through/Write-Back
+ *  C   B  Cache          Only Cache    Cache
+ * --- --- -------------- ------------- -------------------------
+ *  0   0  Uncached/      Uncached/     Uncached/
+ *         Unbuffered     Unbuffered    Unbuffered
+ *  0   1  Uncached/      Uncached/     Uncached/
+ *         Buffered       Buffered      Buffered
+ *  1   0  Cached/        UNPREDICTABLE Write-Through cached
+ *         Unbuffered                   Buffered
+ *  1   1  Cached/        Cached/       Write-Back cached
+ *         Buffered       Buffered      Buffered
  */
 
 #define PMD_STRONGLY_ORDERED (0)
 #define PMD_DEVICE           (PMD_SECT_B)
-#define PM_CACHEABLE         (PMD_SECT_B | PMD_SECT_C)
+#define PMD_CACHEABLE        (PMD_SECT_B | PMD_SECT_C)
 
 #define PTE_STRONGLY_ORDER   (0)
 #define PTE_DEVICE           (PTE_B)
@@ -514,9 +528,9 @@
  * REVISIT:  Here we expect all threads to be running at PL1
  */
 
-#define MMU_ROMFLAGS         (PMD_TYPE_SECT | PMD_SECT_AP_R1 | PM_CACHEABLE | \
+#define MMU_ROMFLAGS         (PMD_TYPE_SECT | PMD_SECT_AP_R1 | PMD_CACHEABLE | \
                               PMD_SECT_DOM(0))
-#define MMU_MEMFLAGS         (PMD_TYPE_SECT | PMD_SECT_AP_RW1 | PM_CACHEABLE | \
+#define MMU_MEMFLAGS         (PMD_TYPE_SECT | PMD_SECT_AP_RW1 | PMD_CACHEABLE | \
                               PMD_SECT_DOM(0))
 #define MMU_IOFLAGS          (PMD_TYPE_SECT | PMD_SECT_AP_RW1 | PMD_DEVICE | \
                               PMD_SECT_DOM(0) | PMD_SECT_XN)
@@ -654,7 +668,7 @@
 /* Page Table Info ******************************************************************/
 
 /* The number of pages in the in the page table (PG_PGTABLE_NPAGES).  We
- * position the pagetable PTEs just after the data section PTEs.
+ * position the page table PTEs just after the data section PTEs.
  */
 
 #define PG_PGTABLE_NPAGES       (PGTABLE_SIZE >> PAGESHIFT)
@@ -736,7 +750,7 @@
 
 /* Page Management ******************************************************************/
 
-/* For page managment purposes, the following summarize the "heap" of
+/* For page management purposes, the following summarize the "heap" of
  * free pages, operations on free pages and the L2 page table.
  *
  * PG_POOL_VA2L1OFFSET(va)  - Given a virtual address, return the L1 table
@@ -764,7 +778,7 @@
  *                            Index 0 corresponds to the first L2 page table
  *                            entry for the first page in the virtual paged
  *                            text address space.
- * PG_POOL_NDX2VA(ndx)      - Performs the opposite conversion.. convests
+ * PG_POOL_NDX2VA(ndx)      - Performs the opposite conversion.. converts
  *                            an index into a virtual address in the paged
  *                            text region (the address at the beginning of
  *                            the page).
@@ -938,7 +952,7 @@ struct section_mapping_s
  * Description:
  *   Write several, contiguous L2 page table entries.  npages entries will be
  *   written. This macro is used when CONFIG_PAGING is enable.  This case,
- *   it is used asfollows:
+ *   it is used as follows:
  *
  *	ldr	r0, =PGTABLE_L2_BASE_PADDR	<-- Address in L2 table
  *	ldr	r1, =PG_LOCKED_PBASE		<-- Physical page memory address
@@ -1233,9 +1247,9 @@ static inline void cp14_wrttb(unsigned int ttb)
  * Name: mmu_l1_getentry
  *
  * Description:
- *   Given a virtual address, return the valule of the corresponding L1 table entry.
+ *   Given a virtual address, return the value of the corresponding L1 table entry.
  *
- * Input Paramters:
+ * Input Parameters:
  *   vaddr - The virtual address to be mapped.
  *
  ************************************************************************************/
@@ -1257,9 +1271,9 @@ static inline uint32_t mmu_l1_getentry(uint32_t vaddr)
  *
  * Description:
  *   Given a address of the beginning of an L2 page table and a virtual address,
- *   return the varlue of the corresponding L2 page table entry.
+ *   return the value of the corresponding L2 page table entry.
  *
- * Input Paramters:
+ * Input Parameters:
  *   l2vaddr - The virtual address of the beginning of the L2 page table
  *   vaddr - The virtual address to be mapped.
  *
@@ -1309,7 +1323,7 @@ extern "C" {
  *   Set a one level 1 translation table entry.  Only a single L1 page table is
  *   supported.
  *
- * Input Paramters:
+ * Input Parameters:
  *   paddr - The physical address to be mapped.  Must be aligned to a 1MB address
  *     boundary
  *   vaddr - The virtual address to be mapped.  Must be aligned to a 1MB address

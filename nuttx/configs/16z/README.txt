@@ -122,6 +122,9 @@ Version 5.0.1
 
   All testing has been performed with ZSD II verion 5.0.1 for the ZNEO.
 
+  There are some problems with this compiler version.  See the section
+  entitled "Patches" below.
+
 Other Versions
 
   If you use any version of ZDS-II other than 5.0.1 or if you install ZDS-II
@@ -158,10 +161,17 @@ The patch would be applied when NuttX is configured as follows:
   ./configure.sh 16z/nsh
   cd ..
   . ./setenv.sh
-  dopath.sh $PWD
+  dopatch.sh
   make
 
+The patch can also be removed with:
+
+  dopatch.sh -R
+
 See the section "Selecting Configurations" below.
+
+UPDATE:  2014-4-27:  The nsh example still does not run correctly.  This
+is believe to be caused by additional, undiagnosed compiler errors.
 
 Serial Console
 ==============
@@ -308,7 +318,9 @@ nsh
      1. Note that you must apply the ZNEO patch if you are using ZDS-II 5.0.1.
         See the README.txt file in the parent directory for more information.
 
-     2. This configuration does not run correctly.  There is currently a
-        problem with the SRAM accesses.
+     2. This configuration does not run correctly.  This is believed to a yet
+        another ZDS-II compiler problem.  The corresponding NSH configuration
+        of the z16f2800100zcog does work, however, so this could also be an
+        issue with the 16z.
 
 Check out any README.txt files in these <sub-directory>s.

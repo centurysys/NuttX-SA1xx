@@ -180,6 +180,9 @@ struct uart_ops_s g_sci_ops =
   .receive        = up_receive,
   .rxint          = up_rxint,
   .rxavailable    = up_rxavailable,
+#ifdef CONFIG_SERIAL_IFLOWCONTROL
+  .rxflowcontrol  = NULL,
+#endif
   .send           = up_send,
   .txint          = up_txint,
   .txready        = up_txready,
@@ -496,10 +499,11 @@ static int up_attach(struct uart_dev_s *dev)
           ret = irq_attach(priv->irq + SH1_TXI_IRQ_OFFSET, up_interrupt);
           if (ret == OK)
             {
+#ifdef CONFIG_ARCH_IRQPRIO
               /* All SCI0 interrupts share the same prioritization */
 
               up_prioritize_irq(priv->irq, 7);  /* Set SCI priority midway */
-
+#endif
               /* Return OK on success */
 
               return OK;
@@ -542,11 +546,13 @@ static void up_detach(struct uart_dev_s *dev)
   (void)irq_detach(priv->irq + SH1_ERI_IRQ_OFFSET);
   (void)irq_detach(priv->irq + SH1_RXI_IRQ_OFFSET);
 
+#ifdef CONFIG_ARCH_IRQPRIO
   /* Set the interrupt priority to zero (masking all SCI interrupts).  NOTE
    * that all SCI0 interrupts share the same prioritization.
    */
 
   up_prioritize_irq(priv->irq, 0);
+#endif
 }
 
 /****************************************************************************

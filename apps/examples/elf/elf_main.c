@@ -86,10 +86,6 @@
 #  error "You must not disable mountpoints via CONFIG_DISABLE_MOUNTPOINT in your configuration file"
 #endif
 
-#ifdef CONFIG_BINFMT_DISABLE
-#  error "You must not disable loadable modules via CONFIG_BINFMT_DISABLE in your configuration file"
-#endif
-
 /* Describe the ROMFS file system */
 
 #define SECTORSIZE   512
@@ -110,11 +106,11 @@
 
 #ifdef CONFIG_CPP_HAVE_VARARGS
 #  ifdef CONFIG_DEBUG
-#    define message(format, arg...) dbg(format, ##arg)
-#    define err(format, arg...)     dbg(format, ##arg)
+#    define message(format, ...)    dbg(format, ##__VA_ARGS__)
+#    define err(format, ...)        dbg(format, ##__VA_ARGS__)
 #  else
-#    define message(format, arg...) printf(format, ##arg)
-#    define err(format, arg...)     fprintf(stderr, format, ##arg)
+#    define message(format, ...)    printf(format, ##__VA_ARGS__)
+#    define err(format, ...)        fprintf(stderr, format, ##__VA_ARGS__)
 #  endif
 #else
 #  ifdef CONFIG_DEBUG

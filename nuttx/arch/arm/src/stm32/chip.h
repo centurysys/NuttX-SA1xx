@@ -1,7 +1,7 @@
 /************************************************************************************
  * arch/arm/src/stm32/chip.h
  *
- *   Copyright (C) 2009, 2011-2013 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2009, 2011-2014 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -72,8 +72,7 @@
 /* STM32 F103 Low / Medium Density Family */
 #  elif defined(CONFIG_ARCH_CHIP_STM32F103C4) || \
         defined(CONFIG_ARCH_CHIP_STM32F103C8) || \
-        defined(CONFIG_ARCH_CHIP_STM32F103CB) || \
-        defined(CONFIG_ARCH_CHIP_STM32F103RB)
+        defined(CONFIG_ARCH_CHIP_STM32F103CB)
 #    include "chip/stm32f103c_pinmap.h"
 
 /* STM32 F103 High Density Family */
@@ -81,29 +80,30 @@
  * only in the available FLASH and SRAM.
  */
 
-#  elif defined(CONFIG_ARCH_CHIP_STM32F103RET6)
-#    include "chip/stm32f103re_pinmap.h"
+#  elif defined(CONFIG_ARCH_CHIP_STM32F103RE) || \
+        defined(CONFIG_ARCH_CHIP_STM32F103RB)
+#    include "chip/stm32f103r_pinmap.h"
 
 /* STM32F103VC, STM32F103VD, and STM32F103VE are all provided in 100 pin packages and differ
  * only in the available FLASH and SRAM.
  */
 
-#  elif defined(CONFIG_ARCH_CHIP_STM32F103VCT6) || defined(CONFIG_ARCH_CHIP_STM32F103VET6)
-#    include "chip/stm32f103vc_pinmap.h"
+#  elif defined(CONFIG_ARCH_CHIP_STM32F103VC) || defined(CONFIG_ARCH_CHIP_STM32F103VE)
+#    include "chip/stm32f103v_pinmap.h"
 
 /* STM32F103ZC, STM32F103ZD, and STM32F103ZE are all provided in 144 pin packages and differ
  * only in the available FLASH and SRAM.
  */
-#  elif defined(CONFIG_ARCH_CHIP_STM32F103ZET6)
-#    include "chip/stm32f103ze_pinmap.h"
+#  elif defined(CONFIG_ARCH_CHIP_STM32F103ZE)
+#    include "chip/stm32f103z_pinmap.h"
 
 /* STM32 F105/F107 Connectivity Line */
 
-#  elif defined(CONFIG_ARCH_CHIP_STM32F105VBT7)
-#    include "chip/stm32f105vb_pinmap.h"
+#  elif defined(CONFIG_ARCH_CHIP_STM32F105VB)
+#    include "chip/stm32f105v_pinmap.h"
 
 #  elif defined(CONFIG_ARCH_CHIP_STM32F107VC)
-#    include "chip/stm32f107vc_pinmap.h"
+#    include "chip/stm32f107v_pinmap.h"
 #  else
 #    error "Unsupported STM32F10XXX chip"
 #  endif

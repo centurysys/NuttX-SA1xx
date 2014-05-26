@@ -1,5 +1,5 @@
 /************************************************************************************
- * configs/sam4e-ek/src/sam_touchscreen.c
+ * configs/sam4e-ek/src/sam_ads7843e.c
  *
  *   Copyright (C) 2014 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
@@ -52,15 +52,12 @@
 #include "sam_gpio.h"
 #include "sam4e-ek.h"
 
+#if defined(CONFIG_INPUT) && defined(CONFIG_INPUT_ADS7843E)
+
 /****************************************************************************
  * Pre-Processor Definitions
  ****************************************************************************/
 /* Configuration ************************************************************/
-
-#ifdef CONFIG_INPUT_ADS7843E
-#ifndef CONFIG_INPUT
-#  error "Touchscreen support requires CONFIG_INPUT"
-#endif
 
 #ifndef CONFIG_SAM34_SPI0
 #  error "Touchscreen support requires CONFIG_SAM34_SPI0"
@@ -118,7 +115,7 @@ static bool tsc_pendown(FAR struct ads7843e_config_s *state);
  *
  * Memory for this structure is provided by the caller.  It is not copied
  * by the driver and is presumed to persist while the driver is active. The
- * memory must be writable because, under certain circumstances, the driver
+ * memory must be writeable because, under certain circumstances, the driver
  * may modify frequency or X plate resistance values.
  */
 
@@ -275,7 +272,7 @@ int arch_tcinitialize(int minor)
  * Description:
  *   Each board that supports a touchscreen device must provide this function.
  *   This function is called by application-specific, setup logic to
- *   uninitialized the touchscreen device.
+ *   uninitialize the touchscreen device.
  *
  * Input Parameters:
  *   None
@@ -290,5 +287,4 @@ void arch_tcuninitialize(void)
   /* No support for un-initializing the touchscreen ADS7843E device yet */
 }
 
-#endif /* CONFIG_INPUT_ADS7843E */
-
+#endif /* CONFIG_INPUT && CONFIG_INPUT_ADS7843E */

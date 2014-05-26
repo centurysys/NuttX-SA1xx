@@ -27,14 +27,14 @@ Contents
   - GNU Toolchain Options
   - IDEs
   - NuttX EABI "buildroot" Toolchain
-  - NuttX OABI "buildroot" Toolchain
   - NXFLAT Toolchain
   - Hardware
     - Button
     - LED
-    - USARTS and Serial Consoles
+    - USARTs and Serial Consoles
   - LQFP64
-  - DFU and JTAG
+  - mbed
+  - Shields
   - Configurations
 
 Development Environment
@@ -52,11 +52,11 @@ GNU Toolchain Options
   The NuttX make system has been modified to support the following different
   toolchain options.
 
-  1. The CodeSourcery GNU toolchain,
-  2. The Atollic Toolchain,
-  3. The devkitARM GNU toolchain,
-  4. Raisonance GNU toolchain, or
-  5. The NuttX buildroot Toolchain (see below).
+    1. The CodeSourcery GNU toolchain,
+    2. The Atollic Toolchain,
+    3. The devkitARM GNU toolchain,
+    4. Raisonance GNU toolchain, or
+    5. The NuttX buildroot Toolchain (see below).
 
   All testing has been conducted using the CodeSourcery toolchain for Linux.
   To use the Atollic, devkitARM, Raisonance GNU, or NuttX buildroot toolchain,
@@ -73,10 +73,8 @@ GNU Toolchain Options
   If you change the default toolchain, then you may also have to modify the PATH in
   the setenv.h file if your make cannot find the tools.
 
-  NOTE: the CodeSourcery (for Windows), Atollic, devkitARM, and Raisonance toolchains are
-  Windows native toolchains.  The CodeSourcey (for Linux) and NuttX buildroot
-  toolchains are Cygwin and/or Linux native toolchains. There are several limitations
-  to using a Windows based toolchain in a Cygwin environment.  The three biggest are:
+  NOTE: There are several limitations to using a Windows based toolchain in a
+  Cygwin environment.  The three biggest are:
 
   1. The Windows toolchain cannot follow Cygwin paths.  Path conversions are
      performed automatically in the Cygwin makefiles using the 'cygpath' utility
@@ -100,12 +98,6 @@ GNU Toolchain Options
      work with the Cygwin make.
 
        MKDEP = $(TOPDIR)/tools/mknulldeps.sh
-
-  The CodeSourcery Toolchain (2009q1)
-  -----------------------------------
-  The CodeSourcery toolchain (2009q1) does not work with default optimization
-  level of -Os (See Make.defs).  It will work with -O0, -O1, or -O2, but not with
-  -Os.
 
   The Atollic "Pro" and "Lite" Toolchain
   --------------------------------------
@@ -232,27 +224,7 @@ NuttX EABI "buildroot" Toolchain
   NOTE:  Unfortunately, the 4.6.3 EABI toolchain is not compatible with the
   the NXFLAT tools.  See the top-level TODO file (under "Binary loaders") for
   more information about this problem. If you plan to use NXFLAT, please do not
-  use the GCC 4.6.3 EABI toochain; instead use the GCC 4.3.3 OABI toolchain.
-  See instructions below.
-
-NuttX OABI "buildroot" Toolchain
-================================
-
-  The older, OABI buildroot toolchain is also available.  To use the OABI
-  toolchain:
-
-  1. When building the buildroot toolchain, either (1) modify the cortexm3-eabi-defconfig-4.6.3
-     configuration to use EABI (using 'make menuconfig'), or (2) use an exising OABI
-     configuration such as cortexm3-defconfig-4.3.3
-
-  2. Modify the Make.defs file to use the OABI conventions:
-
-    +CROSSDEV = arm-nuttx-elf-
-    +ARCHCPUFLAGS = -mtune=cortex-m3 -march=armv7-m -mfloat-abi=soft
-    +NXFLATLDFLAGS2 = $(NXFLATLDFLAGS1) -T$(TOPDIR)/binfmt/libnxflat/gnu-nxflat-gotoff.ld -no-check-sections
-    -CROSSDEV = arm-nuttx-eabi-
-    -ARCHCPUFLAGS = -mcpu=cortex-m3 -mthumb -mfloat-abi=soft
-    -NXFLATLDFLAGS2 = $(NXFLATLDFLAGS1) -T$(TOPDIR)/binfmt/libnxflat/gnu-nxflat-pcrel.ld -no-check-sections
+  use the GCC 4.6.3 EABI toolchain; instead use the GCC 4.3.3 EABI toolchain.
 
 NXFLAT Toolchain
 ================
@@ -287,60 +259,22 @@ NXFLAT Toolchain
   8. Edit setenv.h, if necessary, so that the PATH variable includes
      the path to the newly builtNXFLAT binaries.
 
-DFU and JTAG
-============
+mbed
+====
 
-  Enabling Support for the DFU Bootloader
-  --------------------------------------
-  The linker files in these projects can be configured to indicate that you
-  will be loading code using STMicro built-in USB Device Firmware Upgrade (DFU)
-  loader or via some JTAG emulator.  You can specify the DFU bootloader by
-  adding the following line:
+  The Nucleo-F401RE includes boot loader from mbed:
 
-    CONFIG_STM32_DFU=y
+    https://mbed.org/platforms/ST-Nucleo-F401RE/
+    https://mbed.org/handbook/Homepage
 
-  to your .config file. Most of the configurations in this directory are set
-  up to use the DFU loader.
+  Using the mbed loader:
 
-  If CONFIG_STM32_DFU is defined, the code will not be positioned at the beginning
-  of FLASH (0x08000000) but will be offset to 0x08005000.  This offset is needed
-  to make space for the DFU loader and 0x08005000 is where the DFU loader expects
-  to find new applications at boot time.  If you need to change that origin for some
-  other bootloader, you will need to edit the file(s) ld.script.dfu for the
-  configuration.
-
-  For Linux or Mac:
-  ----------------
-
-  While on Linux or Mac,
-
-  $ lsusb
-  Bus 003 Device 061: ID 0483:374b STMicroelectronics
-
-  $ st-flash write nuttx.bin 0x08000000
-
-  Enabling JTAG
-  -------------
-  If you are not using the DFU, then you will probably also need to enable
-  JTAG support.  By default, all JTAG support is disabled but there NuttX
-  configuration options to enable JTAG in various different ways.
-
-  These configurations effect the setting of the SWJ_CFG[2:0] bits in the AFIO
-  MAPR register.  These bits are used to configure the SWJ and trace alternate function I/Os.
-  The SWJ (SerialWire JTAG) supports JTAG or SWD access to the Cortex debug port.
-  The default state in this port is for all JTAG support to be disable.
-
-  CONFIG_STM32_JTAG_FULL_ENABLE - sets SWJ_CFG[2:0] to 000 which enables full
-    SWJ (JTAG-DP + SW-DP)
-
-  CONFIG_STM32_JTAG_NOJNTRST_ENABLE - sets SWJ_CFG[2:0] to 001 which enable
-    full SWJ (JTAG-DP + SW-DP) but without JNTRST.
-
-  CONFIG_STM32_JTAG_SW_ENABLE - sets SWJ_CFG[2:0] to 010 which would set JTAG-DP
-    disabled and SW-DP enabled
-
-  The default setting (none of the above defined) is SWJ_CFG[2:0] set to 100
-  which disable JTAG-DP and SW-DP.
+  1. Connect the Nucleo-F401RE to the host PC using the USB connector.
+  2. A new file system will appear called NUCLEO; open it with Windows
+     Explorer (assuming that you are using Windows).
+  3. Drag and drop nuttx.bin into the MBED window.  This will load the
+     nuttx.bin binary into the Nucleo-F401RE.  The NUCLEO window will
+     close then re-open and the Nucleo-F401RE will be running the new code.
 
 Hardware
 ========
@@ -350,14 +284,16 @@ Hardware
   SERIAL_TX=PA_2    USER_BUTTON=PC_13
   SERIAL_RX=PA_3    LED1       =PA_5
 
-  A0=PA_0           D0=PA_3            D8 =PA_9
-  A1=PA_1           D1=PA_2            D9 =PC_7
+  A0=PA_0  USART2RX D0=PA_3            D8 =PA_9
+  A1=PA_1  USART2TX D1=PA_2            D9 =PC_7
   A2=PA_4           D2=PA_10   WIFI_CS=D10=PB_6 SPI_CS
   A3=PB_0  WIFI_INT=D3=PB_3            D11=PA_7 SPI_MOSI
   A4=PC_1      SDCS=D4=PB_5            D12=PA_6 SPI_MISO
   A5=PC_0   WIFI_EN=D5=PB_4       LED1=D13=PA_5 SPI_SCK
                LED2=D6=PB_10  I2C1_SDA=D14=PB_9 Probe
                     D7=PA_8   I2C1_SCL=D15=PB_8 Probe
+
+  From: https://mbed.org/platforms/ST-Nucleo-F401RE/
 
   Buttons
   -------
@@ -397,98 +333,235 @@ Hardware
 Serial Consoles
 ===============
 
+  USART1
+  ------
+  Pins and Connectors:
+
+    RXD: PA11  CN10 pin 14
+         PB7   CN7 pin 21
+    TXD: PA10  CN9 pin 3, CN10 pin 33
+         PB6   CN5 pin 3, CN10 pin 17
+
+  NOTE:  You may need to edit the include/board.h to select different USART1
+  pin selections.
+
+  TTL to RS-232 converter connection:
+
+    Nucleo CN10 STM32F401RE
+    ----------- ------------
+    Pin 21 PA9  USART2_RX
+    Pin 33 PA10 USART2_TX
+    Pin 20 GND
+    Pin 8  U5V
+
+  To configure USART1 as the console:
+
+    CONFIG_STM32_USART1=y
+    CONFIG_USART1_ISUART=y
+    CONFIG_USART1_SERIAL_CONSOLE=y
+    CONFIG_USART1_RXBUFSIZE=256
+    CONFIG_USART1_TXBUFSIZE=256
+    CONFIG_USART1_BAUD=115200
+    CONFIG_USART1_BITS=8
+    CONFIG_USART1_PARITY=0
+    CONFIG_USART1_2STOP=0
+
   USART2
   -----
-  If you have a 3.3 V TTL to RS-232 convertor then this is the most convenient
-  serial console to use.  UART2 is the default in all of these
-  configurations.
+  Pins and Connectors:
 
-    USART2 RX  PA3   JP1 pin 4
-    USART2 TX  PA2   JP1 pin 3
-    GND              JP1 pin 2
-    V3.3             JP2 pin 1
+    RXD: PA3   CN9 pin 1 (See SB13, 14, 62, 63). CN10 pin 37
+         PD6
+    TXD: PA2   CN9 pin 2(See SB13, 14, 62, 63). CN10 pin 35
+         PD5
+
+  UART2 is the default in all of these configurations.
+
+  TTL to RS-232 converter connection:
+
+    Nucleo CN9  STM32F401RE
+    ----------- ------------
+    Pin 1  PA3  USART2_RX
+    Pin 2  PA2  USART2_TX
+
+  Solder Bridges.  This configuration requires:
+
+  - SB62 and SB63 Closed: PA2 and PA3 on STM32 MCU are connected to D1 and D0
+    (pin 7 and pin 8) on Arduino connector CN9 and ST Morpho connector CN10
+    as USART signals.  Thus SB13 and SB14 should be OFF.
+
+  - SB13 and SB14 Open:  PA2 and PA3 on STM32F103C8T6 (ST-LINK MCU) are
+    disconnected to PA3 and PA2 on STM32 MCU.
+
+  To configure USART2 as the console:
+
+    CONFIG_STM32_USART2=y
+    CONFIG_USART2_ISUART=y
+    CONFIG_USART2_SERIAL_CONSOLE=y
+    CONFIG_USART2_RXBUFSIZE=256
+    CONFIG_USART2_TXBUFSIZE=256
+    CONFIG_USART2_BAUD=115200
+    CONFIG_USART2_BITS=8
+    CONFIG_USART2_PARITY=0
+    CONFIG_USART2_2STOP=0
+
+  USART6
+  ------
+  Pins and Connectors:
+
+    RXD: PC7    CN5 pin2, CN10 pin 19
+         PA12   CN10, pin 12
+    TXD: PC6    CN10, pin 4
+         PA11   CN10, pin 14
+
+  To configure USART6 as the console:
+
+    CONFIG_STM32_USART6=y
+    CONFIG_USART6_ISUART=y
+    CONFIG_USART6_SERIAL_CONSOLE=y
+    CONFIG_USART6_RXBUFSIZE=256
+    CONFIG_USART6_TXBUFSIZE=256
+    CONFIG_USART6_BAUD=115200
+    CONFIG_USART6_BITS=8
+    CONFIG_USART6_PARITY=0
+    CONFIG_USART6_2STOP=0
 
   Virtual COM Port
   ----------------
-  Yet another option is to use UART0 and the USB virtual COM port.  This
-  option may be more convenient for long term development, but was
-  painful to use during board bring-up.
+  Yet another option is to use UART2 and the USB virtual COM port.  This
+  option may be more convenient for long term development, but is painful
+  to use during board bring-up.
+
+  Solder Bridges.  This configuration requires:
+
+  - SB62 and SB63 Open: PA2 and PA3 on STM32 MCU are disconnected to D1
+    and D0 (pin 7 and pin 8) on Arduino connector CN9 and ST Morpho
+    connector CN10.
+
+  - SB13 and SB14 Closed:  PA2 and PA3 on STM32F103C8T6 (ST-LINK MCU) are
+    connected to PA3 and PA2 on STM32 MCU to have USART communication
+    between them. Thus SB61, SB62 and SB63 should be OFF.
+
+  Configuring USART2 is the same as given above.
+
+  Question:  What BAUD should be configure to interface with the Virtual
+  COM port?  115200 8N1?
+
+  Default
+  -------
+  As shipped, SB62 and SB63 are open and SB13 and SB14 closed, so the
+  virtual COM port is enabled.
+
+Shields
+=======
+
+  1. RS-232 from Cutedigi.com.  Supports a single RS-232 connected via
+
+       Nucleo CN9  STM32F401RE  Cutedigi
+       ----------- ------------ --------
+       Pin 1  PA3  USART2_RX    RXD
+       Pin 2  PA2  USART2_TX    TXD
+
+     Support for this shield is enabled by selecting USART2 and configuring
+     SB13, 14, 62, and 63 as described above under "Serial Consoles"
+
+  2. CC3000 Wireless shield
+
+     Support this shield is enabled by configuring the CC3000 networking:
+
+       CONFIG_WL_CC3000
 
 Configurations
 ==============
 
-  Composite: The composite is a super set of all the functions in nsh,
-  usbserial, usbmsc. (usbnsh has not been rung out).
+  nsh:
+  ---
+    Configures the NuttShell (nsh) located at apps/examples/nsh.  The
+    Configuration enables the serial interfaces on UART2.  Support for
+    builtin applications is enabled, but in the base configuration no
+    builtin applications are selected (see NOTES below).
 
-  Build it with
+    NOTES:
 
-    make distclean;(cd tools;./configure.sh nucleo-f401re/nsh)
+    1. This configuration uses the mconf-based configuration tool.  To
+       change this configuration using that tool, you should:
 
-  then run make menuconfig if you wish to customize things.
+       a. Build and install the kconfig-mconf tool.  See nuttx/README.txt
+          and misc/tools/
 
-  or
+       b. Execute 'make menuconfig' in nuttx/ in order to start the
+          reconfiguration process.
 
-  $ make qconfig
+    2. By default, this configuration uses the CodeSourcery toolchain
+       for Linux.  That can easily be reconfigured, of course.
 
-  N.B. Memory is tight, both Flash and RAM are taxed. If you enable
-  debugging you will need to add -Os following the line -g in the line:
+       CONFIG_HOST_LINUX=y                     : Builds under Linux
+       CONFIG_ARMV7M_TOOLCHAIN_CODESOURCERYL=y : CodeSourcery for Linux
 
-    ifeq ($(CONFIG_DEBUG_SYMBOLS),y)
-      ARCHOPTIMIZATION = -g
+    3. Although the default console is USART2 (which would correspond to
+       the Virtual COM port) I have done all testing with the console 
+       device configured for USART1 (see instruction above under "Serial
+       Consoles).  I have been using a TTL-to-RS-232 converted connected
+       as shown below:
 
-  in the top level Make.degs or the code will not fit.
+       Nucleo CN10 STM32F401RE
+       ----------- ------------
+       Pin 21 PA9  USART2_RX
+       Pin 33 PA10 USART2_TX
+       Pin 20 GND
+       Pin 8  U5V
 
-  Stack space has been hand optimized using the stack coloring by enabling
-  "Stack usage debug hooks" (CONFIG_DEBUG_STACK) in Build Setup-> Debug
-  Options. I have selected values that have 8-16 bytes of headroom with
-  network debugging on. If you enable more debugging and get a hard fault
-  or any weirdness like commands hanging. Then the Idle, main or Interrupt
-  stack my be too small. Stop the target and have a look a memory for a
-  blown stack: No DEADBEEF at the lowest address of a given stack.
+  cc3000:
+  ------
+    This configuration adds support for the CC3000 Shield.
 
-  Given the RAM memory constraints it is not possible to be running the
-  network and USB CDC/ACM and MSC at the same time. But on the bright
-  side, you can export the FLASH memory to the PC. Write files on the
-  Flash. Reboot and mount the FAT FS and run network code that will have
-  access the files.
+    Build it with
 
-  You can use the scripts/cdc-acm.inf file to install the windows
-  composite device.
+      make distclean;(cd tools;./configure.sh nucleo-f401re/nsh)
 
-  Network control is facilitated by running the c3b (cc3000basic) application.
+    then run make menuconfig if you wish to customize things.
 
-  Run c3b from the nsh prompt.
+    or
 
-    +-------------------------------------------+
-    |      Nuttx CC3000 Demo Program            |
-    +-------------------------------------------+
+    $ make qconfig
 
-      01 - Initialize the CC3000
-      02 - Show RX & TX buffer sizes, & free RAM
-      03 - Start Smart Config
-      04 - Manually connect to AP
-      05 - Manually add connection profile
-      06 - List access points
-      07 - Show CC3000 information
-      08 - Telnet
+    You can use the scripts/cdc-acm.inf file to install the windows
+    composite device.
 
-     Type 01-07 to select above option:
+    Network control is facilitated by running the c3b (cc3000basic) application.
 
-  Select 01. Then use 03 and the TI Smart config application running on an
-  IOS or Android device to configure join your network.
+    Run c3b from the nsh prompt.
 
-  Use 07 to see the IP address of the device.
+      +-------------------------------------------+
+      |      Nuttx CC3000 Demo Program            |
+      +-------------------------------------------+
 
-  (On the next reboot running c3b 01 the CC3000 will automaticaly rejoin the
-  network after the 01 give it a few seconds and enter 07 or 08)
+        01 - Initialize the CC3000
+        02 - Show RX & TX buffer sizes, & free RAM
+        03 - Start Smart Config
+        04 - Manually connect to AP
+        05 - Manually add connection profile
+        06 - List access points
+        07 - Show CC3000 information
+        08 - Telnet
 
-  Use 08 to start Telnet. Then you can connect to the device using the
-  address listed in command 07.
+       Type 01-07 to select above option:
 
-  qq will exit the c3b with the telnet deamon running (if started)
+    Select 01. Then use 03 and the TI Smart config application running on an
+    IOS or Android device to configure join your network.
 
-  Slow.... You will be thinking 300 bps. This is because of packet sizes and
-  how the select thread runs in the telnet session. Telnet is not the best
-  showcase for the CC3000, but simply a proof of network connectivity.
+    Use 07 to see the IP address of the device.
 
-  http POST and GET should be more efficient.
+    (On the next reboot running c3b 01 the CC3000 will automaticaly rejoin the
+    network after the 01 give it a few seconds and enter 07 or 08)
+
+    Use 08 to start Telnet. Then you can connect to the device using the
+    address listed in command 07.
+
+    qq will exit the c3b with the telnet deamon running (if started)
+
+    Slow.... You will be thinking 300 bps. This is because of packet sizes and
+    how the select thread runs in the telnet session. Telnet is not the best
+    showcase for the CC3000, but simply a proof of network connectivity.
+
+    http POST and GET should be more efficient.

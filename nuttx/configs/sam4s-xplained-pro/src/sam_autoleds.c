@@ -65,7 +65,7 @@
  *   LED_STARTED          NuttX has been started     OFF
  *   LED_HEAPALLOCATE     Heap has been allocated    OFF
  *   LED_IRQSENABLED      Interrupts enabled         OFF
- *   LED_STACKCREATED     Idle stack created         ON 
+ *   LED_STACKCREATED     Idle stack created         ON
  *   LED_INIRQ            In an interrupt            No change
  *   LED_SIGNAL           In a signal handler        No change
  *   LED_ASSERTION        An assertion failed        No change
@@ -114,26 +114,28 @@ void board_led_initialize(void)
 
 void board_led_on(int led)
 {
-  bool led1on = false;
-
   switch (led)
     {
-      case 0:  /* LED_STARTED, LED_HEAPALLOCATE, LED_IRQSENABLED */
+      case 0:  /* LED_STARTED, LED_HEAPALLOCATE, LED_IRQSENABLED - off while initializing */
+        sam_gpiowrite(GPIO_D301, LED_D301_OFF);
         break;
 
-      case 1:  /* LED_STACKCREATED */
-        led1on = true;
+      case 1:  /* LED_STACKCREATED - turn on when ready */
+        sam_gpiowrite(GPIO_D301, LED_D301_ON);
+        break;
+
+      case 2:  /* LED_INIRQ, LED_SIGNAL - turn off inside irqs/signal processing */
+        sam_gpiowrite(GPIO_D301, LED_D301_OFF);
+        return;
+
+      case 3:  /* LED_PANIC - flash */
+        sam_gpiowrite(GPIO_D301, LED_D301_ON);
         break;
 
       default:
-      case 2:  /* LED_INIRQ, LED_SIGNAL, LED_ASSERTION */
-        return;
-
-      case 3:  /* LED_PANIC */
         break;
     }
 
-  sam_gpiowrite(GPIO_D301, led1on);
 }
 
 /****************************************************************************
@@ -142,10 +144,19 @@ void board_led_on(int led)
 
 void board_led_off(int led)
 {
-  if (led != 2)
-    {
-      sam_gpiowrite(GPIO_D301, false);
-    }
+  switch (led)
+  {
+      default:
+        break;
+
+      case 2:  /* LED_INIRQ, LED_SIGNAL - return to on after irq/signal processing */
+        sam_gpiowrite(GPIO_D301, LED_D301_ON);
+        return;
+
+      case 3:  /* LED_PANIC - flashes */
+        sam_gpiowrite(GPIO_D301, LED_D301_OFF);
+        break;
+  }
 }
 
 #endif /* CONFIG_ARCH_LEDS */

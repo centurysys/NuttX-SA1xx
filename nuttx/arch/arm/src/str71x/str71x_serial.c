@@ -279,6 +279,9 @@ static const struct uart_ops_s g_uart_ops =
   .receive        = up_receive,
   .rxint          = up_rxint,
   .rxavailable    = up_rxavailable,
+#ifdef CONFIG_SERIAL_IFLOWCONTROL
+  .rxflowcontrol  = NULL,
+#endif
   .send           = up_send,
   .txint          = up_txint,
   .txready        = up_txready,
@@ -625,10 +628,13 @@ static int up_attach(struct uart_dev_s *dev)
 
        up_enable_irq(priv->irq);
 
+#ifdef CONFIG_ARCH_IRQPRIO
        /* Set the uart interrupt priority (the default value is one) */
 
        up_prioritize_irq(priv->irq, CONFIG_UART_PRI);
     }
+#endif
+
   return ret;
 }
 

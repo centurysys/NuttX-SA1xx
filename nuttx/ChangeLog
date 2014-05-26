@@ -7003,7 +7003,7 @@
 	* sched/nanosleep.c:  Fix a missing call to re-enable interrupts.  From
 	  Jason Jiang (2014-3-15).
 
-7.2 2014-xx-xx Gregory Nutt <gnutt@nuttx.org>
+7.2 2014-04-29 Gregory Nutt <gnutt@nuttx.org>
 
 	* arch/arm/src/sam34/sam_udp.c and .h:  Add a USB full speed device
 	  driver (UDP) for the SAM4E (2014-3-17).
@@ -7035,7 +7035,7 @@
 	  Add a new MTD driver that can be used to contain another driver and
 	  force its apparent sector size to be 512 bytes (2014-3-24).
 	* arch/arm/src/sam34/sam_lowputc.c sam_serial.c:  Fix a mysterious
-	  multithreading bug that can log up the serial port (2014-3-14).
+	  multithreading bug that can lock up the serial port (2014-3-14).
 	* drivers/usbdev/Kconfig, usbmsc.c, usbmsc.h, and usbmsc_scsi.c:
 	  Redesign threading module used with the USB MSC driver.  It was using
 	  pthreads before and these were changed to a kernel thread.  The reason
@@ -7062,7 +7062,7 @@
 	  would have failed if n=0; one byte was always copying before testing
 	  for the end of the copy.
 	* nuttx/configs/sama5d3-xplained/:  Add a board support configuration
-	  for the Atmel SAMA5D3 Xplaiend board.  The initial check in is not
+	  for the Atmel SAMA5D3 Xplained board.  The initial check in is not
 	  finished. For example, it still builds to run out of NOR FLASH but
 	  the SAMA5D Xlpained has no NOR FLASH (2013-4-28).
 	* arch/arm/src/sama5/sam_pmc.c and .h:  Add functions to calculate
@@ -7146,11 +7146,11 @@
 	  I thought it was going to do.  Result was the NOR FLASH accesses
 	  were very slow (2014-4-3).
 	* arch/arm/src/sama5/sam_udphs.c:  Fix a case where received status
-	  was not clear, causing OUT SETUP commands to fail (2014-4-6).
+	  was not being cleared, causing OUT SETUP commands to fail (2014-4-6).
 	* arch/arm/src/tiva/tiva_syscontrol.c:  Add logic for TM4C125GXL based
 	  on logic from Daniel Carvalho with modifications.  I think the
 	  LM4F120 may have broken before as well(?).  In any event, the LM4F120
-	  also works well with this chanage (2014-4-7).
+	  also works well with this change (2014-4-7).
 	* Back out part of 610e2aa0c224e2936fe8009ef4a2351ce607067a: Need to
 	  be able to select USB console devices when there is no /dev/console
 	  enabled. Noted by Librae (2014-4-8).
@@ -7160,7 +7160,7 @@
 	  ramlog.h to include/nutt/syslog (2014-4-10).
 	* sched/errno_getptr.c and getpid.c:  Add some checks.  If these
 	  functions are called early in initialization before the tasking
-	  structures are initialized, they will not behavr properly
+	  structures are initialized, they will not behave properly
 	  (2014-4-10).
 	* arch/arm/src/sama5/sam_twi.c: TWI data sending is fails to increment
 	  the number of byes transferred on first byte sent.  from David Sidrane
@@ -7188,7 +7188,7 @@
 	  introduced in the above change and is Sourceforge patch 39 from Luciano
 	  Neri (2014-4-17).
 	* configs/sama5dx-ek/include/board.h and sama5d3-xplained.h:  These files
-	  referenct type xcpt_t and so must include nuttx/irq.h.  This is
+	  reference type xcpt_t and so must include nuttx/irq.h.  This is
 	  Sourceforge bug 25 submitted by Luciano Neri (2014-4-17).
 	* arch/arm/src/stm32/stm32_otgfshost.c:  Some fixes related to low-speed
 	  devices and interrupt endpoints from Leo (2014-4-17).
@@ -7242,4 +7242,138 @@
 	* drivers/timer.c and include/nuttx/timer.h:  Timer "upper half"
 	  driver and lower half interface definition from Bob Doiron
 	  (2014-40-22).
+	* arch/z16/src/z16f/z16f_espi.c:  Add ZNEO ESPI driver (2014-4-24).
+	* arch/arm/src/stm32/stm32_sdio.c:  The dmaflight method must
+	  be conditioned on CONFIG_SDIO_PREFLIGHT.  Noted by Pelle
+	  Windestam (2014-4-25)
+	* configs/nucleo-f401re:  Removed bogus references to the MPU
+	  (2014-4-25).
+	* arch/z16/src/z16f_timerisr.c:  Fix calculation of timer
+	  reload and prescaler.  The timer frequency was way too fast
+	  (2014-4-25).
+	* arch/arm/src/stm32/stm32_otgfsdev.c and others: Sourceforge
+	  Ticket #26.  up_prioritize_irq should not be called if
+	  CONFIG_ARCH_IRQPRIO is not defined (2014-4-25).
 
+7.3 2014-xx-xx Gregory Nutt <gnutt@nuttx.org>
+
+	* arch/arm/src/sama5/sam_clockconfig.c:  Needed function sam_pmcwait()
+	  is needed when UDPHS, EHCI, or OHCI is configured but may not be
+	  compiled in due to insufficient conditional logic.  From Luciano Neri
+	  (SourceForge patch #40) (2014-4-29).
+	* arch/arm/include/stm32/chip.h, src/stm32/Kconfig, stm32_allocateheap.c,
+	  configs/nucleo-f401re/nsh/defconfig, and scripts/ld.script:  Numerous
+	  changes, most correcting memory usage on the Nucleo-F401RE (2014-4-30).
+	* /drivers/mtd/w25.c: Extended by Mark Whitehorn to support the 8Mbit
+	  W25Q80BV part (2014-4-30).
+	* configs/sam4s-xplained-pro:  Update LED control logic from Bob Doiron
+	  (2014-4-30).
+	* drivers/timer.c and include/nuttx/timer.h: Enhanced timer interface
+	  from Bob Doiron (2014-4-30).
+	* arch/arm/src/sam34/Kconfig and sam_tc.c: Enhanced timer/counter driver
+	  from Bob Doiron (2014-4-30).
+	* configs/sam4s-xplained-pro/Kconfig, nsh/defconfig, and src/sam_tc.c:
+	  The SAM4S Xplained Pro now uses the extended timer/counter features.
+	  From Bob Doiron (2014-4-30).
+	* include/nuttx/arch.h and sched/os_internal.h:  If the CPU load
+	  measurements are being driven by an external clock, then the prototype
+	  for sched_process_cpuload() must be available in include/nuttx/arch.h
+	  (2014-4-30).
+	* Documentation/NuttShell.html and many defconfig files:  The alternate
+	  console device CONFIG_NSH_CONDEV must not be defined unconditionally.
+	  This causes errors when using Telnet sessions.  This was solved by
+	  adding CONFIG_NSH_ALTCONDEV: CONFIG_NSH_ALTCONDEV enables or disables
+	  the feature then, if enabled, CONFIG_NSH_CONDEV provides the alternative
+	  console device name (2014-5-5).
+	* arch/arm/src/sam34/sam_rtt.c/.h:  RTT driver from Bob Doiron.  Also
+	  added high resolution RTC emulation using the RTT for the sub-second
+	  counter (2014-5-5).
+	* configs/sam4s-xplained-pro:  Clean-up of LED usage and also some
+	  integration of new timer features.  From Bob Doiron  (2014-5-5).
+	* drivers/timer.c and include/nuttx/timer.h:  Timer driver updates from
+	  Bob Doiron (2014-5-5).
+	* binfmt/symtab_findorderedbyname.c:  Fix an error in the symbol search
+	  function.  Noted by Pelle Windestam (2014-5-6).
+	* arch/arm/src/stm32/stm32f40xxx_rcc.c and configs/nucleo-f401re/include/board.h:
+	  The Nucleo-F401RE has no on-board crystals and, hence, needs to run
+	  with the PLL input from the on-chip HSI clock (2014-5-6).
+	* arch/arm/src/armv7-a/arm_memcpy.S:  This is the same optimized memcpy()
+	  function that Mike Smith brought in for the ARMv7-M with minor tweaks
+	  by David Sidrane to work with the ARMv7-A (2014-5-6).
+	* binfmt/libpcode, pcode.c, include/nuttx/poff.h, and binfmt/pcode.h:
+	  Framework to support Pascal P-Code as a binary format.  At present this
+	  logic is incomplete and really nothing more than a thought experiment
+	  to determine the feasibility of the P-code binary format (2014-5-7).
+	* drivers/sensors/Make.defs:  Correct build dependency.  Sourceforge
+	  ticket #41 from Kosma Moczek (2014-5-8).
+	* drivers/serial.c, include/nuttx/serial.h, arch/arm/src/stm32/stm32_serial.c
+	  and minor updates to all other drivers using the serial interface:  Add an
+	  rxflowcontrol method to the serial interface to better support RX flow control.
+	  From Jussi Kivilinna (2014-5-8).
+	* arch/arm/include/stm32 and src/stm32:  Add support for the STM32152 and
+	  STM32162 Medium+ density parts (plus miscellaneous other improvements to
+	  the original STM32151 logic).  From Jussi Kivilinna and Sami Pelkonen
+	  (2014-5-8).
+	* binfmt/binfmt_dumpmodule.c, binfmt_loadmodule.c, binfmt_unloadmdoule.c,
+	  builtin.c, elf.c, nxflat.c, pcode.c, and include/nuttx/binfmt/binfmt.h:
+	  Extend the binfmt interface to handle error conditions where format-specific
+	  binfmt clean-up is needed in the event of error conditions.  This is needed
+	  by the P-Code binfmt (2014-5-8).
+	* binfmt/libpcode, pcode.c, include/nuttx/poff.h, and binfmt/pcode.h:
+	  Now uses apps/interpreters/prun and is basically functional.  More work
+	  is needed because (1) it is too coupled with apps/ and (2) will not work
+	  with CONFIG_NUTTX_KERNEL (2014-5-9).
+	* arch/arm/src/stm32/stm32_i2c.c:  Bring in PX4 fix for I2C in very high
+	  noise environments or with rogue perpipherals.  Taken from the PX4 commit
+	  099b2017ccfa0fc7696f168db2a0c2e13fe5edbc by Tridge here:
+	  https://github.com/PX4/NuttX (2014-5-10).
+	* include/nuttx/video/rgbcolors.h:  Fix typo in several macros: RBG -> RGB.
+	  (2014-5-12).
+	* drivers/mtd/ramtron.c: Add support for Fujitsu MB85RS1MT part.  From
+	  Charles Ash (2014-5-12).
+	* configs/sam4e-ek/src/sam_ili9325.c:  Add an LCD driver for the SAM4E-EK
+	  board.  Untested on initial check-in (2014-5-13).
+	* configs/sam4e-ek/src/sam_ads7843e.c:  Add a touchscreen driver for the
+	  SAM4E-EK board.  Untested on initial check-in (2014-5-13).
+	* arch/arm/src/stm32/stm32_i2c_alt.c: Add an alternative I2C implementation
+	  for the STM32 F03 that works around errata in that part.  From Patrizio
+	  Simona (2014-5-14).
+	* arch/arm/src/sam34/sam_gpio.c:  Fix some SAM4E compiler errors when
+	  CONFIG_DEBUG_GPIO is enabled (2014-5-15).
+	* sched/sig_mqnotempty.c:  Test for a valid signal number is inverted; this
+	  function could not have been working correctly???  From eero.nurkkala
+	  (2014-5-20).
+	* arch/arm/src/stm32/stm32_lowputc.c:  Fix error in conditional
+	  compilation. From Sami PelKonen (2014-5-20).
+	* arch/*/src/* (several files):  Make sure that all references to
+	  up_prioritize_irq() are conditioned on CONFIG_ARCH_IRQPRIO.  Problem
+	  noted by Mike Smith (2014-05-20).
+	* drivers/wireless/cc3000/Kconfig: Correct SPI mode for CC3000 is CPOL=0
+	  CHPA=1. See http://processors.wiki.ti.com/index.php/CC3000_Serial_Port_Interface_(SPI)
+	  From Jussi Kivilinna (2014-5-21).
+	* drivers/wireless/cc3000/cc3000.c and include/nuttx/wireless/cc3000/include/cc3000_upif.h:
+	  Configuration has CC3000_SPI_MODE settings but source uses
+	  CONFIG_CC3000_SPIMODE. From Jussi Kivilinna (2014-5-21).
+	* drivers/wireless/cc3000/cc3000drv.c: unsoliced_thread does
+	  initialization of message queue, but main thread might block that
+	  thread from running and use the uninitialized message queue. The main
+	  thread must wait until unsolice_thread initializes the required
+	  structures before proceeding. From Jussi Kivilinna (2014-5-21).
+	* drivers/wireless/cc3000/cc3000.c: Fix build when POLL is enabled.
+	  From Jussi Kivilinna (2014-5-21).
+	* arch/arm/include/armv7-m/irq.h:  Change bne to bne.n in irqrestore()
+	  (2014-5-22).
+	* Many files: Convert all old-style variadic macros to the C99 form.
+	  Recent GCC changes tightens up that behavior and can cause some problems
+	  (at least for the IAR compiler for some reason).  See
+	  https://gcc.gnu.org/onlinedocs/cpp/Variadic-Macros.html#Variadic-Macros.
+	  Noted by Bob Grimes (2014-5-22).
+	* configs/viewtool-stm32f107/nsh: Configuration refreshed (2014-5-23).
+	* arch/arm/src/stm32/stm32_i2c_alt.c: Final driver from Max Kriegleder et al.
+	  Reduces footprint and fixes a bug.  (2014-5-23).
+	* tools/configure.sh:  In-place SED edit an mess up permissions on windows.
+	  From Hannes Delago (2014-5-25).
+	* include/nuttx/mtd/mtd.h:  Needs forward reference to struct spi_dev_s.
+	  (2014-5-25).
+	* arch/arm/src/stm32/stm32_i2c.c and stm32_i2c_alt.c:  Back out PX4 fixes
+	  that were reverted in the PX4 repositories (2014-5-25).
